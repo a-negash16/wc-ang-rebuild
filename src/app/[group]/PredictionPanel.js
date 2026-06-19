@@ -3,24 +3,39 @@
 import { useEffect, useMemo, useState } from "react";
 
 const STORAGE_KEY = "wc_ang_rebuild_session";
+const TODAY = "Today";
+const TOMORROW = "Tomorrow";
+const LATER = "Later";
 
-export default function PredictionPanel({ groupSlug, managers, matches }) {
+export default function PredictionPanel({ groupSlug, managers, matches, lockMinutesBeforeKickoff }) {
   const [session, setSession] = useState(null);
   const [managerCode, setManagerCode] = useState(() => managers[0]?.manager_code || "");
   const [pin, setPin] = useState("");
   const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
-  const [preview, setPreview] = useState([]);
+  const [pickState, setPickState] = useState([]);
+  const [now, setNow] = useState(() => Date.now());
 
   const openMatches = useMemo(() => matches.filter((match) => match.team_a && match.team_b), [matches]);
+  const pickByMatch = useMemo(() => {
+    return new Map(pickState.map((pick) => [pick.external_match_id, pick]));
+  }, [pickState]);
+  const groupedMatches = useMemo(() => groupMatches(openMatches), [openMatches]);
+  const missingCount = pickState.filter((match) => match.is_missing).length;
+  const savedCount = pickState.filter((match) => !match.is_missing).length;
 
   useEffect(() => {
     setSession(loadSession(groupSlug));
   }, [groupSlug]);
 
   useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 30 * 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
     if (session?.token) {
-      loadPreview(session.token);
+      loadPickState(session.token);
     }
   }, [session?.token]);
 
@@ -44,7 +59,7 @@ export default function PredictionPanel({ groupSlug, managers, matches }) {
       setSession(payload);
       setStatus(`Unlocked as ${payload.manager_name}`);
       setPin("");
-      loadPreview(payload.token);
+      loadPickState(payload.token);
     } catch (error) {
       setStatus(error.message);
     } finally {
@@ -72,7 +87,7 @@ export default function PredictionPanel({ groupSlug, managers, matches }) {
       const payload = await response.json();
       if (!response.ok || !payload.ok) throw new Error(payload.message || "Could not save pick");
       setStatus(payload.message);
-      loadPreview(session.token);
+      loadPickState(session.token);
     } catch (error) {
       setStatus(error.message);
     } finally {
@@ -83,30 +98,32 @@ export default function PredictionPanel({ groupSlug, managers, matches }) {
   function switchManager() {
     clearSession();
     setSession(null);
+    setPickState([]);
     setStatus("Session cleared.");
   }
 
-  async function loadPreview(token) {
+  async function loadPickState(token) {
     try {
-      const response = await fetch("/api/predictions/preview", {
+      const response = await fetch("/api/predictions/state", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token }),
       });
       const payload = await response.json();
       if (response.ok && payload.ok) {
-        setPreview(payload.picks || []);
+        setPickState(payload.matches || []);
       }
     } catch {
-      setPreview([]);
+      setPickState([]);
     }
   }
 
   return (
-    <section className="section">
-      <article className="panel">
+    <section className="section picks-section">
+      <article className="panel manager-panel">
         <div className="panel-heading">
           <div>
+            <p className="eyebrow">Next action</p>
             <h2>Manager Picks</h2>
             <p>
               {session
@@ -153,53 +170,85 @@ export default function PredictionPanel({ groupSlug, managers, matches }) {
       </article>
 
       {session ? (
-        <article className="panel">
-          <h2>Your Pick Preview</h2>
-          {preview.length ? (
-            <ul className="match-list">
-              {preview.map((pick) => (
-                <li key={`${pick.external_match_id}-${pick.manager_code}`}>
-                  <strong>{pick.team_a_name || "TBD"} vs {pick.team_b_name || "TBD"}</strong>
-                  <span>{formatPick(pick)}</span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p>No saved picks to preview yet.</p>
-          )}
+        <article className="panel preview-panel">
+          <div>
+            <p className="eyebrow">Your checklist</p>
+            <h2>{savedCount} saved / {missingCount} missing</h2>
+          </div>
+          <div className="preview-list">
+            {pickState.length ? pickState.slice(0, 6).map((pick) => (
+              <div className={pick.is_missing ? "preview-item missing" : "preview-item"} key={pick.external_match_id}>
+                <span>{formatTeams(pick)}</span>
+                <strong>{pick.is_missing ? "Needs pick" : pick.pick_label}</strong>
+              </div>
+            )) : (
+              <p>No open matches to preview yet.</p>
+            )}
+          </div>
         </article>
       ) : null}
 
-      <div className="prediction-grid">
-        {openMatches.map((match) => (
-          <article className="prediction-card" key={match.external_match_id}>
-            <span>{formatKickoff(match.kickoff_at)}</span>
-            <h3>{match.team_a.name} vs {match.team_b.name}</h3>
-            <div className="pick-buttons">
-              <button type="button" disabled={busy || !session} onClick={() => submitPick(match, "team_a")}>
-                {match.team_a.name}
-              </button>
-              {match.stage === "Group Stage" ? (
-                <button type="button" disabled={busy || !session} onClick={() => submitPick(match, "tie")}>
-                  Tie
-                </button>
-              ) : null}
-              <button type="button" disabled={busy || !session} onClick={() => submitPick(match, "team_b")}>
-                {match.team_b.name}
-              </button>
-            </div>
-          </article>
-        ))}
-      </div>
+      {Object.entries(groupedMatches).map(([label, items]) => items.length ? (
+        <div className="match-day" key={label}>
+          <div className="section-heading compact">
+            <h2>{label}</h2>
+            <span className="status-chip">{items.length} matches</span>
+          </div>
+          <div className="prediction-grid">
+            {items.map((match) => {
+              const currentPick = pickByMatch.get(match.external_match_id);
+              const deadline = getDeadline(match.kickoff_at, lockMinutesBeforeKickoff);
+              const isLocked = now >= deadline.getTime();
+              return (
+                <article className={currentPick?.is_missing ? "prediction-card needs-pick" : "prediction-card"} key={match.external_match_id}>
+                  <div className="match-meta">
+                    <span>{formatKickoff(match.kickoff_at)}</span>
+                    <b>{isLocked ? "Locked" : formatTimeLeft(deadline, now)}</b>
+                  </div>
+                  <h3>{match.team_a.name} vs {match.team_b.name}</h3>
+                  <div className="pick-buttons">
+                    <PickButton
+                      disabled={busy || !session || isLocked}
+                      isSelected={currentPick?.pick_type === "team_a"}
+                      label={match.team_a.name}
+                      onClick={() => submitPick(match, "team_a")}
+                    />
+                    {match.stage === "Group Stage" ? (
+                      <PickButton
+                        disabled={busy || !session || isLocked}
+                        isSelected={currentPick?.pick_type === "tie"}
+                        label="Tie"
+                        onClick={() => submitPick(match, "tie")}
+                      />
+                    ) : null}
+                    <PickButton
+                      disabled={busy || !session || isLocked}
+                      isSelected={currentPick?.pick_type === "team_b"}
+                      label={match.team_b.name}
+                      onClick={() => submitPick(match, "team_b")}
+                    />
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </div>
+      ) : null)}
     </section>
   );
 }
 
-function formatPick(pick) {
-  if (pick.pick_type === "tie") return "Tie";
-  if (pick.pick_type === "team_a") return pick.team_a_name || "Team A";
-  if (pick.pick_type === "team_b") return pick.team_b_name || "Team B";
-  return "Unknown";
+function PickButton({ disabled, isSelected, label, onClick }) {
+  return (
+    <button
+      className={isSelected ? "selected" : ""}
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+    >
+      {label}
+    </button>
+  );
 }
 
 function loadSession(groupSlug) {
@@ -224,8 +273,52 @@ function clearSession() {
 
 function formatKickoff(value) {
   return new Intl.DateTimeFormat("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
     timeZone: "America/New_York",
   }).format(new Date(value));
+}
+
+function groupMatches(matches) {
+  const buckets = { [TODAY]: [], [TOMORROW]: [], [LATER]: [] };
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  const now = new Date();
+  const todayKey = formatter.format(now);
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowKey = formatter.format(tomorrow);
+
+  matches.forEach((match) => {
+    const key = formatter.format(new Date(match.kickoff_at));
+    if (key === todayKey) buckets[TODAY].push(match);
+    else if (key === tomorrowKey) buckets[TOMORROW].push(match);
+    else buckets[LATER].push(match);
+  });
+  return buckets;
+}
+
+function getDeadline(kickoffAt, lockMinutesBeforeKickoff) {
+  const lockMs = Number(lockMinutesBeforeKickoff || 60) * 60 * 1000;
+  return new Date(new Date(kickoffAt).getTime() - lockMs);
+}
+
+function formatTimeLeft(deadline, now) {
+  const remaining = deadline.getTime() - now;
+  if (remaining <= 0) return "Locked";
+  const minutes = Math.ceil(remaining / 60000);
+  if (minutes < 60) return `${minutes}m left`;
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return rest ? `${hours}h ${rest}m left` : `${hours}h left`;
+}
+
+function formatTeams(match) {
+  return `${match.team_a?.name || "TBD"} vs ${match.team_b?.name || "TBD"}`;
 }
