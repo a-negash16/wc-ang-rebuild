@@ -12,6 +12,7 @@
     "test": "node --test",
     "hash-pin": "node scripts/hash-pin.mjs",
     "set-manager-pin": "node scripts/set-manager-pin.mjs",
+    "smoke:prediction": "node scripts/smoke-prediction-flow.mjs",
     "supabase:bundle": "node scripts/build-supabase-sql.mjs",
     "supabase:check": "node scripts/check-supabase.mjs",
     "check": "node --check src/rules/scoring.js && node --check src/rules/predictions.js && node --check src/integrations/odds-api.js && node --check src/lib/auth/pin.js && node --check src/lib/auth/session.js && node --check src/data/league.js && node --test"

@@ -95,3 +95,10 @@ Or update a manager directly from `.env.local`:
 ```sh
 npm run set-manager-pin -- squad M001 12345
 ```
+
+Smoke-test the Supabase prediction flow:
+
+```sh
+npm run smoke:prediction -- --group squad --manager M001 --pin 12345
+npm run smoke:prediction -- --group squad --manager M001 --pin 12345 --write
+```
