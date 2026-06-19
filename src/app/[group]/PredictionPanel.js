@@ -6,6 +6,7 @@ const STORAGE_KEY = "wc_ang_rebuild_session";
 const TODAY = "Today";
 const TOMORROW = "Tomorrow";
 const LATER = "Later";
+const URGENT_PICK_WINDOW_MS = 12 * 60 * 60 * 1000;
 
 export default function PredictionPanel({ groupSlug, managers, matches, lockMinutesBeforeKickoff }) {
   const [session, setSession] = useState(null);
@@ -20,9 +21,17 @@ export default function PredictionPanel({ groupSlug, managers, matches, lockMinu
   const pickByMatch = useMemo(() => {
     return new Map(pickState.map((pick) => [pick.external_match_id, pick]));
   }, [pickState]);
-  const groupedMatches = useMemo(() => groupMatches(openMatches), [openMatches]);
+  const urgentMatches = useMemo(() => {
+    return openMatches.filter((match) => {
+      const deadline = getDeadline(match.kickoff_at, lockMinutesBeforeKickoff);
+      const msUntilDeadline = deadline.getTime() - now;
+      return msUntilDeadline > 0 && msUntilDeadline <= URGENT_PICK_WINDOW_MS;
+    });
+  }, [lockMinutesBeforeKickoff, now, openMatches]);
+  const groupedMatches = useMemo(() => groupMatches(urgentMatches), [urgentMatches]);
   const missingCount = pickState.filter((match) => match.is_missing).length;
   const savedCount = pickState.filter((match) => !match.is_missing).length;
+  const nextMissingPick = pickState.find((match) => match.is_missing);
 
   useEffect(() => {
     setSession(loadSession(groupSlug));
@@ -170,70 +179,78 @@ export default function PredictionPanel({ groupSlug, managers, matches, lockMinu
       </article>
 
       {session ? (
-        <article className="panel preview-panel">
+        <article className="panel checklist-mini">
           <div>
             <p className="eyebrow">Your checklist</p>
-            <h2>{savedCount} saved / {missingCount} missing</h2>
+            <h2>{savedCount} saved</h2>
           </div>
-          <div className="preview-list">
-            {pickState.length ? pickState.slice(0, 6).map((pick) => (
-              <div className={pick.is_missing ? "preview-item missing" : "preview-item"} key={pick.external_match_id}>
-                <span>{formatTeams(pick)}</span>
-                <strong>{pick.is_missing ? "Needs pick" : pick.pick_label}</strong>
-              </div>
-            )) : (
-              <p>No open matches to preview yet.</p>
-            )}
+          <div className={missingCount ? "checklist-pill missing" : "checklist-pill"}>
+            <strong>{missingCount ? `${missingCount} missing` : "All set"}</strong>
+            <span>{nextMissingPick ? formatTeams(nextMissingPick) : "No open picks missing"}</span>
           </div>
         </article>
       ) : null}
 
-      {Object.entries(groupedMatches).map(([label, items]) => items.length ? (
-        <div className="match-day" key={label}>
-          <div className="section-heading compact">
-            <h2>{label}</h2>
-            <span className="status-chip">{items.length} matches</span>
-          </div>
-          <div className="prediction-grid">
-            {items.map((match) => {
-              const currentPick = pickByMatch.get(match.external_match_id);
-              const deadline = getDeadline(match.kickoff_at, lockMinutesBeforeKickoff);
-              const isLocked = now >= deadline.getTime();
-              return (
-                <article className={currentPick?.is_missing ? "prediction-card needs-pick" : "prediction-card"} key={match.external_match_id}>
-                  <div className="match-meta">
-                    <span>{formatKickoff(match.kickoff_at)}</span>
-                    <b>{isLocked ? "Locked" : formatTimeLeft(deadline, now)}</b>
-                  </div>
-                  <h3>{match.team_a.name} vs {match.team_b.name}</h3>
-                  <div className="pick-buttons">
-                    <PickButton
-                      disabled={busy || !session || isLocked}
-                      isSelected={currentPick?.pick_type === "team_a"}
-                      label={match.team_a.name}
-                      onClick={() => submitPick(match, "team_a")}
-                    />
-                    {match.stage === "Group Stage" ? (
-                      <PickButton
-                        disabled={busy || !session || isLocked}
-                        isSelected={currentPick?.pick_type === "tie"}
-                        label="Tie"
-                        onClick={() => submitPick(match, "tie")}
-                      />
-                    ) : null}
-                    <PickButton
-                      disabled={busy || !session || isLocked}
-                      isSelected={currentPick?.pick_type === "team_b"}
-                      label={match.team_b.name}
-                      onClick={() => submitPick(match, "team_b")}
-                    />
-                  </div>
-                </article>
-              );
-            })}
-          </div>
+      <div className="section-heading compact">
+        <div>
+          <p className="eyebrow">Open picks</p>
+          <h2>Closing Soon</h2>
         </div>
-      ) : null)}
+        <span className="status-chip">12-hour window</span>
+      </div>
+
+      {urgentMatches.length ? (
+        Object.entries(groupedMatches).map(([label, items]) => items.length ? (
+          <div className="match-day" key={label}>
+            <div className="rail-heading">
+              <h3>{label}</h3>
+              <span>{items.length} matches</span>
+            </div>
+            <div className="swipe-rail" aria-label={`${label} prediction cards`}>
+              {items.map((match) => {
+                const currentPick = pickByMatch.get(match.external_match_id);
+                const deadline = getDeadline(match.kickoff_at, lockMinutesBeforeKickoff);
+                return (
+                  <article className={currentPick?.is_missing ? "prediction-card needs-pick" : "prediction-card"} key={match.external_match_id}>
+                    <div className="match-meta">
+                      <span>{formatKickoff(match.kickoff_at)}</span>
+                      <b>{formatTimeLeft(deadline, now)}</b>
+                    </div>
+                    <h3>{match.team_a.name} vs {match.team_b.name}</h3>
+                    <div className="pick-buttons">
+                      <PickButton
+                        disabled={busy || !session}
+                        isSelected={currentPick?.pick_type === "team_a"}
+                        label={match.team_a.name}
+                        onClick={() => submitPick(match, "team_a")}
+                      />
+                      {match.stage === "Group Stage" ? (
+                        <PickButton
+                          disabled={busy || !session}
+                          isSelected={currentPick?.pick_type === "tie"}
+                          label="Tie"
+                          onClick={() => submitPick(match, "tie")}
+                        />
+                      ) : null}
+                      <PickButton
+                        disabled={busy || !session}
+                        isSelected={currentPick?.pick_type === "team_b"}
+                        label={match.team_b.name}
+                        onClick={() => submitPick(match, "team_b")}
+                      />
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </div>
+        ) : null)
+      ) : (
+        <article className="panel quiet-panel">
+          <strong>No picks closing in the next 12 hours.</strong>
+          <span>Upcoming matches will appear here when they enter the pick window.</span>
+        </article>
+      )}
     </section>
   );
 }

@@ -313,50 +313,91 @@ button:disabled {
   border-color: #b8d9ca;
 }
 
-.preview-panel {
+.checklist-mini {
+  align-items: center;
   display: grid;
-  gap: 14px;
-  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 12px;
+  grid-template-columns: minmax(140px, 0.35fr) minmax(0, 1fr);
+  padding: 14px 18px;
 }
 
-.preview-list {
-  display: grid;
-  gap: 8px;
+.checklist-mini h2 {
+  font-size: 20px;
+  margin: 0;
 }
 
-.preview-item {
+.checklist-pill {
   align-items: center;
   background: var(--soft-accent);
   border: 1px solid #c7e2d7;
-  border-radius: 8px;
+  border-radius: 999px;
   display: flex;
-  gap: 12px;
+  gap: 10px;
   justify-content: space-between;
-  padding: 10px 12px;
-}
-
-.preview-item span {
-  color: var(--muted);
   min-width: 0;
+  padding: 9px 12px;
 }
 
-.preview-item strong {
-  color: var(--accent-strong);
-  white-space: nowrap;
-}
-
-.preview-item.missing {
+.checklist-pill.missing {
   background: var(--soft-warn);
   border-color: #f0c8b7;
 }
 
-.preview-item.missing strong {
+.checklist-pill.missing strong {
   color: var(--warn);
+}
+
+.checklist-pill span {
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .match-day {
   display: grid;
   gap: 12px;
+}
+
+.rail-heading {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.rail-heading h3 {
+  font-size: 17px;
+  margin: 0;
+}
+
+.rail-heading span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.swipe-rail {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  padding: 2px 2px 12px;
+  scroll-snap-type: x mandatory;
+  scrollbar-color: #b8c8bf transparent;
+}
+
+.swipe-rail > * {
+  flex: 0 0 clamp(340px, 62vw, 430px);
+  scroll-snap-align: start;
+}
+
+.quiet-panel {
+  display: grid;
+  gap: 3px;
+}
+
+.quiet-panel span {
+  color: var(--muted);
 }
 
 .prediction-grid {
@@ -371,6 +412,7 @@ button:disabled {
   border-radius: 8px;
   display: grid;
   gap: 12px;
+  min-height: 220px;
   padding: 18px;
 }
 
@@ -417,12 +459,6 @@ button:disabled {
   margin-top: 34px;
 }
 
-.pulse-grid {
-  display: grid;
-  gap: 14px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
 .pulse-card {
   background: #101820;
   border: 1px solid #23313a;
@@ -432,6 +468,10 @@ button:disabled {
   gap: 16px;
   min-height: 220px;
   padding: 20px;
+}
+
+.pulse-rail > * {
+  flex-basis: clamp(360px, 70vw, 520px);
 }
 
 .pulse-card-heading {
@@ -528,9 +568,8 @@ button:disabled {
   .grid,
   .flow,
   .prediction-grid,
-  .pulse-grid,
   .hero-dashboard,
-  .preview-panel {
+  .checklist-mini {
     grid-template-columns: 1fr;
   }
 
@@ -561,10 +600,19 @@ button:disabled {
     width: 100%;
   }
 
-  .preview-item {
+  .checklist-pill {
     align-items: flex-start;
+    border-radius: 8px;
     flex-direction: column;
     gap: 2px;
+  }
+
+  .checklist-pill span {
+    white-space: normal;
+  }
+
+  .swipe-rail > * {
+    flex-basis: min(86vw, 360px);
   }
 
   .pulse-card {

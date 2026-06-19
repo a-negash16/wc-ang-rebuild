@@ -45,7 +45,9 @@ export default async function GroupPage({ params }) {
 }
 
 function PredictionPulse({ pulse }) {
-  const matches = pulse?.matches || [];
+  const matches = (pulse?.matches || []).filter((match) => match.reveal);
+  if (!matches.length) return null;
+
   return (
     <section className="section pulse-section" aria-labelledby="prediction-pulse-title">
       <div className="section-heading">
@@ -53,34 +55,23 @@ function PredictionPulse({ pulse }) {
           <p className="eyebrow">Room energy</p>
           <h2 id="prediction-pulse-title">Prediction Pulse</h2>
         </div>
-        <span className="status-chip">Names reveal after lock</span>
+        <span className="status-chip">{matches.length} revealed</span>
       </div>
 
-      <div className="pulse-grid">
-        {matches.length ? matches.slice(0, 4).map((match) => (
+      <div className="swipe-rail pulse-rail" aria-label="Revealed prediction pulse cards">
+        {matches.map((match) => (
           <article className="pulse-card" key={match.external_match_id}>
             <div className="pulse-card-heading">
               <span>{formatKickoff(match.kickoff_at)}</span>
               <strong>{match.team_a_name} vs {match.team_b_name}</strong>
             </div>
-            {match.reveal ? (
-              <div className="pulse-bars">
-                <PulseChoice label={match.team_a_name} count={match.team_a_picks} managers={match.team_a_managers} />
-                <PulseChoice label="Tie" count={match.tie_picks} managers={match.tie_managers} />
-                <PulseChoice label={match.team_b_name} count={match.team_b_picks} managers={match.team_b_managers} />
-              </div>
-            ) : (
-              <div className="pulse-locked">
-                <strong>Hidden until deadline</strong>
-                <span>Locks {formatKickoff(match.locked_until)}</span>
-              </div>
-            )}
+            <div className="pulse-bars">
+              <PulseChoice label={match.team_a_name} count={match.team_a_picks} managers={match.team_a_managers} />
+              <PulseChoice label="Tie" count={match.tie_picks} managers={match.tie_managers} />
+              <PulseChoice label={match.team_b_name} count={match.team_b_picks} managers={match.team_b_managers} />
+            </div>
           </article>
-        )) : (
-          <article className="panel">
-            <p>No upcoming pulse data yet.</p>
-          </article>
-        )}
+        ))}
       </div>
     </section>
   );
