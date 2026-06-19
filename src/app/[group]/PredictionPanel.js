@@ -10,6 +10,7 @@ export default function PredictionPanel({ groupSlug, matches }) {
   const [pin, setPin] = useState("");
   const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
+  const [preview, setPreview] = useState([]);
 
   const openMatches = useMemo(() => matches.filter((match) => match.team_a && match.team_b), [matches]);
 
@@ -33,6 +34,7 @@ export default function PredictionPanel({ groupSlug, matches }) {
       setSession(payload);
       setStatus(`Unlocked as ${payload.manager_name}`);
       setPin("");
+      loadPreview(payload.token);
     } catch (error) {
       setStatus(error.message);
     } finally {
@@ -60,6 +62,7 @@ export default function PredictionPanel({ groupSlug, matches }) {
       const payload = await response.json();
       if (!response.ok || !payload.ok) throw new Error(payload.message || "Could not save pick");
       setStatus(payload.message);
+      loadPreview(session.token);
     } catch (error) {
       setStatus(error.message);
     } finally {
@@ -71,6 +74,22 @@ export default function PredictionPanel({ groupSlug, matches }) {
     clearSession();
     setSession(null);
     setStatus("Session cleared.");
+  }
+
+  async function loadPreview(token) {
+    try {
+      const response = await fetch("/api/predictions/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token }),
+      });
+      const payload = await response.json();
+      if (response.ok && payload.ok) {
+        setPreview(payload.picks || []);
+      }
+    } catch {
+      setPreview([]);
+    }
   }
 
   return (
@@ -118,6 +137,24 @@ export default function PredictionPanel({ groupSlug, matches }) {
         {status ? <p className="form-status">{status}</p> : null}
       </article>
 
+      {session ? (
+        <article className="panel">
+          <h2>Your Pick Preview</h2>
+          {preview.length ? (
+            <ul className="match-list">
+              {preview.map((pick) => (
+                <li key={`${pick.external_match_id}-${pick.manager_code}`}>
+                  <strong>{pick.team_a_name || "TBD"} vs {pick.team_b_name || "TBD"}</strong>
+                  <span>{formatPick(pick)}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p>No saved picks to preview yet.</p>
+          )}
+        </article>
+      ) : null}
+
       <div className="prediction-grid">
         {openMatches.map((match) => (
           <article className="prediction-card" key={match.external_match_id}>
@@ -141,6 +178,13 @@ export default function PredictionPanel({ groupSlug, matches }) {
       </div>
     </section>
   );
+}
+
+function formatPick(pick) {
+  if (pick.pick_type === "tie") return "Tie";
+  if (pick.pick_type === "team_a") return pick.team_a_name || "Team A";
+  if (pick.pick_type === "team_b") return pick.team_b_name || "Team B";
+  return "Unknown";
 }
 
 function loadSession(groupSlug) {

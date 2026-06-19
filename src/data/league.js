@@ -273,6 +273,45 @@ export async function savePrediction({ groupSlug, managerCode, externalMatchId, 
   return { ok: true };
 }
 
+export async function getManagerPickPreview({ groupSlug, managerCode }) {
+  const supabase = getOptionalSupabaseClient();
+  if (supabase) {
+    const { data, error } = await supabase
+      .from("active_prediction_details")
+      .select("*")
+      .eq("group_slug", groupSlug)
+      .eq("manager_code", managerCode)
+      .gte("kickoff_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+      .order("kickoff_at", { ascending: true })
+      .limit(12);
+
+    if (error) throw new Error(error.message);
+    return data || [];
+  }
+
+  return [];
+}
+
+export async function getPredictionPulse({ groupSlug, externalMatchIds = [] }) {
+  const supabase = getOptionalSupabaseClient();
+  if (supabase) {
+    let query = supabase
+      .from("prediction_pulse_details")
+      .select("*")
+      .eq("group_slug", groupSlug);
+
+    if (externalMatchIds.length) {
+      query = query.in("external_match_id", externalMatchIds);
+    }
+
+    const { data, error } = await query.order("kickoff_at", { ascending: true });
+    if (error) throw new Error(error.message);
+    return data || [];
+  }
+
+  return [];
+}
+
 async function appendPredictionAudit({
   supabase,
   predictionId,

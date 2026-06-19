@@ -67,3 +67,9 @@ DEV_MANAGER_PIN=12345
 
 Then unlock with any seeded manager code such as `M001`. Real submissions still
 require Supabase so picks can be written and audited server-side.
+
+Generate production PIN hashes with:
+
+```sh
+node scripts/hash-pin.mjs 12345
+```
