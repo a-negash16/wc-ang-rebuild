@@ -212,11 +212,22 @@ export default function PredictionPanel({ groupSlug, managers, matches, lockMinu
                 const deadline = getDeadline(match.kickoff_at, lockMinutesBeforeKickoff);
                 return (
                   <article className={currentPick?.is_missing ? "prediction-card needs-pick" : "prediction-card"} key={match.external_match_id}>
+                    <div className="ticket-meta">
+                      <span>Match {match.external_match_id.slice(-2)}</span>
+                      <b>Group {match.group_label || "-"}</b>
+                      <span>San Francisco Bay Area</span>
+                    </div>
+                    <div className="ticket-body">
+                      <TeamVersus teamA={match.team_a} teamB={match.team_b} />
+                      <div className="kickoff-block">
+                        <strong>Kickoff</strong>
+                        <span>{formatTicketKickoff(match.kickoff_at)}</span>
+                      </div>
+                    </div>
+                    <div className="ticket-divider" />
                     <div className="match-meta">
-                      <span>{formatKickoff(match.kickoff_at)}</span>
                       <b>{formatTimeLeft(deadline, now)}</b>
                     </div>
-                    <TeamVersus teamA={match.team_a} teamB={match.team_b} />
                     <div className="pick-buttons">
                       <PickButton
                         disabled={busy || !session}
@@ -259,7 +270,6 @@ function TeamVersus({ teamA, teamB }) {
   return (
     <div className="team-versus">
       <TeamBadge team={teamA} />
-      <span className="versus-pill">vs</span>
       <TeamBadge team={teamB} />
     </div>
   );
@@ -270,7 +280,7 @@ function TeamBadge({ team }) {
     <div className="team-badge">
       <span className="flag" aria-hidden="true">{flagForTeam(team)}</span>
       <strong>{team?.name || "TBD"}</strong>
-      {team?.fifa_code ? <small>{team.fifa_code}</small> : null}
+      <span className="score-placeholder">-</span>
     </div>
   );
 }
@@ -321,6 +331,16 @@ function formatKickoff(value) {
     minute: "2-digit",
     timeZone: "America/New_York",
   }).format(new Date(value));
+}
+
+function formatTicketKickoff(value) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "America/New_York",
+  }).format(new Date(value)).replace(",", ", ");
 }
 
 function groupMatches(matches) {
