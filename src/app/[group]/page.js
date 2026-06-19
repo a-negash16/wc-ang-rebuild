@@ -15,7 +15,7 @@ export default async function GroupPage({ params }) {
   if (!group) notFound();
 
   return (
-    <main className="page">
+    <main className={`page theme-${group.slug}`}>
       <section className="hero hero-dashboard">
         <div>
           <p className="eyebrow">Prediction league rebuild</p>
@@ -25,9 +25,9 @@ export default async function GroupPage({ params }) {
           </p>
         </div>
         <div className="hero-status">
-          <span>{group.manager_count} managers</span>
+          <span>Group room</span>
           <strong>{group.lock_minutes_before_kickoff}m lock</strong>
-          <small>{group.data_mode}</small>
+          <small>{group.manager_count} managers · {group.data_mode}</small>
         </div>
       </section>
 
@@ -63,7 +63,11 @@ function PredictionPulse({ pulse }) {
           <article className="pulse-card" key={match.external_match_id}>
             <div className="pulse-card-heading">
               <span>{formatKickoff(match.kickoff_at)}</span>
-              <strong>{match.team_a_name} vs {match.team_b_name}</strong>
+              <strong>
+                <TeamLabel name={match.team_a_name} />
+                <em>vs</em>
+                <TeamLabel name={match.team_b_name} />
+              </strong>
             </div>
             <div className="pulse-bars">
               <PulseChoice label={match.team_a_name} count={match.team_a_picks} managers={match.team_a_managers} />
@@ -81,11 +85,20 @@ function PulseChoice({ label, count, managers }) {
   return (
     <div className="pulse-choice">
       <div>
-        <strong>{label}</strong>
+        <strong>{label === "Tie" ? "Tie" : <TeamLabel name={label} compact />}</strong>
         <span>{managers || "No picks"}</span>
       </div>
       <b>{count}</b>
     </div>
+  );
+}
+
+function TeamLabel({ name, compact = false }) {
+  return (
+    <span className={compact ? "team-label compact" : "team-label"}>
+      <span className="flag" aria-hidden="true">{flagForTeamName(name)}</span>
+      <span>{name || "TBD"}</span>
+    </span>
   );
 }
 
@@ -113,6 +126,34 @@ function Leaderboard({ leaderboard }) {
       </article>
     </section>
   );
+}
+
+function flagForTeamName(name) {
+  const normalized = String(name || "").toLowerCase();
+  const flags = {
+    australia: "🇦🇺",
+    belgium: "🇧🇪",
+    brazil: "🇧🇷",
+    "côte d'ivoire": "🇨🇮",
+    "cote d'ivoire": "🇨🇮",
+    "curaçao": "🇨🇼",
+    curacao: "🇨🇼",
+    ecuador: "🇪🇨",
+    germany: "🇩🇪",
+    haiti: "🇭🇹",
+    "ir iran": "🇮🇷",
+    japan: "🇯🇵",
+    netherlands: "🇳🇱",
+    paraguay: "🇵🇾",
+    "saudi arabia": "🇸🇦",
+    spain: "🇪🇸",
+    sweden: "🇸🇪",
+    tunisia: "🇹🇳",
+    türkiye: "🇹🇷",
+    turkey: "🇹🇷",
+    usa: "🇺🇸",
+  };
+  return flags[normalized] || "🏳";
 }
 
 function formatKickoff(value) {

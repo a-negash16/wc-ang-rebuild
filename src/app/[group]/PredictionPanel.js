@@ -216,12 +216,12 @@ export default function PredictionPanel({ groupSlug, managers, matches, lockMinu
                       <span>{formatKickoff(match.kickoff_at)}</span>
                       <b>{formatTimeLeft(deadline, now)}</b>
                     </div>
-                    <h3>{match.team_a.name} vs {match.team_b.name}</h3>
+                    <TeamVersus teamA={match.team_a} teamB={match.team_b} />
                     <div className="pick-buttons">
                       <PickButton
                         disabled={busy || !session}
                         isSelected={currentPick?.pick_type === "team_a"}
-                        label={match.team_a.name}
+                        team={match.team_a}
                         onClick={() => submitPick(match, "team_a")}
                       />
                       {match.stage === "Group Stage" ? (
@@ -235,7 +235,7 @@ export default function PredictionPanel({ groupSlug, managers, matches, lockMinu
                       <PickButton
                         disabled={busy || !session}
                         isSelected={currentPick?.pick_type === "team_b"}
-                        label={match.team_b.name}
+                        team={match.team_b}
                         onClick={() => submitPick(match, "team_b")}
                       />
                     </div>
@@ -255,7 +255,27 @@ export default function PredictionPanel({ groupSlug, managers, matches, lockMinu
   );
 }
 
-function PickButton({ disabled, isSelected, label, onClick }) {
+function TeamVersus({ teamA, teamB }) {
+  return (
+    <div className="team-versus">
+      <TeamBadge team={teamA} />
+      <span className="versus-pill">vs</span>
+      <TeamBadge team={teamB} />
+    </div>
+  );
+}
+
+function TeamBadge({ team }) {
+  return (
+    <div className="team-badge">
+      <span className="flag" aria-hidden="true">{flagForTeam(team)}</span>
+      <strong>{team?.name || "TBD"}</strong>
+      {team?.fifa_code ? <small>{team.fifa_code}</small> : null}
+    </div>
+  );
+}
+
+function PickButton({ disabled, isSelected, label, team, onClick }) {
   return (
     <button
       className={isSelected ? "selected" : ""}
@@ -263,7 +283,12 @@ function PickButton({ disabled, isSelected, label, onClick }) {
       disabled={disabled}
       onClick={onClick}
     >
-      {label}
+      {team ? (
+        <>
+          <span className="flag" aria-hidden="true">{flagForTeam(team)}</span>
+          <span>{team.name}</span>
+        </>
+      ) : label}
     </button>
   );
 }
@@ -338,4 +363,29 @@ function formatTimeLeft(deadline, now) {
 
 function formatTeams(match) {
   return `${match.team_a?.name || "TBD"} vs ${match.team_b?.name || "TBD"}`;
+}
+
+function flagForTeam(team) {
+  const code = String(team?.fifa_code || "").toUpperCase();
+  const flags = {
+    AUS: "🇦🇺",
+    BEL: "🇧🇪",
+    BRA: "🇧🇷",
+    CIV: "🇨🇮",
+    CUW: "🇨🇼",
+    ECU: "🇪🇨",
+    ESP: "🇪🇸",
+    GER: "🇩🇪",
+    HAI: "🇭🇹",
+    IRN: "🇮🇷",
+    JPN: "🇯🇵",
+    KSA: "🇸🇦",
+    NED: "🇳🇱",
+    PAR: "🇵🇾",
+    SWE: "🇸🇪",
+    TUN: "🇹🇳",
+    TUR: "🇹🇷",
+    USA: "🇺🇸",
+  };
+  return flags[code] || "🏳";
 }
