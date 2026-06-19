@@ -132,7 +132,7 @@ export default function PredictionPanel({ groupSlug, managers, matches, lockMinu
   }
 
   return (
-    <section className="section picks-section" id="next-picks">
+    <section className="section section-band picks-section" id="next-picks">
       <article className="panel manager-panel">
         <div className="panel-heading">
           <div>
@@ -210,7 +210,8 @@ export default function PredictionPanel({ groupSlug, managers, matches, lockMinu
               <h3>{label}</h3>
               <span>{items.length} matches</span>
             </div>
-            <div className="swipe-rail" aria-label={`${label} prediction cards`}>
+            <div className="ticket-rail-wrap">
+              <div className="swipe-rail" aria-label={`${label} prediction cards`}>
               {items.map((match) => {
                 const currentPick = pickByMatch.get(match.external_match_id);
                 const deadline = getDeadline(match.kickoff_at, lockMinutesBeforeKickoff);
@@ -257,6 +258,7 @@ export default function PredictionPanel({ groupSlug, managers, matches, lockMinu
                   </article>
                 );
               })}
+              </div>
             </div>
           </div>
         ) : null)

@@ -197,10 +197,10 @@ button:disabled {
 }
 
 .hero-actions a {
-  background: var(--navy);
-  border: 1px solid var(--navy);
+  background: var(--panel);
+  border: 1px solid var(--line);
   border-radius: 999px;
-  color: white;
+  color: var(--navy);
   font-size: 13px;
   font-weight: 850;
   padding: 7px 12px;
@@ -208,8 +208,9 @@ button:disabled {
 }
 
 .hero-actions a:hover {
-  background: var(--accent-strong);
-  border-color: #ecd07b;
+  background: var(--navy);
+  border-color: var(--navy);
+  color: white;
 }
 
 .grid {
@@ -270,6 +271,23 @@ button:disabled {
   margin-top: 20px;
 }
 
+.section-band {
+  background: rgba(255, 253, 247, 0.68);
+  border-bottom: 1px solid var(--line);
+  border-top: 1px solid var(--line);
+  margin-inline: calc(clamp(18px, 4vw, 48px) * -0.45);
+  padding: 24px clamp(14px, 2.2vw, 26px);
+}
+
+.section-dark {
+  background:
+    radial-gradient(760px 320px at 8% 0%, rgba(214, 161, 42, 0.18), transparent 68%),
+    var(--navy);
+  border-radius: 8px;
+  color: var(--paper);
+  padding: 26px;
+}
+
 .section-heading {
   align-items: center;
   display: flex;
@@ -284,6 +302,20 @@ button:disabled {
   font-weight: 900;
   line-height: 1;
   margin: 0;
+}
+
+.section-dark .section-heading h2 {
+  color: var(--paper);
+}
+
+.section-dark .eyebrow {
+  color: var(--gold-soft);
+}
+
+.section-dark .status-chip {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: var(--gold-soft);
 }
 
 .section-heading.compact h2 {
@@ -394,7 +426,7 @@ button:disabled {
 }
 
 .picks-section {
-  gap: 16px;
+  gap: 18px;
 }
 
 .manager-panel {
@@ -449,17 +481,15 @@ button:disabled {
 .match-day {
   display: grid;
   gap: 12px;
+  min-width: 0;
 }
 
 .rail-heading {
   align-items: center;
-  background: rgba(255, 253, 247, 0.62);
-  border: 1px solid rgba(229, 220, 200, 0.78);
-  border-radius: 8px;
   display: flex;
   gap: 10px;
   justify-content: space-between;
-  padding: 9px 12px;
+  padding: 0 2px;
 }
 
 .rail-heading h3 {
@@ -478,10 +508,25 @@ button:disabled {
 .swipe-rail {
   display: flex;
   gap: 14px;
+  max-width: 100%;
+  min-width: 0;
   overflow-x: auto;
   padding: 4px 2px 14px;
   scroll-snap-type: x mandatory;
   scrollbar-color: #b8c8bf transparent;
+}
+
+.ticket-rail-wrap {
+  background:
+    radial-gradient(620px 260px at 82% 0%, rgba(214, 161, 42, 0.12), transparent 65%),
+    #0b1d3a;
+  border: 1px solid #1b3252;
+  border-radius: 8px;
+  color: var(--paper);
+  margin-top: 10px;
+  min-width: 0;
+  overflow: hidden;
+  padding: 16px;
 }
 
 .swipe-rail > * {
@@ -666,12 +711,10 @@ button:disabled {
 }
 
 .pulse-card {
-  background:
-    radial-gradient(420px 240px at 90% 0%, rgba(214, 161, 42, 0.18), transparent 62%),
-    linear-gradient(145deg, #08162e, #122b4f 55%, #0a1b35);
-  border: 1px solid #203b64;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 8px;
-  box-shadow: 0 20px 44px rgba(11, 29, 58, 0.22);
+  box-shadow: none;
   color: white;
   display: grid;
   gap: 16px;

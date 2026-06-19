@@ -57,7 +57,7 @@ function PredictionPulse({ pulse }) {
   if (!matches.length) return null;
 
   return (
-    <section className="section pulse-section" aria-labelledby="prediction-pulse-title">
+    <section className="section section-dark pulse-section" aria-labelledby="prediction-pulse-title">
       <div className="section-heading">
         <div>
           <p className="eyebrow">Room energy</p>
@@ -113,7 +113,7 @@ function TeamLabel({ name, compact = false }) {
 function Leaderboard({ leaderboard }) {
   const rows = leaderboard?.rows || [];
   return (
-    <section className="section" id="standings" aria-labelledby="standings-title">
+    <section className="section section-band" id="standings" aria-labelledby="standings-title">
       <div className="section-heading">
         <div>
           <p className="eyebrow">Scoring</p>
@@ -138,7 +138,7 @@ function Leaderboard({ leaderboard }) {
 
 function RecentResults() {
   return (
-    <section className="section" id="recent-results" aria-labelledby="recent-results-title">
+    <section className="section section-band" id="recent-results" aria-labelledby="recent-results-title">
       <div className="section-heading">
         <div>
           <p className="eyebrow">Finished matches</p>
