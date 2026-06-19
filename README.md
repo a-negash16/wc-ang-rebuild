@@ -28,6 +28,24 @@ npm test
 npm run check
 ```
 
+## Seed Data
+
+Workbook seed extraction is available for the current transition period:
+
+```sh
+python3 scripts/extract-workbook-seeds.py
+```
+
+Generated seed files live in:
+
+```text
+supabase/seed-data/
+```
+
+The seed data includes all three groups, manager display names, teams, matches,
+and group-to-match links. PIN hashes are placeholders and must be set privately
+by the commissioner before real use.
+
 ## Secrets
 
 Do not commit API keys. Copy `.env.example` to `.env` locally and set:

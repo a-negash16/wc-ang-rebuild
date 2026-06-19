@@ -12,12 +12,14 @@ create table groups (
 create table managers (
   id uuid primary key default gen_random_uuid(),
   group_id uuid not null references groups(id) on delete cascade,
+  manager_code text not null,
   display_name text not null,
   pin_hash text not null,
   role text not null default 'manager' check (role in ('manager', 'commissioner')),
   is_active boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
+  unique (group_id, manager_code),
   unique (group_id, display_name)
 );
 

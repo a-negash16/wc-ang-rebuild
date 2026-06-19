@@ -1,0 +1,218 @@
+[
+  {
+    "group_slug": "squad",
+    "manager_code": "M001",
+    "display_name": "Abrham",
+    "pin_hash": "SET_BY_COMMISSIONER",
+    "role": "manager",
+    "is_active": true
+  },
+  {
+    "group_slug": "squad",
+    "manager_code": "M002",
+    "display_name": "Maki",
+    "pin_hash": "SET_BY_COMMISSIONER",
+    "role": "manager",
+    "is_active": true
+  },
+  {
+    "group_slug": "squad",
+    "manager_code": "M003",
+    "display_name": "Salim",
+    "pin_hash": "SET_BY_COMMISSIONER",
+    "role": "manager",
+    "is_active": true
+  },
+  {
+    "group_slug": "squad",
+    "manager_code": "M004",
+    "display_name": "Eyerus",
+    "pin_hash": "SET_BY_COMMISSIONER",
+    "role": "manager",
+    "is_active": true
+  },
+  {
+    "group_slug": "squad",
+    "manager_code": "M005",
+    "display_name": "Redu",
+    "pin_hash": "SET_BY_COMMISSIONER",
+    "role": "manager",
+    "is_active": true
+  },
+  {
+    "group_slug": "squad",
+    "manager_code": "M006",
+    "display_name": "Kidist",
+    "pin_hash": "SET_BY_COMMISSIONER",
+    "role": "manager",
+    "is_active": true
+  },
+  {
+    "group_slug": "squad",
+    "manager_code": "M007",
+    "display_name": "Tsinat",
+    "pin_hash": "SET_BY_COMMISSIONER",
+    "role": "manager",
+    "is_active": true
+  },
+  {
+    "group_slug": "tikur-abay",
+    "manager_code": "M001",
+    "display_name": "Abrham",
+    "pin_hash": "SET_BY_COMMISSIONER",
+    "role": "manager",
+    "is_active": true
+  },
+  {
+    "group_slug": "tikur-abay",
+    "manager_code": "M002",
+    "display_name": "Aman M",
+    "pin_hash": "SET_BY_COMMISSIONER",
+    "role": "manager",
+    "is_active": true
+  },
+  {
+    "group_slug": "tikur-abay",
+    "manager_code": "M003",
+    "display_name": "Amanu G",
+    "pin_hash": "SET_BY_COMMISSIONER",
+    "role": "manager",
+    "is_active": true
+  },
+  {
+    "group_slug": "tikur-abay",
+    "manager_code": "M004",
+    "display_name": "Amen",
+    "pin_hash": "SET_BY_COMMISSIONER",
+    "role": "manager",
+    "is_active": true
+  },
+  {
+    "group_slug": "tikur-abay",
+    "manager_code": "M005",
+    "display_name": "Ermi",
+    "pin_hash": "SET_BY_COMMISSIONER",
+    "role": "manager",
+    "is_active": true
+  },
+  {
+    "group_slug": "tikur-abay",
+    "manager_code": "M006",
+    "display_name": "Oyala",
+    "pin_hash": "SET_BY_COMMISSIONER",
+    "role": "manager",
+    "is_active": true
+  },
+  {
+    "group_slug": "tikur-abay",
+    "manager_code": "M007",
+    "display_name": "Maki",
+    "pin_hash": "SET_BY_COMMISSIONER",
+    "role": "manager",
+    "is_active": true
+  },
+  {
+    "group_slug": "tikur-abay",
+    "manager_code": "M008",
+    "display_name": "Salim",
+    "pin_hash": "SET_BY_COMMISSIONER",
+    "role": "manager",
+    "is_active": true
+  },
+  {
+    "group_slug": "tikur-abay",
+    "manager_code": "M009",
+    "display_name": "Sele",
+    "pin_hash": "SET_BY_COMMISSIONER",
+    "role": "manager",
+    "is_active": true
+  },
+  {
+    "group_slug": "tikur-abay",
+    "manager_code": "M010",
+    "display_name": "Yabsew",
+    "pin_hash": "SET_BY_COMMISSIONER",
+    "role": "manager",
+    "is_active": true
+  },
+  {
+    "group_slug": "tikur-abay",
+    "manager_code": "M011",
+    "display_name": "Papi",
+    "pin_hash": "SET_BY_COMMISSIONER",
+    "role": "manager",
+    "is_active": true
+  },
+  {
+    "group_slug": "tikur-abay",
+    "manager_code": "M012",
+    "display_name": "Aadil",
+    "pin_hash": "SET_BY_COMMISSIONER",
+    "role": "manager",
+    "is_active": true
+  },
+  {
+    "group_slug": "dagi-united",
+    "manager_code": "M001",
+    "display_name": "Abrham",
+    "pin_hash": "SET_BY_COMMISSIONER",
+    "role": "manager",
+    "is_active": true
+  },
+  {
+    "group_slug": "dagi-united",
+    "manager_code": "M002",
+    "display_name": "Anton",
+    "pin_hash": "SET_BY_COMMISSIONER",
+    "role": "manager",
+    "is_active": true
+  },
+  {
+    "group_slug": "dagi-united",
+    "manager_code": "M003",
+    "display_name": "Armaan",
+    "pin_hash": "SET_BY_COMMISSIONER",
+    "role": "manager",
+    "is_active": true
+  },
+  {
+    "group_slug": "dagi-united",
+    "manager_code": "M004",
+    "display_name": "Dagi",
+    "pin_hash": "SET_BY_COMMISSIONER",
+    "role": "manager",
+    "is_active": true
+  },
+  {
+    "group_slug": "dagi-united",
+    "manager_code": "M005",
+    "display_name": "Derek",
+    "pin_hash": "SET_BY_COMMISSIONER",
+    "role": "manager",
+    "is_active": true
+  },
+  {
+    "group_slug": "dagi-united",
+    "manager_code": "M006",
+    "display_name": "Kahf",
+    "pin_hash": "SET_BY_COMMISSIONER",
+    "role": "manager",
+    "is_active": true
+  },
+  {
+    "group_slug": "dagi-united",
+    "manager_code": "M007",
+    "display_name": "Simon",
+    "pin_hash": "SET_BY_COMMISSIONER",
+    "role": "manager",
+    "is_active": true
+  },
+  {
+    "group_slug": "dagi-united",
+    "manager_code": "M008",
+    "display_name": "Nafis",
+    "pin_hash": "SET_BY_COMMISSIONER",
+    "role": "manager",
+    "is_active": true
+  }
+]

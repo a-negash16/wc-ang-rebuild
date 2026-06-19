@@ -1,0 +1,279 @@
+#!/usr/bin/env python3
+import json
+from datetime import datetime, timezone
+from pathlib import Path
+
+from openpyxl import load_workbook
+
+ROOT = Path(__file__).resolve().parents[1]
+OUT = ROOT / "supabase" / "seed-data"
+
+WORKBOOKS = {
+    "squad": {
+        "name": "Squad",
+        "path": Path("/Users/abrham/Downloads/wc_ang_squad_v3.xlsx"),
+    },
+    "tikur-abay": {
+        "name": "Tikur-Abay",
+        "path": Path("/Users/abrham/Downloads/wc_ang_tikurAbay.xlsx"),
+    },
+    "dagi-united": {
+        "name": "Dagi-United",
+        "path": Path("/Users/abrham/Downloads/wc_ang_DagiUnited.xlsx"),
+    },
+}
+
+
+def main():
+    OUT.mkdir(parents=True, exist_ok=True)
+    groups = [
+        {
+            "slug": slug,
+            "name": meta["name"],
+            "timezone": "America/New_York",
+            "lock_minutes_before_kickoff": 60,
+        }
+        for slug, meta in WORKBOOKS.items()
+    ]
+    managers = extract_managers()
+    teams, matches = extract_matches(WORKBOOKS["squad"]["path"])
+
+    write_json("groups.json", groups)
+    write_json("managers.json", managers)
+    write_json("teams.json", sorted(teams.values(), key=lambda team: team["name"]))
+    write_json("matches.json", matches)
+    write_sql(groups, managers, sorted(teams.values(), key=lambda team: team["name"]), matches)
+
+
+def extract_managers():
+    managers = []
+    for slug, meta in WORKBOOKS.items():
+        wb = load_workbook(meta["path"], data_only=True)
+        ws = wb["Managers"]
+        headers = [clean(ws.cell(1, col).value).lower() for col in range(1, ws.max_column + 1)]
+        code_col = find_header(headers, ["manager_id", "manager_id"])
+        name_col = find_header(headers, ["display_name", "manager_name"])
+        active_col = find_header(headers, ["is_active", "active"], required=False)
+
+        for row in range(2, ws.max_row + 1):
+            manager_code = clean(ws.cell(row, code_col).value)
+            display_name = clean(ws.cell(row, name_col).value)
+            if not manager_code or not display_name:
+                continue
+            is_active = True if active_col is None else bool(ws.cell(row, active_col).value)
+            managers.append(
+                {
+                    "group_slug": slug,
+                    "manager_code": manager_code,
+                    "display_name": display_name,
+                    "pin_hash": "SET_BY_COMMISSIONER",
+                    "role": "manager",
+                    "is_active": is_active,
+                }
+            )
+    return managers
+
+
+def extract_matches(path):
+    wb = load_workbook(path, data_only=True)
+    ws = wb["prediction_matches"]
+    group_labels = extract_group_labels(wb)
+    teams = {}
+    matches = []
+    seen_matches = set()
+
+    for row in range(2, ws.max_row + 1):
+        external_match_id = normalize_id(ws.cell(row, 1).value)
+        if not external_match_id or external_match_id in seen_matches:
+            continue
+        seen_matches.add(external_match_id)
+
+        team_a_code = clean(ws.cell(row, 3).value)
+        team_a_name = clean(ws.cell(row, 4).value)
+        team_b_code = clean(ws.cell(row, 5).value)
+        team_b_name = clean(ws.cell(row, 6).value)
+        kickoff_at = iso_datetime(ws.cell(row, 7).value)
+        status = clean(ws.cell(row, 8).value).lower() or "scheduled"
+
+        if team_a_code and team_a_name:
+            teams[team_a_code] = team_record(team_a_code, team_a_name)
+        if team_b_code and team_b_name:
+            teams[team_b_code] = team_record(team_b_code, team_b_name)
+
+        matches.append(
+            {
+                "external_match_id": external_match_id,
+                "stage": infer_stage(len(matches) + 1),
+                "group_label": group_labels.get(len(matches) + 1),
+                "team_a_code": team_a_code or None,
+                "team_b_code": team_b_code or None,
+                "kickoff_at": kickoff_at,
+                "status": status if status in {"scheduled", "locked", "live", "finished", "cancelled"} else "scheduled",
+            }
+        )
+    return teams, matches
+
+
+def extract_group_labels(wb):
+    if "Matches_1" not in wb.sheetnames:
+        return {}
+    ws = wb["Matches_1"]
+    labels = {}
+    for row in range(2, ws.max_row + 1):
+        position = row - 1
+        label = clean(ws.cell(row, 3).value).replace(" ", "")
+        if label:
+            labels[position] = label
+    return labels
+
+
+def team_record(code, name):
+    return {
+        "fifa_code": code,
+        "name": name,
+        "short_name": name,
+        "flag_code": code,
+    }
+
+
+def infer_stage(position):
+    if position <= 72:
+        return "Group Stage"
+    if position <= 88:
+        return "Round of 32"
+    if position <= 96:
+        return "Round of 16"
+    if position <= 100:
+        return "Quarterfinal"
+    if position <= 102:
+        return "Semifinal"
+    if position == 103:
+        return "Third Place"
+    return "Final"
+
+
+def write_sql(groups, managers, teams, matches):
+    lines = [
+        "-- Generated by scripts/extract-workbook-seeds.py",
+        "-- PIN hashes are placeholders and must be set by the commissioner before real use.",
+        "",
+    ]
+
+    for group in groups:
+        lines.append(
+            "insert into groups (slug, name, timezone, lock_minutes_before_kickoff) values "
+            f"({sql(group['slug'])}, {sql(group['name'])}, {sql(group['timezone'])}, {int(group['lock_minutes_before_kickoff'])}) "
+            "on conflict (slug) do update set name = excluded.name, timezone = excluded.timezone, "
+            "lock_minutes_before_kickoff = excluded.lock_minutes_before_kickoff;"
+        )
+
+    lines.append("")
+    for team in teams:
+        lines.append(
+            "insert into teams (fifa_code, name, short_name, flag_code) values "
+            f"({sql(team['fifa_code'])}, {sql(team['name'])}, {sql(team['short_name'])}, {sql(team['flag_code'])}) "
+            "on conflict (fifa_code) do update set name = excluded.name, short_name = excluded.short_name, flag_code = excluded.flag_code;"
+        )
+
+    lines.append("")
+    for manager in managers:
+        lines.append(
+            "insert into managers (group_id, manager_code, display_name, pin_hash, role, is_active) "
+            "select g.id, "
+            f"{sql(manager['manager_code'])}, {sql(manager['display_name'])}, {sql(manager['pin_hash'])}, "
+            f"{sql(manager['role'])}, {sql_bool(manager['is_active'])} "
+            "from groups g "
+            f"where g.slug = {sql(manager['group_slug'])} "
+            "on conflict (group_id, manager_code) do update set display_name = excluded.display_name, "
+            "role = excluded.role, is_active = excluded.is_active;"
+        )
+
+    lines.append("")
+    for match in matches:
+        lines.append(
+            "insert into matches (external_match_id, stage, group_label, team_a_id, team_b_id, kickoff_at, status) "
+            "select "
+            f"{sql(match['external_match_id'])}, {sql(match['stage'])}, {sql(match['group_label'])}, "
+            "ta.id, tb.id, "
+            f"{sql(match['kickoff_at'])}::timestamptz, {sql(match['status'])} "
+            "from (select 1) s "
+            f"left join teams ta on ta.fifa_code = {sql(match['team_a_code'])} "
+            f"left join teams tb on tb.fifa_code = {sql(match['team_b_code'])} "
+            "on conflict (external_match_id) do update set stage = excluded.stage, group_label = excluded.group_label, "
+            "team_a_id = excluded.team_a_id, team_b_id = excluded.team_b_id, kickoff_at = excluded.kickoff_at, status = excluded.status;"
+        )
+
+    lines.append("")
+    lines.append(
+        "insert into group_matches (group_id, match_id) "
+        "select g.id, m.id from groups g cross join matches m "
+        "on conflict (group_id, match_id) do nothing;"
+    )
+
+    (OUT / "seed.sql").write_text("\n".join(lines) + "\n")
+
+
+def write_json(name, value):
+    (OUT / name).write_text(json.dumps(value, indent=2, ensure_ascii=False) + "\n")
+
+
+def clean(value):
+    if value is None:
+        return ""
+    if isinstance(value, float) and value.is_integer():
+        return str(int(value))
+    return str(value).strip()
+
+
+def normalize_id(value):
+    if value is None:
+        return ""
+    if isinstance(value, float) and value.is_integer():
+        return str(int(value))
+    return str(value).strip()
+
+
+def iso_datetime(value):
+    if isinstance(value, datetime):
+        dt = value
+    else:
+        text = clean(value)
+        if not text:
+            return None
+        for fmt in ("%d/%m/%Y %H:%M", "%Y-%m-%dT%H:%M:%SZ"):
+            try:
+                dt = datetime.strptime(text, fmt)
+                break
+            except ValueError:
+                dt = None
+        if dt is None:
+            raise ValueError(f"Unsupported date value: {value}")
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    dt = dt.astimezone(timezone.utc)
+    seconds = round(dt.timestamp() / 60) * 60
+    dt = datetime.fromtimestamp(seconds, tz=timezone.utc)
+    return dt.isoformat().replace("+00:00", "Z")
+
+
+def find_header(headers, options, required=True):
+    for option in options:
+        if option in headers:
+            return headers.index(option) + 1
+    if required:
+        raise ValueError(f"Missing header. Expected one of {options}")
+    return None
+
+
+def sql(value):
+    if value is None or value == "":
+        return "null"
+    return "'" + str(value).replace("'", "''") + "'"
+
+
+def sql_bool(value):
+    return "true" if value else "false"
+
+
+if __name__ == "__main__":
+    main()

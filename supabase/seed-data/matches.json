@@ -1,0 +1,938 @@
+[
+  {
+    "external_match_id": "400021443",
+    "stage": "Group Stage",
+    "group_label": "A",
+    "team_a_code": "MEX",
+    "team_b_code": "RSA",
+    "kickoff_at": "2026-06-11T19:00:00Z",
+    "status": "finished"
+  },
+  {
+    "external_match_id": "400021441",
+    "stage": "Group Stage",
+    "group_label": "A",
+    "team_a_code": "KOR",
+    "team_b_code": "CZE",
+    "kickoff_at": "2026-06-12T02:00:00Z",
+    "status": "finished"
+  },
+  {
+    "external_match_id": "400021449",
+    "stage": "Group Stage",
+    "group_label": "B",
+    "team_a_code": "CAN",
+    "team_b_code": "BIH",
+    "kickoff_at": "2026-06-12T19:00:00Z",
+    "status": "finished"
+  },
+  {
+    "external_match_id": "400021458",
+    "stage": "Group Stage",
+    "group_label": "D",
+    "team_a_code": "USA",
+    "team_b_code": "PAR",
+    "kickoff_at": "2026-06-13T01:00:00Z",
+    "status": "finished"
+  },
+  {
+    "external_match_id": "400021453",
+    "stage": "Group Stage",
+    "group_label": "B",
+    "team_a_code": "HAI",
+    "team_b_code": "SCO",
+    "kickoff_at": "2026-06-14T01:00:00Z",
+    "status": "finished"
+  },
+  {
+    "external_match_id": "400021463",
+    "stage": "Group Stage",
+    "group_label": "C",
+    "team_a_code": "AUS",
+    "team_b_code": "TUR",
+    "kickoff_at": "2026-06-14T00:00:00Z",
+    "status": "finished"
+  },
+  {
+    "external_match_id": "400021456",
+    "stage": "Group Stage",
+    "group_label": "C",
+    "team_a_code": "BRA",
+    "team_b_code": "MAR",
+    "kickoff_at": "2026-06-13T22:00:00Z",
+    "status": "finished"
+  },
+  {
+    "external_match_id": "400021447",
+    "stage": "Group Stage",
+    "group_label": "D",
+    "team_a_code": "QAT",
+    "team_b_code": "SUI",
+    "kickoff_at": "2026-06-13T19:00:00Z",
+    "status": "finished"
+  },
+  {
+    "external_match_id": "400021467",
+    "stage": "Group Stage",
+    "group_label": "E",
+    "team_a_code": "CIV",
+    "team_b_code": "ECU",
+    "kickoff_at": "2026-06-14T23:00:00Z",
+    "status": "finished"
+  },
+  {
+    "external_match_id": "400021464",
+    "stage": "Group Stage",
+    "group_label": "F",
+    "team_a_code": "GER",
+    "team_b_code": "CUW",
+    "kickoff_at": "2026-06-14T17:00:00Z",
+    "status": "finished"
+  },
+  {
+    "external_match_id": "400021470",
+    "stage": "Group Stage",
+    "group_label": "E",
+    "team_a_code": "NED",
+    "team_b_code": "JPN",
+    "kickoff_at": "2026-06-14T20:00:00Z",
+    "status": "finished"
+  },
+  {
+    "external_match_id": "400021474",
+    "stage": "Group Stage",
+    "group_label": "F",
+    "team_a_code": "SWE",
+    "team_b_code": "TUN",
+    "kickoff_at": "2026-06-15T02:00:00Z",
+    "status": "finished"
+  },
+  {
+    "external_match_id": "400021486",
+    "stage": "Group Stage",
+    "group_label": "H",
+    "team_a_code": "KSA",
+    "team_b_code": "URU",
+    "kickoff_at": "2026-06-15T22:00:00Z",
+    "status": "finished"
+  },
+  {
+    "external_match_id": "400021482",
+    "stage": "Group Stage",
+    "group_label": "G",
+    "team_a_code": "ESP",
+    "team_b_code": "CPV",
+    "kickoff_at": "2026-06-15T16:00:00Z",
+    "status": "finished"
+  },
+  {
+    "external_match_id": "400021476",
+    "stage": "Group Stage",
+    "group_label": "H",
+    "team_a_code": "IRN",
+    "team_b_code": "NZL",
+    "kickoff_at": "2026-06-16T01:00:00Z",
+    "status": "finished"
+  },
+  {
+    "external_match_id": "400021478",
+    "stage": "Group Stage",
+    "group_label": "G",
+    "team_a_code": "BEL",
+    "team_b_code": "EGY",
+    "kickoff_at": "2026-06-15T19:00:00Z",
+    "status": "finished"
+  },
+  {
+    "external_match_id": "400021490",
+    "stage": "Group Stage",
+    "group_label": "I",
+    "team_a_code": "FRA",
+    "team_b_code": "SEN",
+    "kickoff_at": "2026-06-16T19:00:00Z",
+    "status": "finished"
+  },
+  {
+    "external_match_id": "400021488",
+    "stage": "Group Stage",
+    "group_label": "I",
+    "team_a_code": "IRQ",
+    "team_b_code": "NOR",
+    "kickoff_at": "2026-06-16T22:00:00Z",
+    "status": "finished"
+  },
+  {
+    "external_match_id": "400021496",
+    "stage": "Group Stage",
+    "group_label": "J",
+    "team_a_code": "ARG",
+    "team_b_code": "ALG",
+    "kickoff_at": "2026-06-17T01:00:00Z",
+    "status": "finished"
+  },
+  {
+    "external_match_id": "400021498",
+    "stage": "Group Stage",
+    "group_label": "J",
+    "team_a_code": "AUT",
+    "team_b_code": "JOR",
+    "kickoff_at": "2026-06-17T00:00:00Z",
+    "status": "finished"
+  },
+  {
+    "external_match_id": "400021510",
+    "stage": "Group Stage",
+    "group_label": "K",
+    "team_a_code": "GHA",
+    "team_b_code": "PAN",
+    "kickoff_at": "2026-06-17T23:00:00Z",
+    "status": "finished"
+  },
+  {
+    "external_match_id": "400021507",
+    "stage": "Group Stage",
+    "group_label": "L",
+    "team_a_code": "ENG",
+    "team_b_code": "CRO",
+    "kickoff_at": "2026-06-17T20:00:00Z",
+    "status": "finished"
+  },
+  {
+    "external_match_id": "400021502",
+    "stage": "Group Stage",
+    "group_label": "L",
+    "team_a_code": "POR",
+    "team_b_code": "COD",
+    "kickoff_at": "2026-06-17T17:00:00Z",
+    "status": "finished"
+  },
+  {
+    "external_match_id": "400021504",
+    "stage": "Group Stage",
+    "group_label": "K",
+    "team_a_code": "UZB",
+    "team_b_code": "COL",
+    "kickoff_at": "2026-06-18T02:00:00Z",
+    "status": "finished"
+  },
+  {
+    "external_match_id": "400021440",
+    "stage": "Group Stage",
+    "group_label": "A",
+    "team_a_code": "CZE",
+    "team_b_code": "RSA",
+    "kickoff_at": "2026-06-18T16:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021446",
+    "stage": "Group Stage",
+    "group_label": "B",
+    "team_a_code": "SUI",
+    "team_b_code": "BIH",
+    "kickoff_at": "2026-06-18T19:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021450",
+    "stage": "Group Stage",
+    "group_label": "B",
+    "team_a_code": "CAN",
+    "team_b_code": "QAT",
+    "kickoff_at": "2026-06-18T22:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021442",
+    "stage": "Group Stage",
+    "group_label": "A",
+    "team_a_code": "MEX",
+    "team_b_code": "KOR",
+    "kickoff_at": "2026-06-19T01:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021457",
+    "stage": "Group Stage",
+    "group_label": "D",
+    "team_a_code": "BRA",
+    "team_b_code": "HAI",
+    "kickoff_at": "2026-06-20T00:30:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021454",
+    "stage": "Group Stage",
+    "group_label": "C",
+    "team_a_code": "SCO",
+    "team_b_code": "MAR",
+    "kickoff_at": "2026-06-19T22:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021460",
+    "stage": "Group Stage",
+    "group_label": "C",
+    "team_a_code": "TUR",
+    "team_b_code": "PAR",
+    "kickoff_at": "2026-06-20T03:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021462",
+    "stage": "Group Stage",
+    "group_label": "D",
+    "team_a_code": "USA",
+    "team_b_code": "AUS",
+    "kickoff_at": "2026-06-19T19:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021469",
+    "stage": "Group Stage",
+    "group_label": "F",
+    "team_a_code": "GER",
+    "team_b_code": "CIV",
+    "kickoff_at": "2026-06-20T20:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021465",
+    "stage": "Group Stage",
+    "group_label": "E",
+    "team_a_code": "ECU",
+    "team_b_code": "CUW",
+    "kickoff_at": "2026-06-21T00:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021472",
+    "stage": "Group Stage",
+    "group_label": "E",
+    "team_a_code": "NED",
+    "team_b_code": "SWE",
+    "kickoff_at": "2026-06-20T17:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021475",
+    "stage": "Group Stage",
+    "group_label": "F",
+    "team_a_code": "TUN",
+    "team_b_code": "JPN",
+    "kickoff_at": "2026-06-21T00:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021487",
+    "stage": "Group Stage",
+    "group_label": "H",
+    "team_a_code": "URU",
+    "team_b_code": "CPV",
+    "kickoff_at": "2026-06-21T22:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021483",
+    "stage": "Group Stage",
+    "group_label": "G",
+    "team_a_code": "ESP",
+    "team_b_code": "KSA",
+    "kickoff_at": "2026-06-21T16:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021477",
+    "stage": "Group Stage",
+    "group_label": "H",
+    "team_a_code": "BEL",
+    "team_b_code": "IRN",
+    "kickoff_at": "2026-06-21T19:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021480",
+    "stage": "Group Stage",
+    "group_label": "G",
+    "team_a_code": "NZL",
+    "team_b_code": "EGY",
+    "kickoff_at": "2026-06-22T01:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021491",
+    "stage": "Group Stage",
+    "group_label": "J",
+    "team_a_code": "NOR",
+    "team_b_code": "SEN",
+    "kickoff_at": "2026-06-23T00:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021492",
+    "stage": "Group Stage",
+    "group_label": "I",
+    "team_a_code": "FRA",
+    "team_b_code": "IRQ",
+    "kickoff_at": "2026-06-22T21:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021494",
+    "stage": "Group Stage",
+    "group_label": "I",
+    "team_a_code": "ARG",
+    "team_b_code": "AUT",
+    "kickoff_at": "2026-06-22T17:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021499",
+    "stage": "Group Stage",
+    "group_label": "J",
+    "team_a_code": "JOR",
+    "team_b_code": "ALG",
+    "kickoff_at": "2026-06-23T03:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021506",
+    "stage": "Group Stage",
+    "group_label": "K",
+    "team_a_code": "ENG",
+    "team_b_code": "GHA",
+    "kickoff_at": "2026-06-23T20:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021511",
+    "stage": "Group Stage",
+    "group_label": "L",
+    "team_a_code": "PAN",
+    "team_b_code": "CRO",
+    "kickoff_at": "2026-06-23T23:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021503",
+    "stage": "Group Stage",
+    "group_label": "L",
+    "team_a_code": "POR",
+    "team_b_code": "UZB",
+    "kickoff_at": "2026-06-23T17:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021501",
+    "stage": "Group Stage",
+    "group_label": "K",
+    "team_a_code": "COL",
+    "team_b_code": "COD",
+    "kickoff_at": "2026-06-24T02:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021455",
+    "stage": "Group Stage",
+    "group_label": "B",
+    "team_a_code": "SCO",
+    "team_b_code": "BRA",
+    "kickoff_at": "2026-06-24T22:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021452",
+    "stage": "Group Stage",
+    "group_label": "B",
+    "team_a_code": "MAR",
+    "team_b_code": "HAI",
+    "kickoff_at": "2026-06-24T22:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021451",
+    "stage": "Group Stage",
+    "group_label": "C",
+    "team_a_code": "SUI",
+    "team_b_code": "CAN",
+    "kickoff_at": "2026-06-24T19:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021448",
+    "stage": "Group Stage",
+    "group_label": "C",
+    "team_a_code": "BIH",
+    "team_b_code": "QAT",
+    "kickoff_at": "2026-06-24T19:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021444",
+    "stage": "Group Stage",
+    "group_label": "A",
+    "team_a_code": "CZE",
+    "team_b_code": "MEX",
+    "kickoff_at": "2026-06-25T01:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021445",
+    "stage": "Group Stage",
+    "group_label": "A",
+    "team_a_code": "RSA",
+    "team_b_code": "KOR",
+    "kickoff_at": "2026-06-25T01:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021468",
+    "stage": "Group Stage",
+    "group_label": "E",
+    "team_a_code": "CUW",
+    "team_b_code": "CIV",
+    "kickoff_at": "2026-06-25T20:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021466",
+    "stage": "Group Stage",
+    "group_label": "E",
+    "team_a_code": "ECU",
+    "team_b_code": "GER",
+    "kickoff_at": "2026-06-25T20:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021471",
+    "stage": "Group Stage",
+    "group_label": "F",
+    "team_a_code": "JPN",
+    "team_b_code": "SWE",
+    "kickoff_at": "2026-06-25T23:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021473",
+    "stage": "Group Stage",
+    "group_label": "F",
+    "team_a_code": "TUN",
+    "team_b_code": "NED",
+    "kickoff_at": "2026-06-25T23:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021459",
+    "stage": "Group Stage",
+    "group_label": "D",
+    "team_a_code": "TUR",
+    "team_b_code": "USA",
+    "kickoff_at": "2026-06-26T02:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021461",
+    "stage": "Group Stage",
+    "group_label": "D",
+    "team_a_code": "PAR",
+    "team_b_code": "AUS",
+    "kickoff_at": "2026-06-26T02:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021489",
+    "stage": "Group Stage",
+    "group_label": "I",
+    "team_a_code": "NOR",
+    "team_b_code": "FRA",
+    "kickoff_at": "2026-06-26T19:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021493",
+    "stage": "Group Stage",
+    "group_label": "I",
+    "team_a_code": "SEN",
+    "team_b_code": "IRQ",
+    "kickoff_at": "2026-06-26T19:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021479",
+    "stage": "Group Stage",
+    "group_label": "H",
+    "team_a_code": "EGY",
+    "team_b_code": "IRN",
+    "kickoff_at": "2026-06-27T03:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021481",
+    "stage": "Group Stage",
+    "group_label": "H",
+    "team_a_code": "NZL",
+    "team_b_code": "BEL",
+    "kickoff_at": "2026-06-27T03:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021485",
+    "stage": "Group Stage",
+    "group_label": "G",
+    "team_a_code": "CPV",
+    "team_b_code": "KSA",
+    "kickoff_at": "2026-06-27T00:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021484",
+    "stage": "Group Stage",
+    "group_label": "G",
+    "team_a_code": "URU",
+    "team_b_code": "ESP",
+    "kickoff_at": "2026-06-27T00:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021508",
+    "stage": "Group Stage",
+    "group_label": "L",
+    "team_a_code": "PAN",
+    "team_b_code": "ENG",
+    "kickoff_at": "2026-06-27T21:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021509",
+    "stage": "Group Stage",
+    "group_label": "L",
+    "team_a_code": "CRO",
+    "team_b_code": "GHA",
+    "kickoff_at": "2026-06-27T21:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021497",
+    "stage": "Group Stage",
+    "group_label": "K",
+    "team_a_code": "ALG",
+    "team_b_code": "AUT",
+    "kickoff_at": "2026-06-28T02:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021495",
+    "stage": "Group Stage",
+    "group_label": "K",
+    "team_a_code": "JOR",
+    "team_b_code": "ARG",
+    "kickoff_at": "2026-06-28T02:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021505",
+    "stage": "Group Stage",
+    "group_label": "J",
+    "team_a_code": "COL",
+    "team_b_code": "POR",
+    "kickoff_at": "2026-06-27T23:30:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021500",
+    "stage": "Group Stage",
+    "group_label": "J",
+    "team_a_code": "COD",
+    "team_b_code": "UZB",
+    "kickoff_at": "2026-06-27T23:30:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021518",
+    "stage": "Round of 32",
+    "group_label": null,
+    "team_a_code": null,
+    "team_b_code": null,
+    "kickoff_at": "2026-06-28T19:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021513",
+    "stage": "Round of 32",
+    "group_label": null,
+    "team_a_code": null,
+    "team_b_code": null,
+    "kickoff_at": "2026-06-29T20:30:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021522",
+    "stage": "Round of 32",
+    "group_label": null,
+    "team_a_code": null,
+    "team_b_code": null,
+    "kickoff_at": "2026-06-30T01:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021516",
+    "stage": "Round of 32",
+    "group_label": null,
+    "team_a_code": null,
+    "team_b_code": null,
+    "kickoff_at": "2026-06-29T17:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021523",
+    "stage": "Round of 32",
+    "group_label": null,
+    "team_a_code": null,
+    "team_b_code": null,
+    "kickoff_at": "2026-06-30T21:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021514",
+    "stage": "Round of 32",
+    "group_label": null,
+    "team_a_code": null,
+    "team_b_code": null,
+    "kickoff_at": "2026-06-30T17:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021520",
+    "stage": "Round of 32",
+    "group_label": null,
+    "team_a_code": null,
+    "team_b_code": null,
+    "kickoff_at": "2026-07-01T01:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021512",
+    "stage": "Round of 32",
+    "group_label": null,
+    "team_a_code": null,
+    "team_b_code": null,
+    "kickoff_at": "2026-07-01T16:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021524",
+    "stage": "Round of 32",
+    "group_label": null,
+    "team_a_code": null,
+    "team_b_code": null,
+    "kickoff_at": "2026-07-02T00:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021525",
+    "stage": "Round of 32",
+    "group_label": null,
+    "team_a_code": null,
+    "team_b_code": null,
+    "kickoff_at": "2026-07-01T20:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021526",
+    "stage": "Round of 32",
+    "group_label": null,
+    "team_a_code": null,
+    "team_b_code": null,
+    "kickoff_at": "2026-07-02T23:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021519",
+    "stage": "Round of 32",
+    "group_label": null,
+    "team_a_code": null,
+    "team_b_code": null,
+    "kickoff_at": "2026-07-02T19:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021527",
+    "stage": "Round of 32",
+    "group_label": null,
+    "team_a_code": null,
+    "team_b_code": null,
+    "kickoff_at": "2026-07-03T03:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021521",
+    "stage": "Round of 32",
+    "group_label": null,
+    "team_a_code": null,
+    "team_b_code": null,
+    "kickoff_at": "2026-07-03T22:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021517",
+    "stage": "Round of 32",
+    "group_label": null,
+    "team_a_code": null,
+    "team_b_code": null,
+    "kickoff_at": "2026-07-04T01:30:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021515",
+    "stage": "Round of 32",
+    "group_label": null,
+    "team_a_code": null,
+    "team_b_code": null,
+    "kickoff_at": "2026-07-03T18:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021533",
+    "stage": "Round of 16",
+    "group_label": null,
+    "team_a_code": null,
+    "team_b_code": null,
+    "kickoff_at": "2026-07-04T21:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021530",
+    "stage": "Round of 16",
+    "group_label": null,
+    "team_a_code": null,
+    "team_b_code": null,
+    "kickoff_at": "2026-07-04T17:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021532",
+    "stage": "Round of 16",
+    "group_label": null,
+    "team_a_code": null,
+    "team_b_code": null,
+    "kickoff_at": "2026-07-05T20:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021531",
+    "stage": "Round of 16",
+    "group_label": null,
+    "team_a_code": null,
+    "team_b_code": null,
+    "kickoff_at": "2026-07-06T00:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021529",
+    "stage": "Round of 16",
+    "group_label": null,
+    "team_a_code": null,
+    "team_b_code": null,
+    "kickoff_at": "2026-07-06T19:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021534",
+    "stage": "Round of 16",
+    "group_label": null,
+    "team_a_code": null,
+    "team_b_code": null,
+    "kickoff_at": "2026-07-07T00:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021528",
+    "stage": "Round of 16",
+    "group_label": null,
+    "team_a_code": null,
+    "team_b_code": null,
+    "kickoff_at": "2026-07-07T16:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021535",
+    "stage": "Round of 16",
+    "group_label": null,
+    "team_a_code": null,
+    "team_b_code": null,
+    "kickoff_at": "2026-07-07T20:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021536",
+    "stage": "Quarterfinal",
+    "group_label": null,
+    "team_a_code": null,
+    "team_b_code": null,
+    "kickoff_at": "2026-07-09T20:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021538",
+    "stage": "Quarterfinal",
+    "group_label": null,
+    "team_a_code": null,
+    "team_b_code": null,
+    "kickoff_at": "2026-07-10T19:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021539",
+    "stage": "Quarterfinal",
+    "group_label": null,
+    "team_a_code": null,
+    "team_b_code": null,
+    "kickoff_at": "2026-07-11T21:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021537",
+    "stage": "Quarterfinal",
+    "group_label": null,
+    "team_a_code": null,
+    "team_b_code": null,
+    "kickoff_at": "2026-07-12T01:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021541",
+    "stage": "Semifinal",
+    "group_label": null,
+    "team_a_code": null,
+    "team_b_code": null,
+    "kickoff_at": "2026-07-14T19:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021540",
+    "stage": "Semifinal",
+    "group_label": null,
+    "team_a_code": null,
+    "team_b_code": null,
+    "kickoff_at": "2026-07-15T19:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021542",
+    "stage": "Third Place",
+    "group_label": null,
+    "team_a_code": null,
+    "team_b_code": null,
+    "kickoff_at": "2026-07-18T21:00:00Z",
+    "status": "scheduled"
+  },
+  {
+    "external_match_id": "400021543",
+    "stage": "Final",
+    "group_label": null,
+    "team_a_code": null,
+    "team_b_code": null,
+    "kickoff_at": "2026-07-19T19:00:00Z",
+    "status": "scheduled"
+  }
+]

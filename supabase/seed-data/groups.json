@@ -1,0 +1,20 @@
+[
+  {
+    "slug": "squad",
+    "name": "Squad",
+    "timezone": "America/New_York",
+    "lock_minutes_before_kickoff": 60
+  },
+  {
+    "slug": "tikur-abay",
+    "name": "Tikur-Abay",
+    "timezone": "America/New_York",
+    "lock_minutes_before_kickoff": 60
+  },
+  {
+    "slug": "dagi-united",
+    "name": "Dagi-United",
+    "timezone": "America/New_York",
+    "lock_minutes_before_kickoff": 60
+  }
+]

@@ -1,0 +1,290 @@
+[
+  {
+    "fifa_code": "ALG",
+    "name": "Algeria",
+    "short_name": "Algeria",
+    "flag_code": "ALG"
+  },
+  {
+    "fifa_code": "ARG",
+    "name": "Argentina",
+    "short_name": "Argentina",
+    "flag_code": "ARG"
+  },
+  {
+    "fifa_code": "AUS",
+    "name": "Australia",
+    "short_name": "Australia",
+    "flag_code": "AUS"
+  },
+  {
+    "fifa_code": "AUT",
+    "name": "Austria",
+    "short_name": "Austria",
+    "flag_code": "AUT"
+  },
+  {
+    "fifa_code": "BEL",
+    "name": "Belgium",
+    "short_name": "Belgium",
+    "flag_code": "BEL"
+  },
+  {
+    "fifa_code": "BIH",
+    "name": "Bosnia and Herzegovina",
+    "short_name": "Bosnia and Herzegovina",
+    "flag_code": "BIH"
+  },
+  {
+    "fifa_code": "BRA",
+    "name": "Brazil",
+    "short_name": "Brazil",
+    "flag_code": "BRA"
+  },
+  {
+    "fifa_code": "CPV",
+    "name": "Cabo Verde",
+    "short_name": "Cabo Verde",
+    "flag_code": "CPV"
+  },
+  {
+    "fifa_code": "CAN",
+    "name": "Canada",
+    "short_name": "Canada",
+    "flag_code": "CAN"
+  },
+  {
+    "fifa_code": "COL",
+    "name": "Colombia",
+    "short_name": "Colombia",
+    "flag_code": "COL"
+  },
+  {
+    "fifa_code": "COD",
+    "name": "Congo DR",
+    "short_name": "Congo DR",
+    "flag_code": "COD"
+  },
+  {
+    "fifa_code": "CRO",
+    "name": "Croatia",
+    "short_name": "Croatia",
+    "flag_code": "CRO"
+  },
+  {
+    "fifa_code": "CUW",
+    "name": "Curaçao",
+    "short_name": "Curaçao",
+    "flag_code": "CUW"
+  },
+  {
+    "fifa_code": "CZE",
+    "name": "Czechia",
+    "short_name": "Czechia",
+    "flag_code": "CZE"
+  },
+  {
+    "fifa_code": "CIV",
+    "name": "Côte d'Ivoire",
+    "short_name": "Côte d'Ivoire",
+    "flag_code": "CIV"
+  },
+  {
+    "fifa_code": "ECU",
+    "name": "Ecuador",
+    "short_name": "Ecuador",
+    "flag_code": "ECU"
+  },
+  {
+    "fifa_code": "EGY",
+    "name": "Egypt",
+    "short_name": "Egypt",
+    "flag_code": "EGY"
+  },
+  {
+    "fifa_code": "ENG",
+    "name": "England",
+    "short_name": "England",
+    "flag_code": "ENG"
+  },
+  {
+    "fifa_code": "FRA",
+    "name": "France",
+    "short_name": "France",
+    "flag_code": "FRA"
+  },
+  {
+    "fifa_code": "GER",
+    "name": "Germany",
+    "short_name": "Germany",
+    "flag_code": "GER"
+  },
+  {
+    "fifa_code": "GHA",
+    "name": "Ghana",
+    "short_name": "Ghana",
+    "flag_code": "GHA"
+  },
+  {
+    "fifa_code": "HAI",
+    "name": "Haiti",
+    "short_name": "Haiti",
+    "flag_code": "HAI"
+  },
+  {
+    "fifa_code": "IRN",
+    "name": "IR Iran",
+    "short_name": "IR Iran",
+    "flag_code": "IRN"
+  },
+  {
+    "fifa_code": "IRQ",
+    "name": "Iraq",
+    "short_name": "Iraq",
+    "flag_code": "IRQ"
+  },
+  {
+    "fifa_code": "JPN",
+    "name": "Japan",
+    "short_name": "Japan",
+    "flag_code": "JPN"
+  },
+  {
+    "fifa_code": "JOR",
+    "name": "Jordan",
+    "short_name": "Jordan",
+    "flag_code": "JOR"
+  },
+  {
+    "fifa_code": "KOR",
+    "name": "Korea Republic",
+    "short_name": "Korea Republic",
+    "flag_code": "KOR"
+  },
+  {
+    "fifa_code": "MEX",
+    "name": "Mexico",
+    "short_name": "Mexico",
+    "flag_code": "MEX"
+  },
+  {
+    "fifa_code": "MAR",
+    "name": "Morocco",
+    "short_name": "Morocco",
+    "flag_code": "MAR"
+  },
+  {
+    "fifa_code": "NED",
+    "name": "Netherlands",
+    "short_name": "Netherlands",
+    "flag_code": "NED"
+  },
+  {
+    "fifa_code": "NZL",
+    "name": "New Zealand",
+    "short_name": "New Zealand",
+    "flag_code": "NZL"
+  },
+  {
+    "fifa_code": "NOR",
+    "name": "Norway",
+    "short_name": "Norway",
+    "flag_code": "NOR"
+  },
+  {
+    "fifa_code": "PAN",
+    "name": "Panama",
+    "short_name": "Panama",
+    "flag_code": "PAN"
+  },
+  {
+    "fifa_code": "PAR",
+    "name": "Paraguay",
+    "short_name": "Paraguay",
+    "flag_code": "PAR"
+  },
+  {
+    "fifa_code": "POR",
+    "name": "Portugal",
+    "short_name": "Portugal",
+    "flag_code": "POR"
+  },
+  {
+    "fifa_code": "QAT",
+    "name": "Qatar",
+    "short_name": "Qatar",
+    "flag_code": "QAT"
+  },
+  {
+    "fifa_code": "KSA",
+    "name": "Saudi Arabia",
+    "short_name": "Saudi Arabia",
+    "flag_code": "KSA"
+  },
+  {
+    "fifa_code": "SCO",
+    "name": "Scotland",
+    "short_name": "Scotland",
+    "flag_code": "SCO"
+  },
+  {
+    "fifa_code": "SEN",
+    "name": "Senegal",
+    "short_name": "Senegal",
+    "flag_code": "SEN"
+  },
+  {
+    "fifa_code": "RSA",
+    "name": "South Africa",
+    "short_name": "South Africa",
+    "flag_code": "RSA"
+  },
+  {
+    "fifa_code": "ESP",
+    "name": "Spain",
+    "short_name": "Spain",
+    "flag_code": "ESP"
+  },
+  {
+    "fifa_code": "SWE",
+    "name": "Sweden",
+    "short_name": "Sweden",
+    "flag_code": "SWE"
+  },
+  {
+    "fifa_code": "SUI",
+    "name": "Switzerland",
+    "short_name": "Switzerland",
+    "flag_code": "SUI"
+  },
+  {
+    "fifa_code": "TUN",
+    "name": "Tunisia",
+    "short_name": "Tunisia",
+    "flag_code": "TUN"
+  },
+  {
+    "fifa_code": "TUR",
+    "name": "Türkiye",
+    "short_name": "Türkiye",
+    "flag_code": "TUR"
+  },
+  {
+    "fifa_code": "USA",
+    "name": "USA",
+    "short_name": "USA",
+    "flag_code": "USA"
+  },
+  {
+    "fifa_code": "URU",
+    "name": "Uruguay",
+    "short_name": "Uruguay",
+    "flag_code": "URU"
+  },
+  {
+    "fifa_code": "UZB",
+    "name": "Uzbekistan",
+    "short_name": "Uzbekistan",
+    "flag_code": "UZB"
+  }
+]
