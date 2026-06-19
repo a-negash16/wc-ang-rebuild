@@ -61,9 +61,12 @@ create table predictions (
   pick_team_id uuid references teams(id),
   submitted_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  status text not null default 'active' check (status in ('active', 'inactive', 'void')),
-  unique (group_id, manager_id, match_id, status)
+  status text not null default 'active' check (status in ('active', 'inactive', 'void'))
 );
+
+create unique index predictions_one_active_pick
+  on predictions (group_id, manager_id, match_id)
+  where status = 'active';
 
 create table prediction_audit (
   id uuid primary key default gen_random_uuid(),
