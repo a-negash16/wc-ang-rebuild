@@ -10,9 +10,20 @@ Parallel rebuild for the WC ANG prediction league. The current spreadsheet-backe
 - Keep drafts and futures commissioner-entered for now.
 - Add odds-aware knockout and futures scoring.
 
+## Stack
+
+```text
+Next.js App Router
+Supabase Postgres
+The Odds API server-side integration
+Node test runner for rules
+```
+
 ## Local Commands
 
 ```sh
+npm install
+npm run dev
 npm test
 npm run check
 ```

@@ -5,8 +5,22 @@
   "type": "module",
   "description": "Parallel rebuild for WC ANG prediction league.",
   "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
     "test": "node --test",
-    "check": "node --check src/rules/scoring.js && node --check src/integrations/odds-api.js"
+    "check": "node --check src/rules/scoring.js && node --check src/integrations/odds-api.js && node --test"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0",
+    "next": "^14.2.0",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.0",
+    "eslint-config-next": "^14.2.0"
   },
   "engines": {
     "node": ">=20"
