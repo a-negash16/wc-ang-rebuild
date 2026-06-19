@@ -46,6 +46,16 @@ The seed data includes all three groups, manager display names, teams, matches,
 and group-to-match links. PIN hashes are placeholders and must be set privately
 by the commissioner before real use.
 
+## Supabase Setup
+
+See [docs/supabase-setup.md](docs/supabase-setup.md) for the free-tier setup path.
+
+Generate a copy/paste SQL bundle with:
+
+```sh
+npm run supabase:bundle
+```
+
 ## Secrets
 
 Do not commit API keys. Copy `.env.example` to `.env` locally and set:
