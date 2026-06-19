@@ -55,3 +55,15 @@ ODDS_API_KEY=...
 ```
 
 The Odds API key must only be used server-side.
+
+## Local Prediction Flow
+
+Without Supabase credentials, the app reads checked-in seed data and does not
+write predictions. For local UI testing, set a temporary shared PIN:
+
+```text
+DEV_MANAGER_PIN=12345
+```
+
+Then unlock with any seeded manager code such as `M001`. Real submissions still
+require Supabase so picks can be written and audited server-side.

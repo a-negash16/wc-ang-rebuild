@@ -36,6 +36,15 @@ select {
   font: inherit;
 }
 
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .app-shell {
   min-height: 100vh;
 }
@@ -130,6 +139,13 @@ select {
   margin-top: 8px;
 }
 
+.panel-heading {
+  align-items: flex-start;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+}
+
 .metric {
   color: var(--accent-strong);
   display: block;
@@ -187,9 +203,73 @@ select {
   white-space: nowrap;
 }
 
+.auth-form {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  margin-top: 14px;
+}
+
+.auth-form input {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+
+.auth-form button,
+.ghost-button,
+.pick-buttons button {
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  color: white;
+  font-weight: 700;
+  padding: 10px 12px;
+}
+
+.ghost-button {
+  background: transparent;
+  color: var(--accent-strong);
+}
+
+.form-status {
+  margin-bottom: 0;
+}
+
+.prediction-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.prediction-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+}
+
+.prediction-card span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.prediction-card h3 {
+  margin: 0;
+}
+
+.pick-buttons {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 @media (max-width: 820px) {
   .grid,
-  .flow {
+  .flow,
+  .prediction-grid {
     grid-template-columns: 1fr;
   }
 
@@ -203,5 +283,10 @@ select {
     align-items: flex-start;
     flex-direction: column;
     gap: 2px;
+  }
+
+  .auth-form,
+  .pick-buttons {
+    grid-template-columns: 1fr;
   }
 }

@@ -101,6 +101,207 @@ export async function getGroupOverview(groupSlug) {
   };
 }
 
+export async function findManagerForUnlock({ groupSlug, managerCode }) {
+  const supabase = getOptionalSupabaseClient();
+  if (supabase) {
+    const { data, error } = await supabase
+      .from("managers")
+      .select("manager_code,display_name,pin_hash,role,is_active,groups!inner(slug)")
+      .eq("groups.slug", groupSlug)
+      .eq("manager_code", managerCode)
+      .eq("is_active", true)
+      .maybeSingle();
+
+    if (error) throw new Error(error.message);
+    return data
+      ? {
+          group_slug: groupSlug,
+          manager_code: data.manager_code,
+          display_name: data.display_name,
+          pin_hash: data.pin_hash,
+          role: data.role,
+        }
+      : null;
+  }
+
+  const managers = await readSeedJson("managers.json");
+  return managers.find((manager) => {
+    return manager.group_slug === groupSlug
+      && manager.manager_code === managerCode
+      && manager.is_active;
+  }) || null;
+}
+
+export async function getMatchForPrediction({ groupSlug, externalMatchId }) {
+  const supabase = getOptionalSupabaseClient();
+  if (supabase) {
+    const { data, error } = await supabase
+      .from("group_matches")
+      .select(`
+        groups!inner ( slug, lock_minutes_before_kickoff ),
+        matches!inner (
+          id,
+          external_match_id,
+          stage,
+          kickoff_at,
+          status,
+          team_a:team_a_id ( id, fifa_code, name ),
+          team_b:team_b_id ( id, fifa_code, name )
+        )
+      `)
+      .eq("groups.slug", groupSlug)
+      .eq("matches.external_match_id", externalMatchId)
+      .maybeSingle();
+
+    if (error) throw new Error(error.message);
+    if (!data?.matches) return null;
+    return {
+      ...data.matches,
+      lock_minutes_before_kickoff: data.groups.lock_minutes_before_kickoff,
+      data_mode: "supabase",
+    };
+  }
+
+  const [groups, matches, teams] = await Promise.all([
+    readSeedJson("groups.json"),
+    readSeedJson("matches.json"),
+    readSeedJson("teams.json"),
+  ]);
+  const group = groups.find((item) => item.slug === groupSlug);
+  const match = matches.find((item) => item.external_match_id === externalMatchId);
+  if (!group || !match) return null;
+
+  const teamByCode = new Map(teams.map((team) => [team.fifa_code, team]));
+  return {
+    ...match,
+    team_a: teamByCode.get(match.team_a_code) || null,
+    team_b: teamByCode.get(match.team_b_code) || null,
+    lock_minutes_before_kickoff: group.lock_minutes_before_kickoff,
+    data_mode: "seed",
+  };
+}
+
+export async function savePrediction({ groupSlug, managerCode, externalMatchId, pickType }) {
+  const supabase = getOptionalSupabaseClient();
+  if (!supabase) {
+    throw new Error("Seed mode is read-only. Configure Supabase before saving predictions.");
+  }
+
+  const { data: rows, error: lookupError } = await supabase
+    .from("group_matches")
+    .select(`
+      group_id,
+      match_id,
+      groups!inner ( slug ),
+      matches!inner (
+        team_a_id,
+        team_b_id,
+        external_match_id
+      )
+    `)
+    .eq("groups.slug", groupSlug)
+    .eq("matches.external_match_id", externalMatchId)
+    .limit(1);
+
+  if (lookupError) throw new Error(lookupError.message);
+  const groupMatch = rows?.[0];
+  if (!groupMatch) throw new Error("Match not found");
+
+  const { data: manager, error: managerError } = await supabase
+    .from("managers")
+    .select("id")
+    .eq("group_id", groupMatch.group_id)
+    .eq("manager_code", managerCode)
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (managerError) throw new Error(managerError.message);
+  if (!manager) throw new Error("Manager not found");
+
+  const pickTeamId = pickType === "team_a"
+    ? groupMatch.matches.team_a_id
+    : pickType === "team_b"
+      ? groupMatch.matches.team_b_id
+      : null;
+
+  const predictionRow = {
+      group_id: groupMatch.group_id,
+      manager_id: manager.id,
+      match_id: groupMatch.match_id,
+      pick_type: pickType,
+      pick_team_id: pickTeamId,
+      status: "active",
+      updated_at: new Date().toISOString(),
+  };
+
+  const { data: existing, error: existingError } = await supabase
+    .from("predictions")
+    .select("id,pick_type,pick_team_id")
+    .eq("group_id", groupMatch.group_id)
+    .eq("manager_id", manager.id)
+    .eq("match_id", groupMatch.match_id)
+    .eq("status", "active")
+    .maybeSingle();
+
+  if (existingError) throw new Error(existingError.message);
+
+  if (existing) {
+    const { error: updateError } = await supabase
+      .from("predictions")
+      .update(predictionRow)
+      .eq("id", existing.id);
+    if (updateError) throw new Error(updateError.message);
+    await appendPredictionAudit({
+      supabase,
+      predictionId: existing.id,
+      groupId: groupMatch.group_id,
+      managerId: manager.id,
+      matchId: groupMatch.match_id,
+      oldPickType: existing.pick_type,
+      oldPickTeamId: existing.pick_team_id,
+      newPickType: pickType,
+      newPickTeamId: pickTeamId,
+    });
+    return { ok: true };
+  }
+
+  const { error: insertError } = await supabase
+    .from("predictions")
+    .insert(predictionRow);
+
+  if (insertError) throw new Error(insertError.message);
+  return { ok: true };
+}
+
+async function appendPredictionAudit({
+  supabase,
+  predictionId,
+  groupId,
+  managerId,
+  matchId,
+  oldPickType,
+  oldPickTeamId,
+  newPickType,
+  newPickTeamId,
+}) {
+  if (oldPickType === newPickType && oldPickTeamId === newPickTeamId) return;
+
+  const { error } = await supabase
+    .from("prediction_audit")
+    .insert({
+      prediction_id: predictionId,
+      group_id: groupId,
+      manager_id: managerId,
+      match_id: matchId,
+      old_pick_type: oldPickType,
+      old_pick_team_id: oldPickTeamId,
+      new_pick_type: newPickType,
+      new_pick_team_id: newPickTeamId,
+      reason: "manager_update",
+    });
+  if (error) throw new Error(error.message);
+}
+
 function getOptionalSupabaseClient() {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return null;

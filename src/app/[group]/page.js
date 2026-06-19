@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { getGroupOverview } from "@/data/league";
+import PredictionPanel from "./PredictionPanel";
 
 export default async function GroupPage({ params }) {
   const group = await getGroupOverview(params.group);
@@ -51,6 +52,8 @@ export default async function GroupPage({ params }) {
           )}
         </article>
       </section>
+
+      <PredictionPanel groupSlug={group.slug} matches={group.upcoming_matches} />
     </main>
   );
 }
