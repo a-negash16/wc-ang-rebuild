@@ -56,7 +56,7 @@ export async function getGroupOverview(groupSlug) {
             )
           `)
           .eq("group_id", group.id)
-          .limit(8),
+          .limit(120),
       ]);
 
     if (managersError) throw new Error(managersError.message);
@@ -367,5 +367,7 @@ function normalizeSupabaseMatches(rows) {
   return rows
     .map((row) => row.matches)
     .filter(Boolean)
-    .sort((a, b) => new Date(a.kickoff_at).getTime() - new Date(b.kickoff_at).getTime());
+    .filter((match) => new Date(match.kickoff_at).getTime() >= Date.now())
+    .sort((a, b) => new Date(a.kickoff_at).getTime() - new Date(b.kickoff_at).getTime())
+    .slice(0, 8);
 }

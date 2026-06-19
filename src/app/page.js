@@ -1,5 +1,7 @@
 import { getGroups } from "@/data/league";
 
+export const dynamic = "force-dynamic";
+
 export default async function HomePage() {
   const groups = await getGroups();
 

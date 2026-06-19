@@ -3,8 +3,11 @@ import { notFound } from "next/navigation";
 import { getGroupOverview } from "@/data/league";
 import PredictionPanel from "./PredictionPanel";
 
+export const dynamic = "force-dynamic";
+
 export default async function GroupPage({ params }) {
-  const group = await getGroupOverview(params.group);
+  const { group: groupSlug } = await params;
+  const group = await getGroupOverview(groupSlug);
   if (!group) notFound();
 
   return (
