@@ -53,7 +53,11 @@ export default async function GroupPage({ params }) {
         </article>
       </section>
 
-      <PredictionPanel groupSlug={group.slug} matches={group.upcoming_matches} />
+      <PredictionPanel
+        groupSlug={group.slug}
+        managers={group.managers}
+        matches={group.upcoming_matches}
+      />
     </main>
   );
 }

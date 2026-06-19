@@ -1,18 +1,24 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 const STORAGE_KEY = "wc_ang_rebuild_session";
 
-export default function PredictionPanel({ groupSlug, matches }) {
+export default function PredictionPanel({ groupSlug, managers, matches }) {
   const [session, setSession] = useState(() => loadSession(groupSlug));
-  const [managerCode, setManagerCode] = useState("");
+  const [managerCode, setManagerCode] = useState(() => managers[0]?.manager_code || "");
   const [pin, setPin] = useState("");
   const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState([]);
 
   const openMatches = useMemo(() => matches.filter((match) => match.team_a && match.team_b), [matches]);
+
+  useEffect(() => {
+    if (session?.token) {
+      loadPreview(session.token);
+    }
+  }, [session?.token]);
 
   async function unlock(event) {
     event.preventDefault();
@@ -113,13 +119,18 @@ export default function PredictionPanel({ groupSlug, matches }) {
 
         {!session ? (
           <form className="auth-form" onSubmit={unlock}>
-            <input
+            <select
               name="manager_code"
-              placeholder="Manager code, e.g. M001"
               value={managerCode}
               onChange={(event) => setManagerCode(event.target.value)}
               required
-            />
+            >
+              {managers.map((manager) => (
+                <option key={manager.manager_code} value={manager.manager_code}>
+                  {manager.display_name}
+                </option>
+              ))}
+            </select>
             <input
               name="pin"
               placeholder="PIN"

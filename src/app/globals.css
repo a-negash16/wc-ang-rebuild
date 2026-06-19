@@ -210,7 +210,8 @@ button:disabled {
   margin-top: 14px;
 }
 
-.auth-form input {
+.auth-form input,
+.auth-form select {
   border: 1px solid var(--line);
   border-radius: 6px;
   padding: 10px 12px;

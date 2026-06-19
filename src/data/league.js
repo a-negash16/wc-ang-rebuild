@@ -34,13 +34,14 @@ export async function getGroupOverview(groupSlug) {
     if (groupError) throw new Error(groupError.message);
     if (!group) return null;
 
-    const [{ count: managerCount, error: managerError }, { data: matches, error: matchError }] =
+    const [{ data: managers, error: managersError }, { data: matches, error: matchError }] =
       await Promise.all([
         supabase
           .from("managers")
-          .select("id", { count: "exact", head: true })
+          .select("manager_code,display_name")
           .eq("group_id", group.id)
-          .eq("is_active", true),
+          .eq("is_active", true)
+          .order("display_name", { ascending: true }),
         supabase
           .from("group_matches")
           .select(`
@@ -58,12 +59,13 @@ export async function getGroupOverview(groupSlug) {
           .limit(8),
       ]);
 
-    if (managerError) throw new Error(managerError.message);
+    if (managersError) throw new Error(managersError.message);
     if (matchError) throw new Error(matchError.message);
 
     return {
       ...group,
-      manager_count: managerCount || 0,
+      managers: managers || [],
+      manager_count: managers?.length || 0,
       upcoming_matches: normalizeSupabaseMatches(matches || []),
       data_mode: "supabase",
     };
@@ -79,6 +81,13 @@ export async function getGroupOverview(groupSlug) {
   if (!group) return null;
 
   const teamByCode = new Map(teams.map((team) => [team.fifa_code, team]));
+  const groupManagers = managers
+    .filter((manager) => manager.group_slug === groupSlug && manager.is_active)
+    .map((manager) => ({
+      manager_code: manager.manager_code,
+      display_name: manager.display_name,
+    }))
+    .sort((a, b) => a.display_name.localeCompare(b.display_name));
   const now = Date.now();
   const upcomingMatches = matches
     .filter((match) => new Date(match.kickoff_at).getTime() >= now)
@@ -95,7 +104,8 @@ export async function getGroupOverview(groupSlug) {
 
   return {
     ...group,
-    manager_count: managers.filter((manager) => manager.group_slug === groupSlug && manager.is_active).length,
+    managers: groupManagers,
+    manager_count: groupManagers.length,
     upcoming_matches: upcomingMatches,
     data_mode: "seed",
   };
