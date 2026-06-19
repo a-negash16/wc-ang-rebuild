@@ -56,6 +56,12 @@ Generate a copy/paste SQL bundle with:
 npm run supabase:bundle
 ```
 
+After setting `.env.local`, verify the Supabase connection with:
+
+```sh
+npm run supabase:check
+```
+
 ## Secrets
 
 Do not commit API keys. Copy `.env.example` to `.env` locally and set:

@@ -84,7 +84,25 @@ Important:
 - `ODDS_API_KEY` must never be exposed to the browser.
 - `SESSION_SECRET` should be long and random.
 
+Do not paste `SUPABASE_SERVICE_ROLE_KEY`, `SESSION_SECRET`, or `ODDS_API_KEY`
+into chat. Keep them local.
+
 ## 5. Smoke Test
+
+First verify the database from your terminal:
+
+```sh
+npm run supabase:check
+```
+
+Expected shape:
+
+```text
+Supabase connection OK
+Groups: dagi-united, squad, tikur-abay
+Managers: 27
+Matches: 104
+```
 
 Run the app:
 
@@ -101,4 +119,3 @@ http://localhost:3000/squad
 ```
 
 Unlock with a manager code whose `pin_hash` has been set.
-
