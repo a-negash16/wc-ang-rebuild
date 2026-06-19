@@ -128,7 +128,7 @@ export default function PredictionPanel({ groupSlug, managers, matches, lockMinu
   }
 
   return (
-    <section className="section picks-section">
+    <section className="section picks-section" id="next-picks">
       <article className="panel manager-panel">
         <div className="panel-heading">
           <div>

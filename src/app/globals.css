@@ -118,26 +118,19 @@ button:disabled {
 }
 
 .hero-dashboard {
-  align-items: end;
-  background:
-    linear-gradient(135deg, rgba(255, 253, 247, 0.95), rgba(255, 241, 197, 0.52)),
-    radial-gradient(400px 220px at 88% 20%, rgba(180, 35, 42, 0.16), transparent 68%);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  box-shadow: var(--shadow-sm);
-  grid-template-columns: minmax(0, 1fr) auto;
-  margin-bottom: 20px;
-  padding: clamp(20px, 4vw, 34px);
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 24px;
+  padding: 22px 0 24px;
 }
 
 .hero h1 {
   color: var(--navy);
   font-family: var(--font-display);
-  font-size: clamp(46px, 9vw, 92px);
+  font-size: clamp(52px, 10vw, 104px);
   font-weight: 900;
   letter-spacing: 0;
   line-height: 0.86;
-  margin: 0;
+  margin: 0 0 18px;
   max-width: 880px;
 }
 
@@ -157,26 +150,57 @@ button:disabled {
   text-transform: uppercase;
 }
 
-.hero-status {
-  background: linear-gradient(145deg, var(--accent-deep), var(--accent));
-  border-radius: 8px;
-  box-shadow: 0 14px 30px rgba(80, 11, 16, 0.25);
-  color: white;
+.hero-main {
   display: grid;
-  gap: 3px;
-  min-width: 210px;
-  padding: 18px;
+  gap: 8px;
 }
 
-.hero-status span,
-.hero-status small {
-  color: rgba(255, 255, 255, 0.72);
+.hero-rows {
+  display: grid;
+  gap: 8px;
+  max-width: 780px;
 }
 
-.hero-status strong {
-  font-family: var(--font-display);
-  font-size: 34px;
-  line-height: 1;
+.hero-row {
+  align-items: center;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 120px minmax(0, 1fr);
+}
+
+.hero-row span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.hero-row strong {
+  color: var(--ink);
+  font-size: 16px;
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.hero-actions a {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--accent-strong);
+  font-size: 13px;
+  font-weight: 850;
+  padding: 7px 12px;
+  text-decoration: none;
+}
+
+.hero-actions a:hover {
+  background: var(--gold-soft);
+  border-color: #ecd07b;
 }
 
 .grid {
@@ -786,10 +810,6 @@ button:disabled {
     gap: 8px;
   }
 
-  .hero-status {
-    width: 100%;
-  }
-
   .checklist-pill {
     align-items: flex-start;
     border-radius: 8px;
@@ -799,6 +819,17 @@ button:disabled {
 
   .checklist-pill span {
     white-space: normal;
+  }
+
+  .hero-row {
+    align-items: flex-start;
+    gap: 2px;
+    grid-template-columns: 1fr;
+  }
+
+  .hero-actions a {
+    flex: 1 1 auto;
+    text-align: center;
   }
 
   .swipe-rail > * {
