@@ -1,0 +1,14 @@
+{
+  "name": "wc-ang-rebuild",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Parallel rebuild for WC ANG prediction league.",
+  "scripts": {
+    "test": "node --test",
+    "check": "node --check src/rules/scoring.js && node --check src/integrations/odds-api.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
