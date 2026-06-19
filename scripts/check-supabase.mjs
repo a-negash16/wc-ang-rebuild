@@ -1,19 +1,12 @@
-import fs from "node:fs";
-import path from "node:path";
+import { loadEnvLocal, requireEnv, supabaseRest } from "./supabase-rest.mjs";
 
 loadEnvLocal();
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+requireEnv(["NEXT_PUBLIC_SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"]);
 
-if (!supabaseUrl || !serviceRoleKey) {
-  fail("Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in .env.local");
-}
-
-const baseUrl = supabaseUrl.replace(/\/$/, "");
-const groupsResult = await restGet("/rest/v1/groups?select=slug,name&order=slug.asc");
-const managersResult = await restGet("/rest/v1/managers?select=id", { count: true });
-const matchesResult = await restGet("/rest/v1/matches?select=id", { count: true });
+const groupsResult = await restGet("/groups?select=slug,name&order=slug.asc");
+const managersResult = await restGet("/managers?select=id", { count: true });
+const matchesResult = await restGet("/matches?select=id", { count: true });
 
 const groups = groupsResult.data;
 const slugs = groups.map((group) => group.slug);
@@ -30,14 +23,10 @@ console.log(`Managers: ${managersResult.count ?? "unknown"}`);
 console.log(`Matches: ${matchesResult.count ?? "unknown"}`);
 
 async function restGet(endpoint, options = {}) {
-  const response = await fetch(`${baseUrl}${endpoint}`, {
-    headers: {
-      apikey: serviceRoleKey,
-      Authorization: `Bearer ${serviceRoleKey}`,
-      Prefer: options.count ? "count=exact" : "",
-    },
+  const response = await supabaseRest(endpoint, {
+    rawResponse: true,
+    headers: options.count ? { Prefer: "count=exact" } : {},
   });
-
   const text = await response.text();
   if (!response.ok) {
     fail(`Supabase request failed (${response.status}): ${text}`);
@@ -53,19 +42,6 @@ function parseContentRange(value) {
   if (!value || !value.includes("/")) return null;
   const total = value.split("/").at(-1);
   return total === "*" ? null : Number(total);
-}
-
-function loadEnvLocal() {
-  const envPath = path.join(process.cwd(), ".env.local");
-  if (!fs.existsSync(envPath)) return;
-
-  const lines = fs.readFileSync(envPath, "utf8").split(/\r?\n/);
-  for (const line of lines) {
-    if (!line || line.trim().startsWith("#") || !line.includes("=")) continue;
-    const [key, ...rest] = line.split("=");
-    const value = rest.join("=").trim().replace(/^['"]|['"]$/g, "");
-    process.env[key.trim()] ||= value;
-  }
 }
 
 function fail(message) {

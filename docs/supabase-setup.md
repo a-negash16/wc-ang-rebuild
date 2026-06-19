@@ -66,6 +66,13 @@ where manager_code = 'M001'
 Repeat per manager. Do not commit real PIN hashes unless you intentionally want
 them in the repo.
 
+You can also update a PIN from your local `.env.local` without manually pasting
+SQL:
+
+```sh
+npm run set-manager-pin -- squad M001 12345
+```
+
 ## 4. Configure Environment
 
 In `.env.local`:

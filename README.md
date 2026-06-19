@@ -89,3 +89,9 @@ Generate production PIN hashes with:
 ```sh
 node scripts/hash-pin.mjs 12345
 ```
+
+Or update a manager directly from `.env.local`:
+
+```sh
+npm run set-manager-pin -- squad M001 12345
+```
