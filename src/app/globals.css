@@ -118,9 +118,14 @@ button:disabled {
 }
 
 .hero-dashboard {
-  border-bottom: 1px solid var(--line);
+  background:
+    linear-gradient(180deg, rgba(255, 253, 247, 0.92), rgba(255, 248, 230, 0.78));
+  border: 1px solid var(--line);
+  border-top: 5px solid var(--accent);
+  border-radius: 8px;
+  box-shadow: var(--shadow-sm);
   margin-bottom: 24px;
-  padding: 22px 0 24px;
+  padding: 22px 24px 24px;
 }
 
 .hero h1 {
@@ -163,13 +168,17 @@ button:disabled {
 
 .hero-row {
   align-items: center;
+  background: rgba(255, 255, 255, 0.56);
+  border: 1px solid rgba(229, 220, 200, 0.78);
+  border-radius: 8px;
   display: grid;
   gap: 16px;
   grid-template-columns: 120px minmax(0, 1fr);
+  padding: 8px 12px;
 }
 
 .hero-row span {
-  color: var(--muted);
+  color: var(--accent-strong);
   font-size: 13px;
   font-weight: 850;
   text-transform: uppercase;
@@ -188,10 +197,10 @@ button:disabled {
 }
 
 .hero-actions a {
-  background: var(--panel);
-  border: 1px solid var(--line);
+  background: var(--navy);
+  border: 1px solid var(--navy);
   border-radius: 999px;
-  color: var(--accent-strong);
+  color: white;
   font-size: 13px;
   font-weight: 850;
   padding: 7px 12px;
@@ -199,7 +208,7 @@ button:disabled {
 }
 
 .hero-actions a:hover {
-  background: var(--gold-soft);
+  background: var(--accent-strong);
   border-color: #ecd07b;
 }
 
@@ -210,7 +219,8 @@ button:disabled {
 }
 
 .panel {
-  background: var(--panel);
+  background:
+    linear-gradient(180deg, rgba(255, 253, 247, 0.98), rgba(255, 250, 239, 0.94));
   border: 1px solid var(--line);
   border-radius: 8px;
   box-shadow: var(--shadow-sm);
@@ -270,14 +280,14 @@ button:disabled {
 .section-heading h2 {
   color: var(--navy);
   font-family: var(--font-display);
-  font-size: 38px;
+  font-size: 34px;
   font-weight: 900;
   line-height: 1;
   margin: 0;
 }
 
 .section-heading.compact h2 {
-  font-size: 28px;
+  font-size: 26px;
 }
 
 .status-chip {
@@ -389,16 +399,18 @@ button:disabled {
 
 .manager-panel {
   background:
-    linear-gradient(180deg, rgba(255, 253, 247, 0.96), rgba(255, 248, 230, 0.82));
+    linear-gradient(180deg, rgba(255, 253, 247, 0.98), rgba(255, 248, 230, 0.86));
   border-color: #ecd9a3;
+  border-left: 5px solid var(--accent);
 }
 
 .checklist-mini {
   align-items: center;
+  border-left: 5px solid var(--gold);
   display: grid;
   gap: 12px;
   grid-template-columns: minmax(140px, 0.35fr) minmax(0, 1fr);
-  padding: 14px 18px;
+  padding: 12px 16px;
 }
 
 .checklist-mini h2 {
@@ -441,9 +453,13 @@ button:disabled {
 
 .rail-heading {
   align-items: center;
+  background: rgba(255, 253, 247, 0.62);
+  border: 1px solid rgba(229, 220, 200, 0.78);
+  border-radius: 8px;
   display: flex;
   gap: 10px;
   justify-content: space-between;
+  padding: 9px 12px;
 }
 
 .rail-heading h3 {
@@ -469,7 +485,7 @@ button:disabled {
 }
 
 .swipe-rail > * {
-  flex: 0 0 clamp(430px, 70vw, 660px);
+  flex: 0 0 clamp(420px, 62vw, 590px);
   scroll-snap-align: start;
 }
 
@@ -491,13 +507,13 @@ button:disabled {
 .prediction-card {
   background: #162b47;
   border: 1px solid #254663;
-  border-radius: 26px;
-  box-shadow: 0 20px 44px rgba(11, 29, 58, 0.22);
+  border-radius: 22px;
+  box-shadow: 0 16px 34px rgba(11, 29, 58, 0.2);
   color: #eef4fb;
   display: grid;
-  gap: 22px;
-  min-height: 390px;
-  padding: 34px 48px 30px;
+  gap: 16px;
+  min-height: 340px;
+  padding: 26px 34px 24px;
   position: relative;
   overflow: hidden;
 }
@@ -509,7 +525,7 @@ button:disabled {
 
 .prediction-card span {
   color: #b6c0d1;
-  font-size: 18px;
+  font-size: 16px;
 }
 
 .prediction-card h3 {
@@ -531,20 +547,20 @@ button:disabled {
   border-radius: 999px;
   color: #ffe28a;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 21px;
-  padding: 8px 18px;
+  font-size: 18px;
+  padding: 7px 15px;
 }
 
 .ticket-meta {
   align-items: center;
   display: flex;
-  gap: 14px;
+  gap: 12px;
   min-width: 0;
 }
 
 .ticket-meta span {
   color: #b6c0d1;
-  font-size: 23px;
+  font-size: 19px;
   min-width: 0;
 }
 
@@ -552,9 +568,9 @@ button:disabled {
   background: #174a4b;
   border-radius: 999px;
   color: #ffe28a;
-  font-size: 18px;
+  font-size: 15px;
   letter-spacing: 0;
-  padding: 7px 18px;
+  padding: 6px 14px;
   text-transform: uppercase;
   white-space: nowrap;
 }
@@ -562,26 +578,26 @@ button:disabled {
 .ticket-body {
   align-items: center;
   display: grid;
-  gap: 28px;
+  gap: 22px;
   grid-template-columns: minmax(0, 1fr) minmax(180px, 0.48fr);
 }
 
 .kickoff-block {
   border-left: 2px solid rgba(182, 192, 209, 0.22);
   display: grid;
-  gap: 7px;
+  gap: 5px;
   justify-items: center;
-  padding-left: 28px;
+  padding-left: 22px;
 }
 
 .kickoff-block strong {
   color: #ffe28a;
-  font-size: 22px;
+  font-size: 19px;
 }
 
 .kickoff-block span {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 22px;
+  font-size: 19px;
   text-align: center;
 }
 
@@ -592,7 +608,7 @@ button:disabled {
 
 .pick-buttons {
   display: grid;
-  gap: 14px;
+  gap: 12px;
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
@@ -605,26 +621,26 @@ button:disabled {
 
 .team-versus {
   display: grid;
-  gap: 18px;
+  gap: 14px;
 }
 
 .team-badge {
   align-items: center;
   display: grid;
-  gap: 18px;
-  grid-template-columns: 50px minmax(0, 1fr) auto;
+  gap: 14px;
+  grid-template-columns: 46px minmax(0, 1fr) auto;
   min-width: 0;
 }
 
 .flag {
   filter: drop-shadow(0 2px 2px rgba(16, 24, 40, 0.12));
-  font-size: 38px;
+  font-size: 34px;
   line-height: 1;
 }
 
 .team-badge strong {
   color: #f8fbff;
-  font-size: 32px;
+  font-size: 28px;
   font-weight: 850;
   line-height: 1.1;
   max-width: 100%;
@@ -633,7 +649,7 @@ button:disabled {
 
 .score-placeholder {
   color: #f8fbff !important;
-  font-size: 32px !important;
+  font-size: 28px !important;
   font-weight: 900;
 }
 
@@ -641,8 +657,8 @@ button:disabled {
   background: rgba(255, 255, 255, 0.03);
   border-color: rgba(255, 221, 128, 0.2);
   color: #aeb8c8;
-  font-size: 20px;
-  min-height: 72px;
+  font-size: 18px;
+  min-height: 62px;
 }
 
 .pulse-section {
@@ -833,14 +849,14 @@ button:disabled {
   }
 
   .swipe-rail > * {
-    flex-basis: min(86vw, 430px);
+    flex-basis: min(86vw, 390px);
   }
 
   .prediction-card {
-    border-radius: 22px;
-    gap: 18px;
-    min-height: 420px;
-    padding: 24px 22px;
+    border-radius: 20px;
+    gap: 14px;
+    min-height: 365px;
+    padding: 22px 20px;
   }
 
   .ticket-meta {
@@ -860,7 +876,7 @@ button:disabled {
 
   .ticket-body {
     align-items: start;
-    gap: 18px;
+    gap: 14px;
     grid-template-columns: 1fr;
   }
 
@@ -872,31 +888,32 @@ button:disabled {
     justify-content: space-between;
     justify-items: stretch;
     padding-left: 0;
-    padding-top: 14px;
+    padding-top: 12px;
     width: 100%;
   }
 
   .kickoff-block strong,
   .kickoff-block span {
-    font-size: 18px;
+    font-size: 16px;
   }
 
   .team-badge {
-    gap: 12px;
-    grid-template-columns: 44px minmax(0, 1fr) auto;
+    gap: 10px;
+    grid-template-columns: 38px minmax(0, 1fr) auto;
   }
 
   .team-badge strong,
   .score-placeholder {
-    font-size: 25px !important;
+    font-size: 22px !important;
   }
 
   .flag {
-    font-size: 34px;
+    font-size: 30px;
   }
 
   .pick-buttons button {
-    min-height: 56px;
+    font-size: 16px;
+    min-height: 52px;
   }
 
   .pulse-card {
