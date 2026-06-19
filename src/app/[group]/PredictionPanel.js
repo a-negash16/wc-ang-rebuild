@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 const STORAGE_KEY = "wc_ang_rebuild_session";
 
 export default function PredictionPanel({ groupSlug, managers, matches }) {
-  const [session, setSession] = useState(() => loadSession(groupSlug));
+  const [session, setSession] = useState(null);
   const [managerCode, setManagerCode] = useState(() => managers[0]?.manager_code || "");
   const [pin, setPin] = useState("");
   const [status, setStatus] = useState("");
@@ -13,6 +13,10 @@ export default function PredictionPanel({ groupSlug, managers, matches }) {
   const [preview, setPreview] = useState([]);
 
   const openMatches = useMemo(() => matches.filter((match) => match.team_a && match.team_b), [matches]);
+
+  useEffect(() => {
+    setSession(loadSession(groupSlug));
+  }, [groupSlug]);
 
   useEffect(() => {
     if (session?.token) {

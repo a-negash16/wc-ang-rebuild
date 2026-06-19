@@ -322,6 +322,97 @@ export async function getPredictionPulse({ groupSlug, externalMatchIds = [] }) {
   return [];
 }
 
+export async function getManagerPredictionState({ groupSlug, managerCode }) {
+  const overview = await getGroupOverview(groupSlug);
+  if (!overview) return null;
+
+  const openMatches = overview.upcoming_matches;
+  const picks = await getManagerPickPreview({ groupSlug, managerCode });
+  const pickByMatch = new Map(picks.map((pick) => [pick.external_match_id, pick]));
+
+  return {
+    group_slug: groupSlug,
+    manager_code: managerCode,
+    matches: openMatches.map((match) => {
+      const pick = pickByMatch.get(match.external_match_id) || null;
+      return {
+        external_match_id: match.external_match_id,
+        stage: match.stage,
+        group_label: match.group_label,
+        kickoff_at: match.kickoff_at,
+        status: match.status,
+        team_a: match.team_a,
+        team_b: match.team_b,
+        pick_type: pick?.pick_type || null,
+        pick_label: formatPickLabel(pick),
+        picked_at: pick?.updated_at || null,
+        is_missing: !pick,
+      };
+    }),
+  };
+}
+
+export async function getPredictionPulseState({ groupSlug }) {
+  const overview = await getGroupOverview(groupSlug);
+  if (!overview) return null;
+
+  const matches = overview.upcoming_matches;
+  const pulse = await getPredictionPulse({
+    groupSlug,
+    externalMatchIds: matches.map((match) => match.external_match_id),
+  });
+  const pulseByMatch = new Map(pulse.map((item) => [item.external_match_id, item]));
+
+  return {
+    group_slug: groupSlug,
+    matches: matches.map((match) => {
+      const item = pulseByMatch.get(match.external_match_id);
+      const reveal = shouldRevealPulse({
+        kickoffAt: match.kickoff_at,
+        lockMinutesBeforeKickoff: overview.lock_minutes_before_kickoff,
+      });
+
+      return {
+        external_match_id: match.external_match_id,
+        team_a_name: match.team_a?.name || null,
+        team_b_name: match.team_b?.name || null,
+        kickoff_at: match.kickoff_at,
+        reveal,
+        locked_until: reveal ? null : deadlineFor(match.kickoff_at, overview.lock_minutes_before_kickoff),
+        team_a_picks: reveal ? Number(item?.team_a_picks || 0) : null,
+        tie_picks: reveal ? Number(item?.tie_picks || 0) : null,
+        team_b_picks: reveal ? Number(item?.team_b_picks || 0) : null,
+        total_picks: reveal ? Number(item?.total_picks || 0) : null,
+        team_a_managers: reveal ? item?.team_a_managers || "" : "",
+        tie_managers: reveal ? item?.tie_managers || "" : "",
+        team_b_managers: reveal ? item?.team_b_managers || "" : "",
+      };
+    }),
+  };
+}
+
+export async function getLeaderboardShell({ groupSlug }) {
+  const overview = await getGroupOverview(groupSlug);
+  if (!overview) return null;
+
+  return {
+    group_slug: groupSlug,
+    scoring_status: "not_started",
+    rows: overview.managers.map((manager, index) => ({
+      rank: index + 1,
+      manager_code: manager.manager_code,
+      manager_name: manager.display_name,
+      total_points: 0,
+      group_stage_points: 0,
+      knockout_prediction_points: 0,
+      futures_points: 0,
+      drafted_teams_points: 0,
+      drafted_players_points: 0,
+      rank_delta: null,
+    })),
+  };
+}
+
 async function appendPredictionAudit({
   supabase,
   predictionId,
@@ -370,4 +461,20 @@ function normalizeSupabaseMatches(rows) {
     .filter((match) => new Date(match.kickoff_at).getTime() >= Date.now())
     .sort((a, b) => new Date(a.kickoff_at).getTime() - new Date(b.kickoff_at).getTime())
     .slice(0, 8);
+}
+
+function formatPickLabel(pick) {
+  if (!pick) return null;
+  if (pick.pick_type === "tie") return "Tie";
+  return pick.pick_team_name || null;
+}
+
+function shouldRevealPulse({ kickoffAt, lockMinutesBeforeKickoff }) {
+  return Date.now() >= new Date(deadlineFor(kickoffAt, lockMinutesBeforeKickoff)).getTime();
+}
+
+function deadlineFor(kickoffAt, lockMinutesBeforeKickoff) {
+  const kickoff = new Date(kickoffAt).getTime();
+  const lockMs = Number(lockMinutesBeforeKickoff || 60) * 60 * 1000;
+  return new Date(kickoff - lockMs).toISOString();
 }
