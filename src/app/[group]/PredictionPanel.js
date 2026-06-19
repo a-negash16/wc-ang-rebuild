@@ -29,9 +29,13 @@ export default function PredictionPanel({ groupSlug, managers, matches, lockMinu
     });
   }, [lockMinutesBeforeKickoff, now, openMatches]);
   const groupedMatches = useMemo(() => groupMatches(urgentMatches), [urgentMatches]);
-  const missingCount = pickState.filter((match) => match.is_missing).length;
-  const savedCount = pickState.filter((match) => !match.is_missing).length;
-  const nextMissingPick = pickState.find((match) => match.is_missing);
+  const urgentPickState = useMemo(() => {
+    const urgentIds = new Set(urgentMatches.map((match) => match.external_match_id));
+    return pickState.filter((match) => urgentIds.has(match.external_match_id));
+  }, [pickState, urgentMatches]);
+  const missingCount = urgentPickState.filter((match) => match.is_missing).length;
+  const savedCount = urgentPickState.filter((match) => !match.is_missing).length;
+  const nextMissingPick = urgentPickState.find((match) => match.is_missing);
 
   useEffect(() => {
     setSession(loadSession(groupSlug));
@@ -186,7 +190,7 @@ export default function PredictionPanel({ groupSlug, managers, matches, lockMinu
           </div>
           <div className={missingCount ? "checklist-pill missing" : "checklist-pill"}>
             <strong>{missingCount ? `${missingCount} missing` : "All set"}</strong>
-            <span>{nextMissingPick ? formatTeams(nextMissingPick) : "No open picks missing"}</span>
+            <span>{nextMissingPick ? formatTeams(nextMissingPick) : "No urgent picks missing"}</span>
           </div>
         </article>
       ) : null}
