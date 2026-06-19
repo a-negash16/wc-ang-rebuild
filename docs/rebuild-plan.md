@@ -18,6 +18,13 @@
 - Keep an audit row for every changed prediction.
 - The backend, not the frontend, enforces deadlines.
 
+## Free-First Hosting Notes
+
+- Local development should work without Supabase credentials by reading checked-in seed JSON.
+- Supabase can be used on its free plan while traffic and storage are small.
+- The project should avoid paid add-ons until there is a real need.
+- The Odds API should be called sparingly and cached in `odds_snapshots` to avoid burning requests.
+
 ## Next Milestones
 
 1. Choose frontend/backend framework for the new repo.

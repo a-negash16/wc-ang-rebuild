@@ -1,6 +1,8 @@
-const groups = ["Squad", "Tikur-Abay", "Dagi-United"];
+import { getGroups } from "@/data/league";
 
-export default function HomePage() {
+export default async function HomePage() {
+  const groups = await getGroups();
+
   return (
     <main className="page">
       <section className="hero">
@@ -13,10 +15,13 @@ export default function HomePage() {
 
       <section className="grid" aria-label="Groups">
         {groups.map((group) => (
-          <article className="panel" key={group}>
+          <article className="panel" key={group.slug}>
             <span className="metric">0</span>
-            <h2>{group}</h2>
-            <p>Ready for seeded managers, matches, and prediction deadlines.</p>
+            <h2>{group.name}</h2>
+            <p>
+              Lock window: {group.lock_minutes_before_kickoff} minutes before kickoff.
+            </p>
+            <a href={`/${group.slug}`}>Open group</a>
           </article>
         ))}
       </section>

@@ -123,6 +123,13 @@ select {
   padding-left: 18px;
 }
 
+.panel a {
+  color: var(--accent-strong);
+  display: inline-block;
+  font-weight: 700;
+  margin-top: 8px;
+}
+
 .metric {
   color: var(--accent-strong);
   display: block;
@@ -159,6 +166,27 @@ select {
   display: block;
 }
 
+.match-list {
+  display: grid;
+  gap: 10px;
+  list-style: none;
+  padding: 0;
+}
+
+.match-list li {
+  align-items: center;
+  border-top: 1px solid var(--line);
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding-top: 10px;
+}
+
+.match-list span {
+  color: var(--muted);
+  white-space: nowrap;
+}
+
 @media (max-width: 820px) {
   .grid,
   .flow {
@@ -169,5 +197,11 @@ select {
     align-items: flex-start;
     gap: 12px;
     flex-direction: column;
+  }
+
+  .match-list li {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 2px;
   }
 }
