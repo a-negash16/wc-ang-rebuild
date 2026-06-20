@@ -685,17 +685,6 @@ button:disabled {
   min-width: 0;
 }
 
-.ticket-meta b {
-  background: var(--accent-700);
-  border-radius: 999px;
-  color: #ffe28a;
-  font-size: 15px;
-  letter-spacing: 0;
-  padding: 6px 14px;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
 .ticket-body {
   align-items: center;
   display: grid;
@@ -848,28 +837,75 @@ button:disabled {
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
-  display: grid;
-  gap: 12px;
-  grid-template-columns: minmax(0, 1fr) auto;
+  display: block;
   padding: 12px;
 }
 
 .pulse-choice div {
   display: grid;
-  gap: 2px;
+  gap: 8px;
 }
 
-.pulse-choice b {
-  align-items: center;
-  background: linear-gradient(180deg, #ffd76a, var(--gold-500));
+.manager-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.manager-chips em {
+  background: linear-gradient(180deg, #ffe28a, var(--gold-500));
+  border: 1px solid rgba(255, 226, 138, 0.5);
   border-radius: 999px;
   color: #171107;
-  display: inline-flex;
-  font-size: 20px;
-  height: 42px;
-  justify-content: center;
-  width: 42px;
+  font-size: 0.82rem;
+  font-style: normal;
+  font-weight: 900;
+  line-height: 1;
+  padding: 0.42rem 0.62rem;
 }
+
+.manager-empty {
+  color: rgba(247, 250, 255, 0.56) !important;
+  font-size: 0.9rem !important;
+  font-weight: 700;
+}
+
+.group-chip {
+  --group-color: var(--accent-700);
+  background: color-mix(in srgb, var(--group-color) 15%, var(--white));
+  border: 1px solid color-mix(in srgb, var(--group-color) 38%, transparent);
+  border-radius: 999px;
+  color: color-mix(in srgb, var(--group-color) 78%, var(--navy-900));
+  display: inline-flex;
+  font-size: 0.82rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  padding: 0.48rem 0.72rem;
+  text-transform: uppercase;
+  white-space: nowrap;
+  width: max-content;
+}
+
+.section-dark .group-chip,
+.prediction-card .group-chip {
+  background: color-mix(in srgb, var(--group-color) 82%, var(--navy-900));
+  border-color: color-mix(in srgb, var(--group-color) 58%, var(--line-dark));
+  color: #fff4bd;
+}
+
+.group-a { --group-color: #0f7a4f; }
+.group-b { --group-color: #1e5fb8; }
+.group-c { --group-color: #b54708; }
+.group-d { --group-color: #8a1b61; }
+.group-e { --group-color: #7357d3; }
+.group-f { --group-color: #c1272d; }
+.group-g { --group-color: #147c86; }
+.group-h { --group-color: #7c5f13; }
+.group-i { --group-color: #4b6f1f; }
+.group-j { --group-color: #6f3db8; }
+.group-k { --group-color: #a33b23; }
+.group-l { --group-color: #245ea8; }
 
 .team-label {
   align-items: center;

@@ -510,6 +510,8 @@ export async function getPredictionPulseState({ groupSlug }) {
 
       return {
         external_match_id: match.external_match_id,
+        group_label: match.group_label,
+        stage: match.stage,
         team_a_name: match.team_a?.name || null,
         team_a_code: match.team_a?.fifa_code || null,
         team_b_name: match.team_b?.name || null,

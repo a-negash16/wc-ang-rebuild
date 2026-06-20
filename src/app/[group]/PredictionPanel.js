@@ -224,7 +224,7 @@ export default function PredictionPanel({
                 return (
                   <article className={currentPick?.is_missing ? "prediction-card needs-pick" : "prediction-card"} key={match.external_match_id}>
                     <div className="ticket-meta">
-                      <b>Group {match.group_label || "-"}</b>
+                      <b className={groupClass(match.group_label)}>Group {match.group_label || "-"}</b>
                     </div>
                     <div className="ticket-body">
                       <TeamVersus teamA={match.team_a} teamB={match.team_b} />
@@ -391,6 +391,10 @@ function getPickLabel(match, pickType) {
   if (pickType === "team_a") return match.team_a?.name || "Team A";
   if (pickType === "team_b") return match.team_b?.name || "Team B";
   return "Pick";
+}
+
+function groupClass(group) {
+  return group ? `group-chip group-${String(group).toLowerCase()}` : "group-chip";
 }
 
 function flagForTeam(team) {

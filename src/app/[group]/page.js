@@ -84,11 +84,12 @@ function PredictionPulse({ pulse }) {
                 <em>vs</em>
                 <TeamLabel name={match.team_b_name} code={match.team_b_code} />
               </strong>
+              <GroupChip group={match.group_label} fallback={match.stage} />
             </div>
             <div className="pulse-bars">
-              <PulseChoice label={match.team_a_name} code={match.team_a_code} count={match.team_a_picks} managers={match.team_a_managers} />
-              <PulseChoice label="Tie" count={match.tie_picks} managers={match.tie_managers} />
-              <PulseChoice label={match.team_b_name} code={match.team_b_code} count={match.team_b_picks} managers={match.team_b_managers} />
+              <PulseChoice label={match.team_a_name} code={match.team_a_code} managers={match.team_a_managers} />
+              <PulseChoice label="Tie" managers={match.tie_managers} />
+              <PulseChoice label={match.team_b_name} code={match.team_b_code} managers={match.team_b_managers} />
             </div>
           </article>
         ))}
@@ -97,15 +98,30 @@ function PredictionPulse({ pulse }) {
   );
 }
 
-function PulseChoice({ label, code, count, managers }) {
+function PulseChoice({ label, code, managers }) {
   return (
     <div className="pulse-choice">
       <div>
         <strong>{label === "Tie" ? "Tie" : <TeamLabel name={label} code={code} compact />}</strong>
-        <span>{managers || "No picks"}</span>
+        <ManagerChips managers={managers} />
       </div>
-      <b>{count}</b>
     </div>
+  );
+}
+
+function ManagerChips({ managers }) {
+  const names = String(managers || "")
+    .split(",")
+    .map((name) => name.trim())
+    .filter(Boolean);
+
+  if (!names.length) return <span className="manager-empty">No picks</span>;
+  return (
+    <span className="manager-chips">
+      {names.map((name) => (
+        <em key={name}>{name}</em>
+      ))}
+    </span>
   );
 }
 
@@ -117,6 +133,13 @@ function TeamLabel({ name, code, team, compact = false }) {
       <span>{label}</span>
     </span>
   );
+}
+
+function GroupChip({ group, fallback }) {
+  const label = group ? `Group ${group}` : fallback;
+  if (!label) return null;
+  const groupClass = group ? ` group-${String(group).toLowerCase()}` : "";
+  return <span className={`group-chip${groupClass}`}>{label}</span>;
 }
 
 function Leaderboard({ leaderboard }) {
@@ -187,8 +210,7 @@ function RecentResults({ results }) {
           {rows.map((match) => (
             <article className="result-card" key={match.external_match_id}>
               <div className="result-meta">
-                <span>Match {match.external_match_id}</span>
-                <strong>{match.group_label ? `Group ${match.group_label}` : match.stage}</strong>
+                <GroupChip group={match.group_label} fallback={match.stage} />
               </div>
               <div className="result-scoreline">
                 <TeamLabel team={match.team_a} />
