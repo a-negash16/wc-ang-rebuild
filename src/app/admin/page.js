@@ -1,3 +1,5 @@
+import AdminCorrectionsPanel from "./AdminCorrectionsPanel";
+
 export default function AdminPage() {
   return (
     <main className="page">
@@ -10,18 +12,7 @@ export default function AdminPage() {
       </section>
 
       <section className="grid">
-        <article className="panel">
-          <h2>Matches</h2>
-          <p>Set kickoff times, status, scores, winners, and match length.</p>
-        </article>
-        <article className="panel">
-          <h2>Odds</h2>
-          <p>Import Odds API snapshots and lock point values for knockout picks.</p>
-        </article>
-        <article className="panel">
-          <h2>Audit</h2>
-          <p>Review prediction changes and commissioner corrections.</p>
-        </article>
+        <AdminCorrectionsPanel />
       </section>
     </main>
   );

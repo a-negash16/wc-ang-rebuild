@@ -3,6 +3,7 @@ import path from "node:path";
 
 import { getFifaMatchesById } from "@/integrations/fifa-api";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { validatePickForMatch } from "@/rules/predictions";
 import { scoreGroupStagePick, totalLeaderboardPoints } from "@/rules/scoring";
 
 const SEED_DIR = path.join(process.cwd(), "supabase", "seed-data");
@@ -290,6 +291,7 @@ export async function savePrediction({ groupSlug, managerCode, externalMatchId, 
       oldPickTeamId: existing.pick_team_id,
       newPickType: pickType,
       newPickTeamId: pickTeamId,
+      reason: "manager_update",
     });
     return { ok: true, saved_at: savedAt };
   }
@@ -300,6 +302,240 @@ export async function savePrediction({ groupSlug, managerCode, externalMatchId, 
 
   if (insertError) throw new Error(insertError.message);
   return { ok: true, saved_at: savedAt };
+}
+
+export async function getCommissionerCorrectionContext({ groupSlug }) {
+  const supabase = getOptionalSupabaseClient();
+  if (!supabase) {
+    throw new Error("Commissioner corrections require Supabase.");
+  }
+
+  const { data: group, error: groupError } = await supabase
+    .from("groups")
+    .select("id,slug,name")
+    .eq("slug", groupSlug)
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (groupError) throw new Error(groupError.message);
+  if (!group) return null;
+
+  const [{ data: managers, error: managersError }, { data: matchRows, error: matchesError }] =
+    await Promise.all([
+      supabase
+        .from("managers")
+        .select("manager_code,display_name,role")
+        .eq("group_id", group.id)
+        .eq("is_active", true)
+        .order("display_name", { ascending: true }),
+      supabase
+        .from("group_matches")
+        .select(`
+          matches (
+            external_match_id,
+            stage,
+            group_label,
+            kickoff_at,
+            status,
+            team_a:team_a_id ( fifa_code, name ),
+            team_b:team_b_id ( fifa_code, name )
+          )
+        `)
+        .eq("group_id", group.id)
+        .limit(200),
+    ]);
+
+  if (managersError) throw new Error(managersError.message);
+  if (matchesError) throw new Error(matchesError.message);
+
+  const matches = (matchRows || [])
+    .map((row) => row.matches)
+    .filter(Boolean)
+    .filter((match) => match.team_a && match.team_b)
+    .sort(sortByKickoffDesc)
+    .map((match) => ({
+      external_match_id: match.external_match_id,
+      stage: match.stage,
+      group_label: match.group_label,
+      kickoff_at: match.kickoff_at,
+      status: match.status,
+      team_a: match.team_a,
+      team_b: match.team_b,
+    }));
+
+  return {
+    group,
+    managers: managers || [],
+    matches,
+  };
+}
+
+export async function applyCommissionerPredictionCorrection({
+  groupSlug,
+  commissionerCode,
+  managerCode,
+  externalMatchId,
+  pickType,
+  reason,
+}) {
+  const supabase = getOptionalSupabaseClient();
+  if (!supabase) {
+    throw new Error("Commissioner corrections require Supabase.");
+  }
+
+  const cleanReason = String(reason || "").trim();
+  if (cleanReason.length < 6) {
+    throw new Error("A correction reason is required.");
+  }
+
+  const { data: group, error: groupError } = await supabase
+    .from("groups")
+    .select("id,slug")
+    .eq("slug", groupSlug)
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (groupError) throw new Error(groupError.message);
+  if (!group) throw new Error("Group not found");
+
+  const { data: commissioner, error: commissionerError } = await supabase
+    .from("managers")
+    .select("id,manager_code,display_name,role")
+    .eq("group_id", group.id)
+    .eq("manager_code", commissionerCode)
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (commissionerError) throw new Error(commissionerError.message);
+  if (!commissioner || commissioner.role !== "commissioner") {
+    throw new Error("Commissioner access required");
+  }
+
+  const { data: manager, error: managerError } = await supabase
+    .from("managers")
+    .select("id,manager_code,display_name")
+    .eq("group_id", group.id)
+    .eq("manager_code", managerCode)
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (managerError) throw new Error(managerError.message);
+  if (!manager) throw new Error("Manager not found");
+
+  const { data: groupMatch, error: matchError } = await supabase
+    .from("group_matches")
+    .select(`
+      group_id,
+      match_id,
+      matches!inner (
+        id,
+        external_match_id,
+        stage,
+        team_a_id,
+        team_b_id,
+        team_a:team_a_id ( id, fifa_code, name ),
+        team_b:team_b_id ( id, fifa_code, name )
+      )
+    `)
+    .eq("group_id", group.id)
+    .eq("matches.external_match_id", externalMatchId)
+    .maybeSingle();
+
+  if (matchError) throw new Error(matchError.message);
+  if (!groupMatch?.matches) throw new Error("Match not found");
+
+  const match = groupMatch.matches;
+  const validation = validatePickForMatch({ pickType, match });
+  if (!validation.ok) throw new Error(validation.message);
+
+  const pickTeamId = pickType === "team_a"
+    ? match.team_a_id
+    : pickType === "team_b"
+      ? match.team_b_id
+      : null;
+
+  const { data: existing, error: existingError } = await supabase
+    .from("predictions")
+    .select("id,pick_type,pick_team_id")
+    .eq("group_id", group.id)
+    .eq("manager_id", manager.id)
+    .eq("match_id", match.id)
+    .eq("status", "active")
+    .maybeSingle();
+
+  if (existingError) throw new Error(existingError.message);
+
+  const savedAt = new Date().toISOString();
+  const predictionRow = {
+    group_id: group.id,
+    manager_id: manager.id,
+    match_id: match.id,
+    pick_type: pickType,
+    pick_team_id: pickTeamId,
+    status: "active",
+    updated_at: savedAt,
+  };
+
+  const previous = existing
+    ? {
+        oldPickType: existing.pick_type,
+        oldPickTeamId: existing.pick_team_id,
+      }
+    : {
+        oldPickType: null,
+        oldPickTeamId: null,
+      };
+
+  if (existing?.pick_type === pickType && existing?.pick_team_id === pickTeamId) {
+    return {
+      ok: true,
+      changed: false,
+      saved_at: savedAt,
+      manager,
+      match,
+      pick_label: formatPickLabel({ pick_type: pickType, pick_team_name: pickNameForMatch({ match, pickType }) }),
+    };
+  }
+
+  let predictionId = existing?.id;
+  if (existing) {
+    const { error: updateError } = await supabase
+      .from("predictions")
+      .update(predictionRow)
+      .eq("id", existing.id);
+    if (updateError) throw new Error(updateError.message);
+  } else {
+    const { data: inserted, error: insertError } = await supabase
+      .from("predictions")
+      .insert(predictionRow)
+      .select("id")
+      .single();
+    if (insertError) throw new Error(insertError.message);
+    predictionId = inserted.id;
+  }
+
+  await appendPredictionAudit({
+    supabase,
+    predictionId,
+    groupId: group.id,
+    managerId: manager.id,
+    matchId: match.id,
+    oldPickType: previous.oldPickType,
+    oldPickTeamId: previous.oldPickTeamId,
+    newPickType: pickType,
+    newPickTeamId: pickTeamId,
+    changedBy: commissioner.id,
+    reason: `commissioner_correction: ${cleanReason}`,
+  });
+
+  return {
+    ok: true,
+    changed: true,
+    saved_at: savedAt,
+    manager,
+    match,
+    pick_label: formatPickLabel({ pick_type: pickType, pick_team_name: pickNameForMatch({ match, pickType }) }),
+  };
 }
 
 export async function getManagerPickPreview({ groupSlug, managerCode }) {
@@ -729,6 +965,8 @@ async function appendPredictionAudit({
   oldPickTeamId,
   newPickType,
   newPickTeamId,
+  changedBy = null,
+  reason = "manager_update",
 }) {
   if (oldPickType === newPickType && oldPickTeamId === newPickTeamId) return;
 
@@ -743,7 +981,8 @@ async function appendPredictionAudit({
       old_pick_team_id: oldPickTeamId,
       new_pick_type: newPickType,
       new_pick_team_id: newPickTeamId,
-      reason: "manager_update",
+      changed_by: changedBy,
+      reason,
     });
   if (error) throw new Error(error.message);
 }
@@ -833,6 +1072,13 @@ function formatPickLabel(pick) {
   if (!pick) return null;
   if (pick.pick_type === "tie") return "Tie";
   return pick.pick_team_name || null;
+}
+
+function pickNameForMatch({ match, pickType }) {
+  if (pickType === "tie") return "Tie";
+  if (pickType === "team_a") return match.team_a?.name || null;
+  if (pickType === "team_b") return match.team_b?.name || null;
+  return null;
 }
 
 function shouldRevealPulse({ kickoffAt, lockMinutesBeforeKickoff }) {

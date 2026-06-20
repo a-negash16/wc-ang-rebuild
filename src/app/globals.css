@@ -715,6 +715,60 @@ button:disabled {
   margin: 0;
 }
 
+.admin-tool-panel {
+  display: grid;
+  gap: 16px;
+  grid-column: 1 / -1;
+}
+
+.admin-correction-form {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.admin-correction-form label {
+  display: grid;
+  gap: 6px;
+}
+
+.admin-correction-form label span {
+  color: var(--accent-900);
+  font-size: 0.78rem;
+  font-weight: 850;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.admin-correction-form input,
+.admin-correction-form select {
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  color: var(--ink);
+  min-width: 0;
+  padding: 10px 12px;
+}
+
+.admin-correction-form .admin-reason {
+  grid-column: 1 / 3;
+}
+
+.admin-correction-form button {
+  align-self: end;
+  background: var(--accent-700);
+  border: 1.5px solid transparent;
+  border-radius: var(--r-md);
+  color: var(--white);
+  font-weight: 800;
+  min-height: 46px;
+  padding: 10px 14px;
+}
+
+.admin-correction-form button:hover {
+  background: var(--accent-900);
+}
+
 .match-day {
   display: grid;
   gap: 12px;
@@ -1416,6 +1470,12 @@ button:disabled {
   }
 
   .auth-form {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-correction-form,
+  .admin-correction-form .admin-reason {
+    grid-column: auto;
     grid-template-columns: 1fr;
   }
 
