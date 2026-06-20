@@ -322,6 +322,68 @@ export async function getPredictionPulse({ groupSlug, externalMatchIds = [] }) {
   return [];
 }
 
+export async function getRecentResults({ groupSlug, limit = 8 }) {
+  const supabase = getOptionalSupabaseClient();
+  if (supabase) {
+    const { data: group, error: groupError } = await supabase
+      .from("groups")
+      .select("id")
+      .eq("slug", groupSlug)
+      .eq("is_active", true)
+      .maybeSingle();
+
+    if (groupError) throw new Error(groupError.message);
+    if (!group) return [];
+
+    const { data, error } = await supabase
+      .from("group_matches")
+      .select(`
+        matches (
+          external_match_id,
+          stage,
+          group_label,
+          kickoff_at,
+          status,
+          team_a_score,
+          team_b_score,
+          winner_team_id,
+          length,
+          team_a:team_a_id ( id, fifa_code, name ),
+          team_b:team_b_id ( id, fifa_code, name )
+        )
+      `)
+      .eq("group_id", group.id)
+      .limit(200);
+
+    if (error) throw new Error(error.message);
+    return normalizeRecentResults(data || [], limit);
+  }
+
+  const [matches, teams] = await Promise.all([
+    readSeedJson("matches.json"),
+    readSeedJson("teams.json"),
+  ]);
+  const teamByCode = new Map(teams.map((team) => [team.fifa_code, team]));
+
+  return matches
+    .filter((match) => match.status === "finished")
+    .sort((a, b) => new Date(b.kickoff_at).getTime() - new Date(a.kickoff_at).getTime())
+    .slice(0, limit)
+    .map((match) => ({
+      external_match_id: match.external_match_id,
+      stage: match.stage,
+      group_label: match.group_label,
+      kickoff_at: match.kickoff_at,
+      status: match.status,
+      team_a_score: match.team_a_score ?? null,
+      team_b_score: match.team_b_score ?? null,
+      winner_team_id: match.winner_team_id ?? null,
+      length: match.length ?? null,
+      team_a: teamByCode.get(match.team_a_code) || null,
+      team_b: teamByCode.get(match.team_b_code) || null,
+    }));
+}
+
 export async function getManagerPredictionState({ groupSlug, managerCode }) {
   const overview = await getGroupOverview(groupSlug);
   if (!overview) return null;
@@ -461,6 +523,15 @@ function normalizeSupabaseMatches(rows) {
     .filter((match) => new Date(match.kickoff_at).getTime() >= Date.now())
     .sort((a, b) => new Date(a.kickoff_at).getTime() - new Date(b.kickoff_at).getTime())
     .slice(0, 8);
+}
+
+function normalizeRecentResults(rows, limit) {
+  return rows
+    .map((row) => row.matches)
+    .filter(Boolean)
+    .filter((match) => match.status === "finished")
+    .sort((a, b) => new Date(b.kickoff_at).getTime() - new Date(a.kickoff_at).getTime())
+    .slice(0, limit);
 }
 
 function formatPickLabel(pick) {

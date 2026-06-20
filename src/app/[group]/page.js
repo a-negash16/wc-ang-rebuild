@@ -1,16 +1,22 @@
 import { notFound } from "next/navigation";
 
-import { getGroupOverview, getLeaderboardShell, getPredictionPulseState } from "@/data/league";
+import {
+  getGroupOverview,
+  getLeaderboardShell,
+  getPredictionPulseState,
+  getRecentResults,
+} from "@/data/league";
 import PredictionPanel from "./PredictionPanel";
 
 export const dynamic = "force-dynamic";
 
 export default async function GroupPage({ params }) {
   const { group: groupSlug } = await params;
-  const [group, pulse, leaderboard] = await Promise.all([
+  const [group, pulse, leaderboard, recentResults] = await Promise.all([
     getGroupOverview(groupSlug),
     getPredictionPulseState({ groupSlug }),
     getLeaderboardShell({ groupSlug }),
+    getRecentResults({ groupSlug }),
   ]);
   if (!group) notFound();
   const summary = getStandingSummary(leaderboard?.rows || []);
@@ -48,7 +54,7 @@ export default async function GroupPage({ params }) {
       <PredictionPulse pulse={pulse} />
       <Leaderboard leaderboard={leaderboard} />
       <RulesSection />
-      <RecentResults />
+      <RecentResults results={recentResults} />
     </main>
   );
 }
@@ -120,16 +126,42 @@ function Leaderboard({ leaderboard }) {
           <p className="eyebrow">Scoring</p>
           <h2 id="standings-title">Standings</h2>
         </div>
-        <span className="status-chip">Scoring engine next</span>
+        <span className="status-chip">{rows.length} managers</span>
       </div>
       <article className="panel leaderboard-panel">
-        {rows.length ? rows.map((row) => (
-          <div className="leaderboard-row" key={row.manager_code}>
-            <span>{row.rank}</span>
-            <strong>{row.manager_name}</strong>
-            <b>{row.total_points} pts</b>
+        {rows.length ? (
+          <div className="leaderboard-scroll">
+            <table className="leaderboard-table">
+              <thead>
+                <tr>
+                  <th>Rank</th>
+                  <th>Manager</th>
+                  <th>Group</th>
+                  <th>Players</th>
+                  <th>Teams</th>
+                  <th>Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row) => (
+                  <tr key={row.manager_code}>
+                    <td>
+                      <span className="rank-stack">
+                        <strong>{row.rank}</strong>
+                        <em>{formatRankDelta(row.rank_delta)}</em>
+                      </span>
+                    </td>
+                    <th scope="row">{row.manager_name}</th>
+                    <td>{formatPoints(row.group_stage_points)}</td>
+                    <td>{formatPoints(row.drafted_players_points)}</td>
+                    <td>{formatPoints(row.drafted_teams_points)}</td>
+                    <td><b>{formatPoints(row.total_points)}</b></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        )) : (
+        ) : (
           <p>No standings data yet.</p>
         )}
       </article>
@@ -137,7 +169,8 @@ function Leaderboard({ leaderboard }) {
   );
 }
 
-function RecentResults() {
+function RecentResults({ results }) {
+  const rows = results || [];
   return (
     <section className="section section-band" id="recent-results" aria-labelledby="recent-results-title">
       <div className="section-heading">
@@ -145,12 +178,36 @@ function RecentResults() {
           <p className="eyebrow">Finished matches</p>
           <h2 id="recent-results-title">Recent Results</h2>
         </div>
-        <span className="status-chip">Coming next</span>
+        <span className="status-chip">{rows.length ? `${rows.length} finals` : "No finals yet"}</span>
       </div>
-      <article className="panel quiet-panel">
-        <strong>No finished matches in the rebuild feed yet.</strong>
-        <span>Results will appear here once match status and scoring are wired in.</span>
-      </article>
+      {rows.length ? (
+        <div className="results-grid" aria-label="Recent finished matches">
+          {rows.map((match) => (
+            <article className="result-card" key={match.external_match_id}>
+              <div className="result-meta">
+                <span>Match {match.external_match_id}</span>
+                <strong>{match.group_label ? `Group ${match.group_label}` : match.stage}</strong>
+              </div>
+              <div className="result-scoreline">
+                <TeamLabel name={match.team_a?.name} />
+                <b>{formatScore(match.team_a_score)}</b>
+                <span>-</span>
+                <b>{formatScore(match.team_b_score)}</b>
+                <TeamLabel name={match.team_b?.name} />
+              </div>
+              <div className="result-footer">
+                <span>{formatKickoff(match.kickoff_at)}</span>
+                <strong>{formatResultStatus(match)}</strong>
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <article className="panel quiet-panel">
+          <strong>No finished matches in the rebuild feed yet.</strong>
+          <span>Finished matches will appear here once a match is marked complete.</span>
+        </article>
+      )}
     </section>
   );
 }
@@ -265,6 +322,26 @@ function formatManagerSummary(rows, points) {
   if (rows.length > 3) return `All managers tied (${points} pts)`;
   const names = rows.map((row) => row.manager_name).join(", ");
   return `${names} (${points} pts)`;
+}
+
+function formatPoints(value) {
+  return Number(value || 0);
+}
+
+function formatRankDelta(value) {
+  const delta = Number(value || 0);
+  if (!delta) return "-";
+  return delta > 0 ? `↑${delta}` : `↓${Math.abs(delta)}`;
+}
+
+function formatScore(value) {
+  return value === null || value === undefined ? "-" : value;
+}
+
+function formatResultStatus(match) {
+  if (match.length === "ET") return "Final ET";
+  if (match.length === "Pens") return "Final Pens";
+  return "Final";
 }
 
 function flagForTeamName(name) {
