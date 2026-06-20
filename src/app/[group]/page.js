@@ -164,7 +164,6 @@ function Leaderboard({ leaderboard }) {
                   <th>Group</th>
                   <th>Players</th>
                   <th>Teams</th>
-                  <th>Manual</th>
                   <th>Total</th>
                 </tr>
               </thead>
@@ -181,7 +180,6 @@ function Leaderboard({ leaderboard }) {
                     <td>{formatPoints(row.group_stage_points)}</td>
                     <td>{formatPoints(row.drafted_players_points)}</td>
                     <td>{formatPoints(row.drafted_teams_points)}</td>
-                    <td>{formatPoints(row.manual_adjustment_points)}</td>
                     <td><b>{formatPoints(row.total_points)}</b></td>
                   </tr>
                 ))}
