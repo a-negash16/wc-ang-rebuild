@@ -648,6 +648,73 @@ button:disabled {
   white-space: nowrap;
 }
 
+.saved-picks-panel {
+  background: color-mix(in srgb, var(--white) 88%, var(--accent-100));
+  border-color: color-mix(in srgb, var(--accent-500) 18%, var(--line));
+  display: grid;
+  gap: 12px;
+  padding: 14px 16px;
+}
+
+.saved-picks-panel .rail-heading {
+  padding: 0;
+}
+
+.saved-picks-panel h3 {
+  color: var(--navy-900);
+  font-size: 20px;
+  font-weight: 850;
+  margin: 0;
+}
+
+.saved-picks-rail {
+  display: flex;
+  gap: 10px;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-color: #b8c8bf transparent;
+}
+
+.saved-pick-chip {
+  background: var(--white);
+  border: 1px solid color-mix(in srgb, var(--accent-500) 18%, var(--line));
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-sm);
+  display: grid;
+  flex: 0 0 clamp(190px, 24vw, 260px);
+  gap: 2px;
+  padding: 10px 12px;
+}
+
+.saved-pick-chip strong {
+  color: var(--accent-900);
+  font-size: 1rem;
+  font-weight: 900;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.saved-pick-chip span,
+.saved-pick-chip small,
+.saved-picks-empty {
+  color: var(--ink-mute);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.saved-pick-chip span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.saved-picks-empty {
+  margin: 0;
+}
+
 .match-day {
   display: grid;
   gap: 12px;

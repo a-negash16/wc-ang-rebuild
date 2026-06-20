@@ -39,6 +39,11 @@ export default function PredictionPanel({
     const urgentIds = new Set(urgentMatches.map((match) => match.external_match_id));
     return pickState.filter((match) => urgentIds.has(match.external_match_id));
   }, [pickState, urgentMatches]);
+  const savedPicks = useMemo(() => {
+    return pickState
+      .filter((match) => !match.is_missing)
+      .sort((left, right) => new Date(left.kickoff_at).getTime() - new Date(right.kickoff_at).getTime());
+  }, [pickState]);
   const missingCount = urgentPickState.filter((match) => match.is_missing).length;
   const savedCount = urgentPickState.filter((match) => !match.is_missing).length;
   const nextMissingPick = urgentPickState.find((match) => match.is_missing);
@@ -210,6 +215,10 @@ export default function PredictionPanel({
         </article>
       ) : null}
 
+      {session ? (
+        <SavedPicksPreview picks={savedPicks} timezone={timezone} />
+      ) : null}
+
       <div className="section-heading compact">
         <div>
           <p className="eyebrow">Open picks</p>
@@ -286,6 +295,33 @@ export default function PredictionPanel({
         </article>
       )}
     </section>
+  );
+}
+
+function SavedPicksPreview({ picks, timezone }) {
+  return (
+    <article className="panel saved-picks-panel">
+      <div className="rail-heading">
+        <div>
+          <p className="eyebrow">Saved picks</p>
+          <h3>Current selections</h3>
+        </div>
+        <span>{picks.length ? `${picks.length} saved` : "None yet"}</span>
+      </div>
+      {picks.length ? (
+        <div className="saved-picks-rail" aria-label="Saved prediction preview">
+          {picks.map((pick) => (
+            <div className="saved-pick-chip" key={pick.external_match_id}>
+              <strong>{pick.pick_label}</strong>
+              <span>{formatTeams(pick)}</span>
+              <small>{formatTicketKickoff(pick.kickoff_at, timezone)}</small>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="saved-picks-empty">Saved picks will appear here after you submit them.</p>
+      )}
+    </article>
   );
 }
 
