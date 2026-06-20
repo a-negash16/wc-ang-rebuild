@@ -7,6 +7,7 @@ import { scoreGroupStagePick, totalLeaderboardPoints } from "@/rules/scoring";
 
 const SEED_DIR = path.join(process.cwd(), "supabase", "seed-data");
 const PULSE_RECENT_LIMIT = 3;
+const UPCOMING_MATCH_LIMIT = 16;
 
 export async function getGroups() {
   const supabase = getOptionalSupabaseClient();
@@ -94,7 +95,7 @@ export async function getGroupOverview(groupSlug) {
   const now = Date.now();
   const upcomingMatches = matches
     .filter((match) => new Date(match.kickoff_at).getTime() >= now)
-    .slice(0, 8)
+    .slice(0, UPCOMING_MATCH_LIMIT)
     .map((match) => ({
       external_match_id: match.external_match_id,
       stage: match.stage,
@@ -716,7 +717,7 @@ function normalizeSupabaseMatches(rows) {
     .filter(Boolean)
     .filter((match) => new Date(match.kickoff_at).getTime() >= Date.now())
     .sort(sortByKickoffAsc)
-    .slice(0, 8);
+    .slice(0, UPCOMING_MATCH_LIMIT);
 }
 
 function normalizePulseMatches(rows, limit) {

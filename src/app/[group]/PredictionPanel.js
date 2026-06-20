@@ -6,7 +6,7 @@ const STORAGE_KEY = "wc_ang_rebuild_session";
 const TODAY = "Today";
 const TOMORROW = "Tomorrow";
 const LATER = "Later";
-const URGENT_PICK_WINDOW_MS = 12 * 60 * 60 * 1000;
+const PICK_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 export default function PredictionPanel({ groupSlug, managers, matches, lockMinutesBeforeKickoff }) {
   const [session, setSession] = useState(null);
@@ -25,7 +25,7 @@ export default function PredictionPanel({ groupSlug, managers, matches, lockMinu
     return openMatches.filter((match) => {
       const deadline = getDeadline(match.kickoff_at, lockMinutesBeforeKickoff);
       const msUntilDeadline = deadline.getTime() - now;
-      return msUntilDeadline > 0 && msUntilDeadline <= URGENT_PICK_WINDOW_MS;
+      return msUntilDeadline > 0 && msUntilDeadline <= PICK_WINDOW_MS;
     });
   }, [lockMinutesBeforeKickoff, now, openMatches]);
   const groupedMatches = useMemo(() => groupMatches(urgentMatches), [urgentMatches]);
@@ -99,8 +99,8 @@ export default function PredictionPanel({ groupSlug, managers, matches, lockMinu
       });
       const payload = await response.json();
       if (!response.ok || !payload.ok) throw new Error(payload.message || "Could not save pick");
-      setStatus(payload.message);
-      loadPickState(session.token);
+      setStatus(`Saved: ${getPickLabel(match, pickType)} for Match ${match.external_match_id.slice(-2)}`);
+      await loadPickState(session.token);
     } catch (error) {
       setStatus(error.message);
     } finally {
@@ -200,7 +200,7 @@ export default function PredictionPanel({ groupSlug, managers, matches, lockMinu
           <p className="eyebrow">Open picks</p>
           <h2>Closing Soon</h2>
         </div>
-        <span className="status-chip">12-hour window</span>
+        <span className="status-chip">24-hour window</span>
       </div>
 
       {urgentMatches.length ? (
@@ -232,6 +232,7 @@ export default function PredictionPanel({ groupSlug, managers, matches, lockMinu
                     <div className="ticket-divider" />
                     <div className="match-meta">
                       <b>{formatTimeLeft(deadline, now)}</b>
+                      <span>{currentPick?.pick_label ? `Saved: ${currentPick.pick_label}` : "No pick saved"}</span>
                     </div>
                     <div className="pick-buttons">
                       <PickButton
@@ -264,7 +265,7 @@ export default function PredictionPanel({ groupSlug, managers, matches, lockMinu
         ) : null)
       ) : (
         <article className="panel quiet-panel">
-          <strong>No picks closing in the next 12 hours.</strong>
+          <strong>No picks closing in the next 24 hours.</strong>
           <span>Upcoming matches will appear here when they enter the pick window.</span>
         </article>
       )}
@@ -389,6 +390,13 @@ function formatTimeLeft(deadline, now) {
 
 function formatTeams(match) {
   return `${match.team_a?.name || "TBD"} vs ${match.team_b?.name || "TBD"}`;
+}
+
+function getPickLabel(match, pickType) {
+  if (pickType === "tie") return "Tie";
+  if (pickType === "team_a") return match.team_a?.name || "Team A";
+  if (pickType === "team_b") return match.team_b?.name || "Team B";
+  return "Pick";
 }
 
 function flagForTeam(team) {
