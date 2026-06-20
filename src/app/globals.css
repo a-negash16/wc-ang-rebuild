@@ -160,31 +160,13 @@ button:disabled {
   width: 30px;
 }
 
-.brand span,
-.topbar nav {
+.brand span {
   color: var(--ink-soft);
   font-size: 0.92rem;
 }
 
 .brand span {
   display: none;
-}
-
-.topbar nav {
-  display: flex;
-  gap: var(--s-3);
-  font-weight: 600;
-}
-
-.topbar nav a {
-  border-bottom: 2px solid transparent;
-  padding: 0.35rem 0;
-  transition: color 0.15s, border-color 0.15s;
-}
-
-.topbar nav a:hover {
-  border-bottom-color: var(--gold-500);
-  color: var(--accent-700);
 }
 
 .page {
@@ -302,6 +284,72 @@ button:disabled {
   border-color: var(--accent-900);
   color: var(--white);
   transform: translateY(-1px);
+}
+
+.home-hero {
+  min-height: 380px;
+}
+
+.group-picker {
+  align-items: stretch;
+  display: grid;
+  gap: var(--s-3);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: calc(var(--s-4) * -0.55);
+  position: relative;
+  z-index: 2;
+}
+
+.group-card {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--accent-100) 52%, var(--white)), var(--white) 72%);
+  border-color: color-mix(in srgb, var(--accent-500) 28%, var(--line));
+  display: grid;
+  gap: 0.75rem;
+  min-height: 220px;
+  overflow: hidden;
+  position: relative;
+}
+
+.group-card::before {
+  background: var(--accent-700);
+  content: "";
+  height: 8px;
+  left: 0;
+  position: absolute;
+  right: 0;
+  top: 0;
+}
+
+.group-card h2 {
+  color: var(--accent-900);
+  font-family: var(--font-display);
+  font-size: clamp(2.75rem, 6vw, 4rem);
+  font-weight: 400;
+  line-height: 0.92;
+  margin-top: 0.35rem;
+}
+
+.group-card p {
+  margin: 0;
+}
+
+.group-card a {
+  align-self: end;
+  background: var(--accent-900);
+  border: 1.5px solid var(--accent-900);
+  border-radius: var(--r-md);
+  color: var(--white);
+  font-weight: 800;
+  justify-self: start;
+  margin-top: var(--s-1);
+  padding: 0.75rem 1.1rem;
+}
+
+.group-card a:hover {
+  background: var(--gold-500);
+  border-color: var(--gold-500);
+  color: var(--navy-900);
 }
 
 .grid {
@@ -1197,6 +1245,7 @@ button:disabled {
 
 @media (max-width: 640px) {
   .grid,
+  .group-picker,
   .flow,
   .prediction-grid,
   .hero-dashboard,
@@ -1205,9 +1254,7 @@ button:disabled {
   }
 
   .topbar {
-    align-items: flex-start;
-    gap: 12px;
-    flex-direction: column;
+    align-items: center;
   }
 
   .match-list li {

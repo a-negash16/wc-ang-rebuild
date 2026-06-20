@@ -19,15 +19,10 @@ export default function RootLayout({ children }) {
       <body>
         <div className="app-shell">
           <header className="topbar">
-            <div className="brand">
+            <a className="brand" href="/">
               <strong>WC ANG</strong>
-              <span>Prediction league rebuild</span>
-            </div>
-            <nav aria-label="Primary">
-              <a href="/">Overview</a>
-              <a href="/squad">Squad</a>
-              <a href="/admin">Admin</a>
-            </nav>
+              <span>Prediction League</span>
+            </a>
           </header>
           {children}
         </div>
