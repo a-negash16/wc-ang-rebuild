@@ -93,6 +93,12 @@ Generate production PIN hashes with:
 node scripts/hash-pin.mjs 12345
 ```
 
+Generate a production session secret with:
+
+```sh
+npm run generate:session-secret
+```
+
 Or update a manager directly from `.env.local`:
 
 ```sh

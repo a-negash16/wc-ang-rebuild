@@ -23,6 +23,12 @@ Required safety checks:
 - `DEV_MANAGER_PIN` is empty for any real deployment.
 - Real PINs are never committed to seed files.
 
+Generate a strong session secret with:
+
+```sh
+npm run generate:session-secret
+```
+
 Run:
 
 ```sh
@@ -49,7 +55,7 @@ Confirm:
 Run:
 
 ```sh
-npm run supabase:check
+npm run supabase:check -- --strict
 ```
 
 ## 3. Manager PINs
