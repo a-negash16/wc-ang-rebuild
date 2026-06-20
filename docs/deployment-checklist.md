@@ -66,11 +66,24 @@ Set each real manager PIN privately:
 npm run set-manager-pin -- squad M001 12345
 ```
 
+Or generate unique random PINs for every unset manager and save a local-only CSV:
+
+```sh
+npm run generate:manager-pins
+```
+
+When the CSV looks good, update Supabase:
+
+```sh
+npm run generate:manager-pins -- --write
+```
+
 Repeat for each group and manager.
 
 Confirm:
 
 - No manager still has `pin_hash = SET_BY_COMMISSIONER` before launch.
+- `private/manager-pins.csv` is kept private and never committed.
 - The commissioner keeps the real PIN list privately.
 - Managers only receive their group link and their own PIN.
 

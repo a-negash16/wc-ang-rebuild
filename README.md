@@ -105,6 +105,13 @@ Or update a manager directly from `.env.local`:
 npm run set-manager-pin -- squad M001 12345
 ```
 
+Generate private random PINs for unset managers:
+
+```sh
+npm run generate:manager-pins
+npm run generate:manager-pins -- --write
+```
+
 Smoke-test the Supabase prediction flow:
 
 ```sh
