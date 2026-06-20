@@ -187,7 +187,10 @@ function Leaderboard({ leaderboard }) {
             </table>
           </div>
         ) : (
-          <p>No standings data yet.</p>
+          <div className="empty-state compact">
+            <strong>No standings data yet.</strong>
+            <span>Scores will appear here after the first completed match is processed.</span>
+          </div>
         )}
       </article>
     </section>
@@ -227,7 +230,7 @@ function RecentResults({ results }) {
           ))}
         </div>
       ) : (
-        <article className="panel quiet-panel">
+        <article className="panel empty-state">
           <strong>No finished matches in the rebuild feed yet.</strong>
           <span>Finished matches will appear here once a match is marked complete.</span>
         </article>

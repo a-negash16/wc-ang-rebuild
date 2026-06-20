@@ -280,7 +280,7 @@ export default function PredictionPanel({
           </div>
         ) : null)
       ) : (
-        <article className="panel quiet-panel">
+        <article className="panel empty-state">
           <strong>No picks closing in the next 24 hours.</strong>
           <span>Upcoming matches will appear here when they enter the pick window.</span>
         </article>

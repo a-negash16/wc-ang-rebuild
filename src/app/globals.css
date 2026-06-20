@@ -85,6 +85,7 @@ body {
   font-family: var(--font-sans);
   font-size: 16px;
   line-height: 1.55;
+  overflow-x: clip;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
@@ -659,6 +660,7 @@ button:disabled {
   gap: 14px;
   max-width: 100%;
   min-width: 0;
+  overscroll-behavior-inline: contain;
   overflow-x: auto;
   padding: 4px 2px 14px;
   scroll-snap-type: x mandatory;
@@ -688,6 +690,35 @@ button:disabled {
 
 .quiet-panel span {
   color: var(--ink-mute);
+}
+
+.empty-state {
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--accent-100) 64%, var(--white)), var(--white));
+  border: 1px dashed color-mix(in srgb, var(--accent-500) 26%, var(--line));
+  border-radius: var(--r-lg);
+  color: var(--ink-soft);
+  display: grid;
+  gap: 4px;
+  padding: var(--s-3);
+}
+
+.empty-state.compact {
+  border: 0;
+  border-radius: 0;
+  padding: var(--s-3);
+}
+
+.empty-state strong {
+  color: var(--navy-900);
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.empty-state span {
+  color: var(--ink-mute);
+  font-size: 0.95rem;
+  font-weight: 700;
 }
 
 .prediction-grid {
@@ -1270,6 +1301,14 @@ button:disabled {
 }
 
 @media (max-width: 640px) {
+  .section {
+    padding: var(--s-5) var(--s-2);
+  }
+
+  .hero {
+    padding: var(--s-5) var(--s-2) var(--s-4);
+  }
+
   .grid,
   .group-picker,
   .flow,
@@ -1297,6 +1336,12 @@ button:disabled {
     align-items: flex-start;
     flex-direction: column;
     gap: 8px;
+    margin-bottom: 0;
+    max-width: none;
+  }
+
+  .section-heading h2 {
+    font-size: clamp(2rem, 12vw, 3rem);
   }
 
   .checklist-pill {
@@ -1322,14 +1367,20 @@ button:disabled {
   }
 
   .swipe-rail > * {
-    flex-basis: min(86vw, 390px);
+    flex-basis: min(88vw, 390px);
   }
 
   .prediction-card {
     border-radius: 20px;
     gap: 14px;
-    min-height: 365px;
+    min-height: 0;
     padding: 22px 20px;
+  }
+
+  .match-meta {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
   }
 
   .ticket-meta {
@@ -1384,8 +1435,29 @@ button:disabled {
     min-height: 52px;
   }
 
+  .pulse-rail > * {
+    flex-basis: min(88vw, 390px);
+  }
+
   .pulse-card {
+    gap: 12px;
     min-height: 190px;
+    padding: 16px;
+  }
+
+  .pulse-card-heading strong {
+    align-items: flex-start;
+    flex-direction: column;
+    font-size: 20px;
+  }
+
+  .pulse-card-heading em {
+    font-size: 1.5rem;
+    line-height: 0.8;
+  }
+
+  .pulse-choice {
+    padding: 10px;
   }
 
   .leaderboard-table {
@@ -1399,6 +1471,35 @@ button:disabled {
 
   .results-grid {
     grid-template-columns: 1fr;
+  }
+
+  .result-card {
+    gap: var(--s-2);
+    padding: var(--s-3);
+  }
+
+  .result-scoreline {
+    align-items: start;
+    grid-template-columns: minmax(0, 1fr) auto auto auto;
+  }
+
+  .result-scoreline .team-label {
+    grid-column: 1 / -1;
+  }
+
+  .result-scoreline .team-label:last-child {
+    justify-content: flex-start;
+    text-align: left;
+  }
+
+  .result-scoreline b {
+    font-size: 1.8rem;
+  }
+
+  .result-footer {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
   }
 
   .rule-card {
