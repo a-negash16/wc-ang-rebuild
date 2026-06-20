@@ -47,6 +47,7 @@ export default async function GroupPage({ params }) {
 
       <PredictionPulse pulse={pulse} />
       <Leaderboard leaderboard={leaderboard} />
+      <RulesSection />
       <RecentResults />
     </main>
   );
@@ -150,6 +151,92 @@ function RecentResults() {
         <strong>No finished matches in the rebuild feed yet.</strong>
         <span>Results will appear here once match status and scoring are wired in.</span>
       </article>
+    </section>
+  );
+}
+
+function RulesSection() {
+  const rules = [
+    {
+      tag: "1",
+      title: "Group Picks",
+      body: "Pick each group-stage result before the deadline.",
+      rows: [
+        ["Correct winner", "3"],
+        ["Correct tie", "5"],
+      ],
+    },
+    {
+      tag: "Draft",
+      title: "Drafted Players",
+      body: "Drafted player points accumulate throughout the tournament.",
+      rows: [
+        ["Goal", "5"],
+        ["Assist", "3"],
+        ["Player of match", "7"],
+        ["GK/CB clean sheet", "3"],
+      ],
+      draft: true,
+    },
+    {
+      tag: "Teams",
+      title: "Drafted Teams",
+      body: "Drafted teams score every time they advance to another stage.",
+      rows: [
+        ["Each stage advanced", "10"],
+      ],
+    },
+    {
+      tag: "Future",
+      title: "Futures",
+      body: "Champion picks are commissioner-entered and odds-weighted.",
+      rows: [
+        ["Least likely champion", "up to 100"],
+        ["Favorites", "less"],
+      ],
+    },
+    {
+      tag: "KO",
+      title: "Knockouts",
+      body: "Winner picks become odds-weighted after the group stage.",
+      rows: [
+        ["Correct winner", "1-9"],
+        ["Length", "2"],
+        ["Goal scorer", "3"],
+      ],
+    },
+  ];
+
+  return (
+    <section className="section section-band" id="rules" aria-labelledby="rules-title">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">League format</p>
+          <h2 id="rules-title">The Rules</h2>
+        </div>
+        <span className="status-chip">Swipe cards</span>
+      </div>
+      <div className="rules-grid" aria-label="League rules">
+        {rules.map((rule) => (
+          <article className="rule-card" key={rule.title}>
+            <span className={rule.draft ? "rule-tag rule-tag-draft" : "rule-tag"}>
+              {rule.tag}
+            </span>
+            <h3 className="rule-title">{rule.title}</h3>
+            <p>{rule.body}</p>
+            <table className="rule-table">
+              <tbody>
+                {rule.rows.map(([label, value]) => (
+                  <tr key={label}>
+                    <th>{label}</th>
+                    <td>{value}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </article>
+        ))}
+      </div>
     </section>
   );
 }

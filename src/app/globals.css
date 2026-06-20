@@ -887,6 +887,118 @@ button:disabled {
   font-size: 20px;
 }
 
+.rules-grid {
+  display: flex;
+  gap: var(--s-3);
+  overflow-x: auto;
+  padding: 0.2rem var(--s-3) var(--s-2);
+  margin-inline: calc(var(--s-3) * -1);
+  scroll-padding-inline: var(--s-3);
+  scroll-snap-type: x mandatory;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+
+.rules-grid::-webkit-scrollbar {
+  height: 0.65rem;
+}
+
+.rules-grid::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 999px;
+}
+
+.rule-card {
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-md);
+  display: flex;
+  flex: 0 0 min(82vw, 420px);
+  flex-direction: column;
+  min-height: 390px;
+  padding: var(--s-4);
+  scroll-snap-align: start;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.rule-card:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-3px);
+}
+
+.rule-tag {
+  background: var(--accent-700);
+  border-radius: 1.3rem;
+  box-shadow: 0 8px 18px rgba(11, 29, 58, 0.14);
+  color: var(--white);
+  display: inline-grid;
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  font-weight: 900;
+  height: 2.55rem;
+  letter-spacing: 0.02em;
+  margin: 0 0.45rem 0.65rem 0;
+  min-width: 2.55rem;
+  padding: 0 0.75rem;
+  place-items: center;
+  text-transform: uppercase;
+  vertical-align: middle;
+  width: max-content;
+}
+
+.rule-tag-draft {
+  background: var(--navy-900);
+  font-size: 0.86rem;
+  height: 2.65rem;
+  letter-spacing: 0.1em;
+  min-width: 5.8rem;
+}
+
+.rule-title {
+  color: var(--navy-900);
+  font-family: var(--font-display);
+  font-size: 2.15rem;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  line-height: 0.98;
+  margin: 0 0 var(--s-2);
+}
+
+.rule-card p {
+  color: var(--ink-soft);
+  font-size: 1rem;
+  line-height: 1.45;
+  margin: 0 0 var(--s-2);
+}
+
+.rule-table {
+  border-collapse: collapse;
+  font-size: 1rem;
+  margin-top: auto;
+  width: 100%;
+}
+
+.rule-table th,
+.rule-table td {
+  border-bottom: 1px dashed var(--line);
+  padding: 0.62rem 0;
+  text-align: left;
+}
+
+.rule-table th {
+  color: var(--ink-soft);
+  font-weight: 700;
+}
+
+.rule-table td {
+  color: var(--accent-700);
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  text-align: right;
+  width: 5rem;
+}
+
 .leaderboard-panel {
   padding: 0;
   overflow: hidden;
@@ -1041,6 +1153,21 @@ button:disabled {
 
   .pulse-card {
     min-height: 190px;
+  }
+
+  .rule-card {
+    flex-basis: 86vw;
+    min-height: 360px;
+    padding: var(--s-3);
+  }
+
+  .rule-title {
+    font-size: 1.85rem;
+  }
+
+  .rule-table,
+  .rule-card p {
+    font-size: 0.95rem;
   }
 }
 
