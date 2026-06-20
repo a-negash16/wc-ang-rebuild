@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { scoreGroupStagePick, totalLeaderboardPoints } from "@/rules/scoring";
 
 const SEED_DIR = path.join(process.cwd(), "supabase", "seed-data");
 
@@ -456,23 +457,140 @@ export async function getPredictionPulseState({ groupSlug }) {
 export async function getLeaderboardShell({ groupSlug }) {
   const overview = await getGroupOverview(groupSlug);
   if (!overview) return null;
+  const pointsByManager = await getGroupStagePointsByManager(overview);
+  const rows = overview.managers.map((manager) => {
+    const groupStage = pointsByManager.get(manager.manager_code) || 0;
+    const total = totalLeaderboardPoints({
+      groupStage,
+      knockoutPredictions: 0,
+      futures: 0,
+      draftedTeams: 0,
+      draftedPlayers: 0,
+    });
 
-  return {
-    group_slug: groupSlug,
-    scoring_status: "not_started",
-    rows: overview.managers.map((manager, index) => ({
-      rank: index + 1,
+    return {
+      rank: 0,
       manager_code: manager.manager_code,
       manager_name: manager.display_name,
-      total_points: 0,
-      group_stage_points: 0,
+      total_points: total,
+      group_stage_points: groupStage,
       knockout_prediction_points: 0,
       futures_points: 0,
       drafted_teams_points: 0,
       drafted_players_points: 0,
       rank_delta: null,
-    })),
+    };
+  });
+  const rankedRows = rankLeaderboardRows(rows);
+
+  return {
+    group_slug: groupSlug,
+    scoring_status: "group_stage_live",
+    rows: rankedRows,
   };
+}
+
+async function getGroupStagePointsByManager(overview) {
+  const supabase = getOptionalSupabaseClient();
+  if (!supabase || !overview?.id) return new Map();
+
+  const { data, error } = await supabase
+    .from("predictions")
+    .select(`
+      pick_type,
+      pick_team_id,
+      managers!inner ( manager_code ),
+      matches!inner (
+        stage,
+        status,
+        team_a_id,
+        team_b_id,
+        team_a_score,
+        team_b_score,
+        winner_team_id
+      )
+    `)
+    .eq("group_id", overview.id)
+    .eq("status", "active");
+
+  if (error) throw new Error(error.message);
+
+  return (data || []).reduce((totals, prediction) => {
+    const match = prediction.matches;
+    const managerCode = prediction.managers?.manager_code;
+    if (!managerCode || !isGroupStage(match?.stage)) return totals;
+
+    const result = getGroupStageResult(match);
+    if (!result) return totals;
+
+    const points = scoreGroupStagePick({
+      pickType: prediction.pick_type === "tie" ? "tie" : "team",
+      pickedTeamId: prediction.pick_team_id,
+      result,
+    });
+
+    totals.set(managerCode, (totals.get(managerCode) || 0) + points);
+    return totals;
+  }, new Map());
+}
+
+function getGroupStageResult(match) {
+  if (!match || match.status !== "finished") return null;
+  const teamAScore = numberOrNull(match.team_a_score);
+  const teamBScore = numberOrNull(match.team_b_score);
+
+  if (teamAScore !== null && teamBScore !== null) {
+    if (teamAScore === teamBScore) {
+      return {
+        status: "finished",
+        winnerType: "tie",
+        winnerTeamId: null,
+      };
+    }
+
+    return {
+      status: "finished",
+      winnerType: "team",
+      winnerTeamId: teamAScore > teamBScore ? match.team_a_id : match.team_b_id,
+    };
+  }
+
+  if (match.winner_team_id) {
+    return {
+      status: "finished",
+      winnerType: "team",
+      winnerTeamId: match.winner_team_id,
+    };
+  }
+
+  return null;
+}
+
+function rankLeaderboardRows(rows) {
+  const sorted = [...rows].sort((a, b) => {
+    const pointDiff = Number(b.total_points || 0) - Number(a.total_points || 0);
+    if (pointDiff) return pointDiff;
+    return a.manager_name.localeCompare(b.manager_name);
+  });
+
+  let previousPoints = null;
+  let previousRank = 0;
+  return sorted.map((row, index) => {
+    const points = Number(row.total_points || 0);
+    const rank = points === previousPoints ? previousRank : index + 1;
+    previousPoints = points;
+    previousRank = rank;
+    return { ...row, rank };
+  });
+}
+
+function isGroupStage(stage) {
+  return String(stage || "").toLowerCase().includes("group");
+}
+
+function numberOrNull(value) {
+  if (value === null || value === undefined || value === "") return null;
+  return Number.isFinite(Number(value)) ? Number(value) : null;
 }
 
 async function appendPredictionAudit({
