@@ -27,12 +27,12 @@ export default async function GroupPage({ params }) {
         <div className="hero-main">
           <h1 id="group-title">{group.name}</h1>
           <div className="hero-rows" aria-label="Group summary">
-            <div className="hero-row">
-              <span>Leader(s)</span>
+            <div className="hero-row hero-status-line">
+              <span aria-hidden="true">⭐</span>
               <strong>{summary.leaders}</strong>
             </div>
-            <div className="hero-row">
-              <span>Last place(s)</span>
+            <div className="hero-row hero-status-line">
+              <span aria-hidden="true">🤡</span>
               <strong>{summary.lastPlace}</strong>
             </div>
             <nav className="hero-actions" aria-label="Page sections">
@@ -340,15 +340,29 @@ function getStandingSummary(rows) {
   const lastPlace = rows.filter((row) => Number(row.total_points || 0) === bottom);
 
   return {
-    leaders: formatManagerSummary(leaders, top),
-    lastPlace: formatManagerSummary(lastPlace, bottom),
+    leaders: formatStandingSentence(leaders, top, {
+      singular: "leads",
+      plural: "lead",
+    }),
+    lastPlace: formatStandingSentence(lastPlace, bottom, {
+      singular: "is last",
+      plural: "are last",
+    }),
   };
 }
 
-function formatManagerSummary(rows, points) {
-  if (rows.length > 3) return `All managers tied (${points} pts)`;
-  const names = rows.map((row) => row.manager_name).join(", ");
-  return `${names} (${points} pts)`;
+function formatStandingSentence(rows, points, verbs) {
+  if (!rows.length) return "No standings yet";
+  if (rows.length > 3) return `All managers are tied with ${points} pts`;
+  const names = formatNameList(rows.map((row) => row.manager_name));
+  const verb = rows.length === 1 ? verbs.singular : verbs.plural;
+  return `${names} ${verb} with ${points} pts`;
+}
+
+function formatNameList(names) {
+  if (names.length <= 1) return names[0] || "";
+  if (names.length === 2) return `${names[0]} and ${names[1]}`;
+  return `${names.slice(0, -1).join(", ")}, and ${names.at(-1)}`;
 }
 
 function formatPoints(value) {

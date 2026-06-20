@@ -260,6 +260,26 @@ button:disabled {
   font-weight: 700;
 }
 
+.hero-status-line {
+  grid-template-columns: auto minmax(0, 1fr);
+  justify-content: start;
+}
+
+.hero-status-line span {
+  color: inherit;
+  font-family: var(--font-sans);
+  font-size: 1.05rem;
+  font-weight: 400;
+  line-height: 1;
+  text-transform: none;
+}
+
+.hero-status-line strong {
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  letter-spacing: 0;
+}
+
 .hero-actions {
   display: flex;
   flex-wrap: wrap;
