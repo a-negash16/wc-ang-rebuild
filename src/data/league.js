@@ -370,6 +370,70 @@ export async function getCommissionerCorrectionContext({ groupSlug }) {
   };
 }
 
+export async function getCommissionerAuditLog({ groupSlug, limit = 25 }) {
+  const supabase = getOptionalSupabaseClient();
+  if (!supabase) {
+    throw new Error("Commissioner audit requires Supabase.");
+  }
+
+  const { data: group, error: groupError } = await supabase
+    .from("groups")
+    .select("id,slug,name")
+    .eq("slug", groupSlug)
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (groupError) throw new Error(groupError.message);
+  if (!group) return null;
+
+  const { data, error } = await supabase
+    .from("prediction_audit")
+    .select(`
+      id,
+      changed_at,
+      reason,
+      old_pick_type,
+      new_pick_type,
+      manager:manager_id ( manager_code, display_name ),
+      changed_by_manager:changed_by ( manager_code, display_name ),
+      matches (
+        external_match_id,
+        stage,
+        group_label,
+        kickoff_at,
+        team_a:team_a_id ( fifa_code, name ),
+        team_b:team_b_id ( fifa_code, name )
+      ),
+      old_pick_team:old_pick_team_id ( fifa_code, name ),
+      new_pick_team:new_pick_team_id ( fifa_code, name )
+    `)
+    .eq("group_id", group.id)
+    .order("changed_at", { ascending: false })
+    .limit(limit);
+
+  if (error) throw new Error(error.message);
+
+  return {
+    group,
+    audit: (data || []).map((row) => ({
+      id: row.id,
+      changed_at: row.changed_at,
+      reason: row.reason || "",
+      manager: row.manager,
+      changed_by: row.changed_by_manager,
+      match: row.matches,
+      old_pick_label: formatAuditPickLabel({
+        pickType: row.old_pick_type,
+        pickTeam: row.old_pick_team,
+      }),
+      new_pick_label: formatAuditPickLabel({
+        pickType: row.new_pick_type,
+        pickTeam: row.new_pick_team,
+      }),
+    })),
+  };
+}
+
 export async function applyCommissionerPredictionCorrection({
   groupSlug,
   commissionerCode,
@@ -1079,6 +1143,12 @@ function pickNameForMatch({ match, pickType }) {
   if (pickType === "team_a") return match.team_a?.name || null;
   if (pickType === "team_b") return match.team_b?.name || null;
   return null;
+}
+
+function formatAuditPickLabel({ pickType, pickTeam }) {
+  if (!pickType) return "No pick";
+  if (pickType === "tie") return "Tie";
+  return pickTeam?.name || "Unknown team";
 }
 
 function shouldRevealPulse({ kickoffAt, lockMinutesBeforeKickoff }) {

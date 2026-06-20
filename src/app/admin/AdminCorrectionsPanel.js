@@ -12,6 +12,7 @@ export default function AdminCorrectionsPanel() {
   const [pickType, setPickType] = useState("team_a");
   const [reason, setReason] = useState("");
   const [status, setStatus] = useState("");
+  const [auditLog, setAuditLog] = useState([]);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -60,12 +61,24 @@ export default function AdminCorrectionsPanel() {
       setManagerCode(payload.managers?.[0]?.manager_code || "");
       setExternalMatchId(payload.matches?.[0]?.external_match_id || "");
       setStatus(`Commissioner mode: ${payload.group.name}`);
+      await loadAudit(token);
     } catch (error) {
       setContext(null);
       setStatus(error.message);
     } finally {
       setBusy(false);
     }
+  }
+
+  async function loadAudit(token) {
+    const response = await fetch("/api/admin/audit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token }),
+    });
+    const payload = await response.json();
+    if (!response.ok || !payload.ok) throw new Error(payload.message || "Could not load audit log");
+    setAuditLog(payload.audit || []);
   }
 
   async function submitCorrection(event) {
@@ -91,6 +104,7 @@ export default function AdminCorrectionsPanel() {
       setStatus(payload.changed
         ? `Corrected ${payload.manager.display_name}: ${payload.pick_label}`
         : `No change needed for ${payload.manager.display_name}`);
+      await loadAudit(session.token);
     } catch (error) {
       setStatus(error.message);
     } finally {
@@ -167,7 +181,53 @@ export default function AdminCorrectionsPanel() {
       </form>
 
       {status ? <p className="form-status">{status}</p> : null}
+
+      <AuditLog auditLog={auditLog} />
     </article>
+  );
+}
+
+function AuditLog({ auditLog }) {
+  return (
+    <div className="admin-audit-log">
+      <div className="rail-heading">
+        <div>
+          <p className="eyebrow">Audit</p>
+          <h3>Recent corrections</h3>
+        </div>
+        <span>{auditLog.length ? `${auditLog.length} rows` : "No rows"}</span>
+      </div>
+      {auditLog.length ? (
+        <div className="admin-audit-table-wrap">
+          <table className="admin-audit-table">
+            <thead>
+              <tr>
+                <th>When</th>
+                <th>Manager</th>
+                <th>Match</th>
+                <th>Change</th>
+                <th>By</th>
+                <th>Reason</th>
+              </tr>
+            </thead>
+            <tbody>
+              {auditLog.map((row) => (
+                <tr key={row.id}>
+                  <td>{formatShortDate(row.changed_at)}</td>
+                  <td>{row.manager?.display_name || "-"}</td>
+                  <td>{formatAuditMatch(row.match)}</td>
+                  <td>{row.old_pick_label} → {row.new_pick_label}</td>
+                  <td>{row.changed_by?.display_name || "Manager"}</td>
+                  <td>{cleanReason(row.reason)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <p className="saved-picks-empty">Prediction changes will appear here after managers update picks or the commissioner makes corrections.</p>
+      )}
+    </div>
   );
 }
 
@@ -192,4 +252,24 @@ function formatMatchOption(match) {
   }).format(new Date(match.kickoff_at));
   const group = match.group_label ? `Group ${match.group_label}` : match.stage;
   return `${date} - ${group} - ${teams}`;
+}
+
+function formatAuditMatch(match) {
+  if (!match) return "-";
+  const teams = `${match.team_a?.name || "TBD"} vs ${match.team_b?.name || "TBD"}`;
+  const group = match.group_label ? `Group ${match.group_label}` : match.stage;
+  return `${group}: ${teams}`;
+}
+
+function formatShortDate(value) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
+function cleanReason(reason) {
+  return String(reason || "").replace(/^commissioner_correction:\s*/, "");
 }
