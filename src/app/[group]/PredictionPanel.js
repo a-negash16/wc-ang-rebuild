@@ -105,8 +105,12 @@ export default function PredictionPanel({
       });
       const payload = await response.json();
       if (!response.ok || !payload.ok) throw new Error(payload.message || "Could not save pick");
-      setStatus(`Saved: ${getPickLabel(match, pickType)}`);
-      await loadPickState(session.token);
+      const savedAt = payload.saved_at || new Date().toISOString();
+      setStatus(`Saved: ${getPickLabel(match, pickType)} at ${formatSavedAt(savedAt, timezone)}`);
+      const refreshed = await loadPickState(session.token, { clearOnError: false });
+      if (!refreshed) {
+        setStatus(`Saved: ${getPickLabel(match, pickType)}. Refresh to confirm latest card state.`);
+      }
     } catch (error) {
       setStatus(error.message);
     } finally {
@@ -121,7 +125,7 @@ export default function PredictionPanel({
     setStatus("Session cleared.");
   }
 
-  async function loadPickState(token) {
+  async function loadPickState(token, { clearOnError = true } = {}) {
     try {
       const response = await fetch("/api/predictions/state", {
         method: "POST",
@@ -131,10 +135,15 @@ export default function PredictionPanel({
       const payload = await response.json();
       if (response.ok && payload.ok) {
         setPickState(payload.matches || []);
+        return true;
       }
     } catch {
+      if (clearOnError) setPickState([]);
+    }
+    if (clearOnError) {
       setPickState([]);
     }
+    return false;
   }
 
   return (
@@ -236,7 +245,10 @@ export default function PredictionPanel({
                     <div className="ticket-divider" />
                     <div className="match-meta">
                       <b>{formatTimeLeft(deadline, now)}</b>
-                      <span>{currentPick?.pick_label ? `Saved: ${currentPick.pick_label}` : "No pick saved"}</span>
+                      <span className={currentPick?.pick_label ? "pick-receipt saved" : "pick-receipt"}>
+                        <strong>{currentPick?.pick_label ? `Saved: ${currentPick.pick_label}` : "No pick saved"}</strong>
+                        {currentPick?.picked_at ? <small>Confirmed {formatSavedAt(currentPick.picked_at, timezone)}</small> : null}
+                      </span>
                     </div>
                     <div className="pick-buttons">
                       <PickButton
@@ -380,6 +392,17 @@ function formatTimeLeft(deadline, now) {
   const hours = Math.floor(minutes / 60);
   const rest = minutes % 60;
   return rest ? `${hours}h ${rest}m left` : `${hours}h left`;
+}
+
+function formatSavedAt(value, timezone) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: timezone,
+    timeZoneName: "short",
+  }).format(new Date(value));
 }
 
 function formatTeams(match) {

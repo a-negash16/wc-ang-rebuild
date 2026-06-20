@@ -252,14 +252,15 @@ export async function savePrediction({ groupSlug, managerCode, externalMatchId, 
       ? groupMatch.matches.team_b_id
       : null;
 
+  const savedAt = new Date().toISOString();
   const predictionRow = {
-      group_id: groupMatch.group_id,
-      manager_id: manager.id,
-      match_id: groupMatch.match_id,
-      pick_type: pickType,
-      pick_team_id: pickTeamId,
-      status: "active",
-      updated_at: new Date().toISOString(),
+    group_id: groupMatch.group_id,
+    manager_id: manager.id,
+    match_id: groupMatch.match_id,
+    pick_type: pickType,
+    pick_team_id: pickTeamId,
+    status: "active",
+    updated_at: savedAt,
   };
 
   const { data: existing, error: existingError } = await supabase
@@ -290,7 +291,7 @@ export async function savePrediction({ groupSlug, managerCode, externalMatchId, 
       newPickType: pickType,
       newPickTeamId: pickTeamId,
     });
-    return { ok: true };
+    return { ok: true, saved_at: savedAt };
   }
 
   const { error: insertError } = await supabase
@@ -298,7 +299,7 @@ export async function savePrediction({ groupSlug, managerCode, externalMatchId, 
     .insert(predictionRow);
 
   if (insertError) throw new Error(insertError.message);
-  return { ok: true };
+  return { ok: true, saved_at: savedAt };
 }
 
 export async function getManagerPickPreview({ groupSlug, managerCode }) {

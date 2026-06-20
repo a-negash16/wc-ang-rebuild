@@ -33,7 +33,7 @@ export async function POST(request) {
     const validation = validatePickForMatch({ pickType, match });
     if (!validation.ok) return jsonError(validation.message, 400);
 
-    await savePrediction({
+    const saved = await savePrediction({
       groupSlug: session.group_slug,
       managerCode: session.manager_code,
       externalMatchId,
@@ -45,6 +45,7 @@ export async function POST(request) {
       message: "Prediction saved",
       external_match_id: externalMatchId,
       pick_type: pickType,
+      saved_at: saved.saved_at,
     });
   } catch (error) {
     return jsonError(error.message, 400);
