@@ -8,7 +8,13 @@ const TOMORROW = "Tomorrow";
 const LATER = "Later";
 const PICK_WINDOW_MS = 24 * 60 * 60 * 1000;
 
-export default function PredictionPanel({ groupSlug, managers, matches, lockMinutesBeforeKickoff }) {
+export default function PredictionPanel({
+  groupSlug,
+  managers,
+  matches,
+  lockMinutesBeforeKickoff,
+  timezone = "America/New_York",
+}) {
   const [session, setSession] = useState(null);
   const [managerCode, setManagerCode] = useState(() => managers[0]?.manager_code || "");
   const [pin, setPin] = useState("");
@@ -28,7 +34,7 @@ export default function PredictionPanel({ groupSlug, managers, matches, lockMinu
       return msUntilDeadline > 0 && msUntilDeadline <= PICK_WINDOW_MS;
     });
   }, [lockMinutesBeforeKickoff, now, openMatches]);
-  const groupedMatches = useMemo(() => groupMatches(urgentMatches), [urgentMatches]);
+  const groupedMatches = useMemo(() => groupMatches(urgentMatches, timezone), [urgentMatches, timezone]);
   const urgentPickState = useMemo(() => {
     const urgentIds = new Set(urgentMatches.map((match) => match.external_match_id));
     return pickState.filter((match) => urgentIds.has(match.external_match_id));
@@ -99,7 +105,7 @@ export default function PredictionPanel({ groupSlug, managers, matches, lockMinu
       });
       const payload = await response.json();
       if (!response.ok || !payload.ok) throw new Error(payload.message || "Could not save pick");
-      setStatus(`Saved: ${getPickLabel(match, pickType)} for Match ${match.external_match_id.slice(-2)}`);
+      setStatus(`Saved: ${getPickLabel(match, pickType)}`);
       await loadPickState(session.token);
     } catch (error) {
       setStatus(error.message);
@@ -218,15 +224,13 @@ export default function PredictionPanel({ groupSlug, managers, matches, lockMinu
                 return (
                   <article className={currentPick?.is_missing ? "prediction-card needs-pick" : "prediction-card"} key={match.external_match_id}>
                     <div className="ticket-meta">
-                      <span>Match {match.external_match_id.slice(-2)}</span>
                       <b>Group {match.group_label || "-"}</b>
-                      <span>San Francisco Bay Area</span>
                     </div>
                     <div className="ticket-body">
                       <TeamVersus teamA={match.team_a} teamB={match.team_b} />
                       <div className="kickoff-block">
                         <strong>Kickoff</strong>
-                        <span>{formatTicketKickoff(match.kickoff_at)}</span>
+                        <span>{formatTicketKickoff(match.kickoff_at, timezone)}</span>
                       </div>
                     </div>
                     <div className="ticket-divider" />
@@ -287,7 +291,6 @@ function TeamBadge({ team }) {
     <div className="team-badge">
       <span className="flag" aria-hidden="true">{flagForTeam(team)}</span>
       <strong>{team?.name || "TBD"}</strong>
-      <span className="score-placeholder">-</span>
     </div>
   );
 }
@@ -330,30 +333,21 @@ function clearSession() {
   window.localStorage.removeItem(STORAGE_KEY);
 }
 
-function formatKickoff(value) {
+function formatTicketKickoff(value, timezone) {
   return new Intl.DateTimeFormat("en-US", {
     month: "short",
     day: "numeric",
     hour: "numeric",
     minute: "2-digit",
-    timeZone: "America/New_York",
+    timeZone: timezone,
+    timeZoneName: "short",
   }).format(new Date(value));
 }
 
-function formatTicketKickoff(value) {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone: "America/New_York",
-  }).format(new Date(value)).replace(",", ", ");
-}
-
-function groupMatches(matches) {
+function groupMatches(matches, timezone) {
   const buckets = { [TODAY]: [], [TOMORROW]: [], [LATER]: [] };
   const formatter = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/New_York",
+    timeZone: timezone,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",

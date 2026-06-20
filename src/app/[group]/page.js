@@ -49,6 +49,7 @@ export default async function GroupPage({ params }) {
         managers={group.managers}
         matches={group.upcoming_matches}
         lockMinutesBeforeKickoff={group.lock_minutes_before_kickoff}
+        timezone={group.timezone}
       />
 
       <PredictionPulse pulse={pulse} />

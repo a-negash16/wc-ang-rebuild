@@ -685,12 +685,6 @@ button:disabled {
   min-width: 0;
 }
 
-.ticket-meta span {
-  color: #b6c0d1;
-  font-size: 19px;
-  min-width: 0;
-}
-
 .ticket-meta b {
   background: var(--accent-700);
   border-radius: 999px;
@@ -755,7 +749,7 @@ button:disabled {
   align-items: center;
   display: grid;
   gap: 14px;
-  grid-template-columns: 46px minmax(0, 1fr) auto;
+  grid-template-columns: 46px minmax(0, 1fr);
   min-width: 0;
 }
 
@@ -772,12 +766,6 @@ button:disabled {
   line-height: 1.1;
   max-width: 100%;
   overflow-wrap: anywhere;
-}
-
-.score-placeholder {
-  color: #f8fbff !important;
-  font-size: 28px !important;
-  font-weight: 900;
 }
 
 .pick-buttons button {
@@ -1216,10 +1204,6 @@ button:disabled {
     gap: 8px 10px;
   }
 
-  .ticket-meta span {
-    font-size: 16px;
-  }
-
   .ticket-meta b {
     font-size: 13px;
     padding: 5px 12px;
@@ -1250,11 +1234,10 @@ button:disabled {
 
   .team-badge {
     gap: 10px;
-    grid-template-columns: 38px minmax(0, 1fr) auto;
+    grid-template-columns: 38px minmax(0, 1fr);
   }
 
-  .team-badge strong,
-  .score-placeholder {
+  .team-badge strong {
     font-size: 22px !important;
   }
 
