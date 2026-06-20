@@ -49,6 +49,8 @@ by the commissioner before real use.
 ## Supabase Setup
 
 See [docs/supabase-setup.md](docs/supabase-setup.md) for the free-tier setup path.
+Use [docs/deployment-checklist.md](docs/deployment-checklist.md) before sending
+live links to managers.
 
 Generate a copy/paste SQL bundle with:
 
@@ -59,6 +61,7 @@ npm run supabase:bundle
 After setting `.env.local`, verify the Supabase connection with:
 
 ```sh
+npm run deployment:check
 npm run supabase:check
 ```
 
