@@ -320,7 +320,11 @@ export async function getCommissionerCorrectionContext({ groupSlug }) {
   if (groupError) throw new Error(groupError.message);
   if (!group) return null;
 
-  const [{ data: managers, error: managersError }, { data: matchRows, error: matchesError }] =
+  const [
+    { data: managers, error: managersError },
+    { data: matchRows, error: matchesError },
+    { data: activePicks, error: picksError },
+  ] =
     await Promise.all([
       supabase
         .from("managers")
@@ -343,10 +347,15 @@ export async function getCommissionerCorrectionContext({ groupSlug }) {
         `)
         .eq("group_id", group.id)
         .limit(200),
+      supabase
+        .from("active_prediction_details")
+        .select("manager_code,external_match_id,pick_type,pick_team_name,updated_at")
+        .eq("group_slug", groupSlug),
     ]);
 
   if (managersError) throw new Error(managersError.message);
   if (matchesError) throw new Error(matchesError.message);
+  if (picksError) throw new Error(picksError.message);
 
   const matches = (matchRows || [])
     .map((row) => row.matches)
@@ -367,6 +376,13 @@ export async function getCommissionerCorrectionContext({ groupSlug }) {
     group,
     managers: managers || [],
     matches,
+    active_picks: (activePicks || []).map((pick) => ({
+      manager_code: pick.manager_code,
+      external_match_id: pick.external_match_id,
+      pick_type: pick.pick_type,
+      pick_label: formatPickLabel(pick),
+      updated_at: pick.updated_at,
+    })),
   };
 }
 

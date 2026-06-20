@@ -27,6 +27,11 @@ export default function AdminCorrectionsPanel() {
   const selectedMatch = useMemo(() => {
     return (context?.matches || []).find((match) => match.external_match_id === externalMatchId) || null;
   }, [context?.matches, externalMatchId]);
+  const currentPick = useMemo(() => {
+    return (context?.active_picks || []).find((pick) => {
+      return pick.manager_code === managerCode && pick.external_match_id === externalMatchId;
+    }) || null;
+  }, [context?.active_picks, externalMatchId, managerCode]);
 
   const allowedPicks = useMemo(() => {
     if (!selectedMatch) return [];
@@ -104,7 +109,7 @@ export default function AdminCorrectionsPanel() {
       setStatus(payload.changed
         ? `Corrected ${payload.manager.display_name}: ${payload.pick_label}`
         : `No change needed for ${payload.manager.display_name}`);
-      await loadAudit(session.token);
+      await loadContext(session.token);
     } catch (error) {
       setStatus(error.message);
     } finally {
@@ -180,10 +185,31 @@ export default function AdminCorrectionsPanel() {
         </button>
       </form>
 
+      <CurrentPickPreview
+        currentPick={currentPick}
+        manager={findManager(context?.managers, managerCode)}
+        match={selectedMatch}
+      />
+
       {status ? <p className="form-status">{status}</p> : null}
 
       <AuditLog auditLog={auditLog} />
     </article>
+  );
+}
+
+function CurrentPickPreview({ currentPick, manager, match }) {
+  return (
+    <div className="admin-current-pick">
+      <div>
+        <p className="eyebrow">Current pick</p>
+        <strong>{currentPick?.pick_label || "No pick saved"}</strong>
+      </div>
+      <span>
+        {manager?.display_name || "Manager"} · {formatAuditMatch(match)}
+        {currentPick?.updated_at ? ` · Updated ${formatShortDate(currentPick.updated_at)}` : ""}
+      </span>
+    </div>
   );
 }
 
@@ -259,6 +285,10 @@ function formatAuditMatch(match) {
   const teams = `${match.team_a?.name || "TBD"} vs ${match.team_b?.name || "TBD"}`;
   const group = match.group_label ? `Group ${match.group_label}` : match.stage;
   return `${group}: ${teams}`;
+}
+
+function findManager(managers = [], managerCode) {
+  return managers.find((manager) => manager.manager_code === managerCode) || null;
 }
 
 function formatShortDate(value) {

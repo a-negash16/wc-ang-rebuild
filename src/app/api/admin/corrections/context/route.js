@@ -22,6 +22,7 @@ export async function POST(request) {
       group: context.group,
       managers: context.managers,
       matches: context.matches,
+      active_picks: context.active_picks,
     });
   } catch (error) {
     return jsonError(error.message, 400);

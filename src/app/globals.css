@@ -769,6 +769,34 @@ button:disabled {
   background: var(--accent-900);
 }
 
+.admin-current-pick {
+  align-items: center;
+  background: color-mix(in srgb, var(--accent-100) 52%, var(--white));
+  border: 1px solid color-mix(in srgb, var(--accent-500) 18%, var(--line));
+  border-radius: var(--r-md);
+  display: flex;
+  gap: 14px;
+  justify-content: space-between;
+  padding: 12px 14px;
+}
+
+.admin-current-pick p {
+  margin-bottom: 2px;
+}
+
+.admin-current-pick strong {
+  color: var(--accent-900);
+  font-size: 1.05rem;
+  font-weight: 900;
+}
+
+.admin-current-pick span {
+  color: var(--ink-mute);
+  font-size: 0.9rem;
+  font-weight: 750;
+  text-align: right;
+}
+
 .admin-audit-log {
   border-top: 1px solid var(--line);
   display: grid;
@@ -1531,6 +1559,15 @@ button:disabled {
   .admin-correction-form .admin-reason {
     grid-column: auto;
     grid-template-columns: 1fr;
+  }
+
+  .admin-current-pick {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .admin-current-pick span {
+    text-align: left;
   }
 
   .section-heading {
