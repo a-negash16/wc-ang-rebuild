@@ -550,15 +550,20 @@ export async function getPredictionPulseState({ groupSlug }) {
 export async function getLeaderboardShell({ groupSlug }) {
   const overview = await getGroupOverview(groupSlug);
   if (!overview) return null;
-  const pointsByManager = await getGroupStagePointsByManager(overview);
+  const [pointsByManager, manualPointsByManager] = await Promise.all([
+    getGroupStagePointsByManager(overview),
+    getManualPointsByManager(overview),
+  ]);
   const rows = overview.managers.map((manager) => {
     const groupStage = pointsByManager.get(manager.manager_code) || 0;
+    const manualAdjustments = manualPointsByManager.get(manager.manager_code) || 0;
     const total = totalLeaderboardPoints({
       groupStage,
       knockoutPredictions: 0,
       futures: 0,
       draftedTeams: 0,
       draftedPlayers: 0,
+      manualAdjustments,
     });
 
     return {
@@ -571,6 +576,7 @@ export async function getLeaderboardShell({ groupSlug }) {
       futures_points: 0,
       drafted_teams_points: 0,
       drafted_players_points: 0,
+      manual_adjustment_points: manualAdjustments,
       rank_delta: null,
     };
   });
@@ -581,6 +587,29 @@ export async function getLeaderboardShell({ groupSlug }) {
     scoring_status: "group_stage_live",
     rows: rankedRows,
   };
+}
+
+async function getManualPointsByManager(overview) {
+  const supabase = getOptionalSupabaseClient();
+  if (!supabase || !overview?.id) return new Map();
+
+  const { data, error } = await supabase
+    .from("scoring_events")
+    .select(`
+      points,
+      managers!inner ( manager_code )
+    `)
+    .eq("group_id", overview.id)
+    .eq("source_type", "manual_adjustment");
+
+  if (error) throw new Error(error.message);
+
+  return (data || []).reduce((totals, event) => {
+    const managerCode = event.managers?.manager_code;
+    if (!managerCode) return totals;
+    totals.set(managerCode, (totals.get(managerCode) || 0) + Number(event.points || 0));
+    return totals;
+  }, new Map());
 }
 
 async function getGroupStagePointsByManager(overview) {

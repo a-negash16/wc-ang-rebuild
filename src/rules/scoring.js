@@ -86,8 +86,9 @@ export function totalLeaderboardPoints({
   futures = 0,
   draftedTeams = 0,
   draftedPlayers = 0,
+  manualAdjustments = 0,
 }) {
-  return [groupStage, knockoutPredictions, futures, draftedTeams, draftedPlayers]
+  return [groupStage, knockoutPredictions, futures, draftedTeams, draftedPlayers, manualAdjustments]
     .reduce((sum, value) => sum + Number(value || 0), 0);
 }
 

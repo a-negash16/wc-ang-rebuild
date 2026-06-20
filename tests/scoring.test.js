@@ -98,5 +98,6 @@ test("leaderboard total sums all scoring buckets", () => {
     futures: 100,
     draftedTeams: 30,
     draftedPlayers: 25,
-  }), 182);
+    manualAdjustments: 20,
+  }), 202);
 });
