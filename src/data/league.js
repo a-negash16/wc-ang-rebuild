@@ -6,6 +6,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { scoreGroupStagePick, totalLeaderboardPoints } from "@/rules/scoring";
 
 const SEED_DIR = path.join(process.cwd(), "supabase", "seed-data");
+const PULSE_RECENT_LIMIT = 3;
 
 export async function getGroups() {
   const supabase = getOptionalSupabaseClient();
@@ -388,6 +389,59 @@ export async function getRecentResults({ groupSlug, limit = 8 }) {
     .slice(0, limit);
 }
 
+export async function getGroupMatchesForPulse({ groupSlug, limit = 40 }) {
+  const supabase = getOptionalSupabaseClient();
+  if (supabase) {
+    const { data: group, error: groupError } = await supabase
+      .from("groups")
+      .select("id")
+      .eq("slug", groupSlug)
+      .eq("is_active", true)
+      .maybeSingle();
+
+    if (groupError) throw new Error(groupError.message);
+    if (!group) return [];
+
+    const { data, error } = await supabase
+      .from("group_matches")
+      .select(`
+        matches (
+          external_match_id,
+          stage,
+          group_label,
+          kickoff_at,
+          status,
+          team_a:team_a_id ( fifa_code, name ),
+          team_b:team_b_id ( fifa_code, name )
+        )
+      `)
+      .eq("group_id", group.id)
+      .limit(200);
+
+    if (error) throw new Error(error.message);
+    return normalizePulseMatches(data || [], limit);
+  }
+
+  const [matches, teams] = await Promise.all([
+    readSeedJson("matches.json"),
+    readSeedJson("teams.json"),
+  ]);
+  const teamByCode = new Map(teams.map((team) => [team.fifa_code, team]));
+
+  return matches
+    .map((match) => ({
+      external_match_id: match.external_match_id,
+      stage: match.stage,
+      group_label: match.group_label,
+      kickoff_at: match.kickoff_at,
+      status: match.status,
+      team_a: teamByCode.get(match.team_a_code) || null,
+      team_b: teamByCode.get(match.team_b_code) || null,
+    }))
+    .sort(sortByKickoffAsc)
+    .slice(0, limit);
+}
+
 export async function getManagerPredictionState({ groupSlug, managerCode }) {
   const overview = await getGroupOverview(groupSlug);
   if (!overview) return null;
@@ -422,16 +476,14 @@ export async function getPredictionPulseState({ groupSlug }) {
   const overview = await getGroupOverview(groupSlug);
   if (!overview) return null;
 
-  const matches = overview.upcoming_matches;
+  const matches = await getGroupMatchesForPulse({ groupSlug });
   const pulse = await getPredictionPulse({
     groupSlug,
     externalMatchIds: matches.map((match) => match.external_match_id),
   });
   const pulseByMatch = new Map(pulse.map((item) => [item.external_match_id, item]));
-
-  return {
-    group_slug: groupSlug,
-    matches: matches.map((match) => {
+  const revealedMatches = matches
+    .map((match) => {
       const item = pulseByMatch.get(match.external_match_id);
       const reveal = shouldRevealPulse({
         kickoffAt: match.kickoff_at,
@@ -455,7 +507,22 @@ export async function getPredictionPulseState({ groupSlug }) {
         tie_managers: reveal ? item?.tie_managers || "" : "",
         team_b_managers: reveal ? item?.team_b_managers || "" : "",
       };
-    }),
+    })
+    .filter((match) => match.reveal);
+  const revealedWithPicks = revealedMatches.filter((match) => Number(match.total_picks || 0) > 0);
+  const recentWithPicks = revealedWithPicks
+    .sort(sortByKickoffDesc)
+    .slice(0, PULSE_RECENT_LIMIT);
+  const selectedIds = new Set(recentWithPicks.map((match) => match.external_match_id));
+  const fillerMatches = revealedMatches
+    .filter((match) => !selectedIds.has(match.external_match_id))
+    .sort(sortByKickoffDesc)
+    .slice(0, Math.max(0, PULSE_RECENT_LIMIT - recentWithPicks.length));
+  const pulseMatches = [...recentWithPicks, ...fillerMatches].sort(sortByKickoffAsc);
+
+  return {
+    group_slug: groupSlug,
+    matches: pulseMatches,
   };
 }
 
@@ -648,8 +715,16 @@ function normalizeSupabaseMatches(rows) {
     .map((row) => row.matches)
     .filter(Boolean)
     .filter((match) => new Date(match.kickoff_at).getTime() >= Date.now())
-    .sort((a, b) => new Date(a.kickoff_at).getTime() - new Date(b.kickoff_at).getTime())
+    .sort(sortByKickoffAsc)
     .slice(0, 8);
+}
+
+function normalizePulseMatches(rows, limit) {
+  return rows
+    .map((row) => row.matches)
+    .filter(Boolean)
+    .sort(sortByKickoffAsc)
+    .slice(0, limit);
 }
 
 function normalizeRecentResults(rows, limit, fifaMatchesById = new Map()) {
@@ -658,8 +733,16 @@ function normalizeRecentResults(rows, limit, fifaMatchesById = new Map()) {
     .filter(Boolean)
     .map((match) => overlayMatchResult(match, fifaMatchesById))
     .filter((match) => match.status === "finished")
-    .sort((a, b) => new Date(b.kickoff_at).getTime() - new Date(a.kickoff_at).getTime())
+    .sort(sortByKickoffDesc)
     .slice(0, limit);
+}
+
+function sortByKickoffAsc(a, b) {
+  return new Date(a.kickoff_at).getTime() - new Date(b.kickoff_at).getTime();
+}
+
+function sortByKickoffDesc(a, b) {
+  return new Date(b.kickoff_at).getTime() - new Date(a.kickoff_at).getTime();
 }
 
 function overlayMatchResult(match, fifaMatchesById = new Map()) {

@@ -60,7 +60,7 @@ export default async function GroupPage({ params }) {
 }
 
 function PredictionPulse({ pulse }) {
-  const matches = (pulse?.matches || []).filter((match) => match.reveal);
+  const matches = pulse?.matches || [];
   if (!matches.length) return null;
 
   return (
@@ -70,7 +70,7 @@ function PredictionPulse({ pulse }) {
           <p className="eyebrow">Room energy</p>
           <h2 id="prediction-pulse-title">Prediction Pulse</h2>
         </div>
-        <span className="status-chip">{matches.length} revealed</span>
+        <span className="status-chip">{matches.length} latest</span>
       </div>
 
       <div className="swipe-rail pulse-rail" aria-label="Revealed prediction pulse cards">
