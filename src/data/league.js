@@ -66,11 +66,13 @@ export async function getGroupOverview(groupSlug) {
     if (managersError) throw new Error(managersError.message);
     if (matchError) throw new Error(matchError.message);
 
+    const fifaMatchesById = await getFifaMatchesByIdSafe();
+
     return {
       ...group,
       managers: managers || [],
       manager_count: managers?.length || 0,
-      upcoming_matches: normalizeSupabaseMatches(matches || []),
+      upcoming_matches: normalizeSupabaseMatches(matches || [], fifaMatchesById),
       data_mode: "supabase",
     };
   }
@@ -92,10 +94,9 @@ export async function getGroupOverview(groupSlug) {
       display_name: manager.display_name,
     }))
     .sort((a, b) => a.display_name.localeCompare(b.display_name));
+  const fifaMatchesById = await getFifaMatchesByIdSafe();
   const now = Date.now();
   const upcomingMatches = matches
-    .filter((match) => new Date(match.kickoff_at).getTime() >= now)
-    .slice(0, UPCOMING_MATCH_LIMIT)
     .map((match) => ({
       external_match_id: match.external_match_id,
       stage: match.stage,
@@ -104,7 +105,11 @@ export async function getGroupOverview(groupSlug) {
       status: match.status,
       team_a: teamByCode.get(match.team_a_code) || null,
       team_b: teamByCode.get(match.team_b_code) || null,
-    }));
+    }))
+    .map((match) => overlayMatchResult(match, fifaMatchesById))
+    .filter((match) => new Date(match.kickoff_at).getTime() >= now)
+    .sort(sortByKickoffAsc)
+    .slice(0, UPCOMING_MATCH_LIMIT);
 
   return {
     ...group,
@@ -169,8 +174,10 @@ export async function getMatchForPrediction({ groupSlug, externalMatchId }) {
 
     if (error) throw new Error(error.message);
     if (!data?.matches) return null;
+    const fifaMatchesById = await getFifaMatchesByIdSafe();
+    const match = overlayMatchResult(data.matches, fifaMatchesById);
     return {
-      ...data.matches,
+      ...match,
       lock_minutes_before_kickoff: data.groups.lock_minutes_before_kickoff,
       data_mode: "supabase",
     };
@@ -186,8 +193,15 @@ export async function getMatchForPrediction({ groupSlug, externalMatchId }) {
   if (!group || !match) return null;
 
   const teamByCode = new Map(teams.map((team) => [team.fifa_code, team]));
-  return {
+  const fifaMatchesById = await getFifaMatchesByIdSafe();
+  const overlaidMatch = overlayMatchResult({
     ...match,
+    team_a: teamByCode.get(match.team_a_code) || null,
+    team_b: teamByCode.get(match.team_b_code) || null,
+  }, fifaMatchesById);
+
+  return {
+    ...overlaidMatch,
     team_a: teamByCode.get(match.team_a_code) || null,
     team_b: teamByCode.get(match.team_b_code) || null,
     lock_minutes_before_kickoff: group.lock_minutes_before_kickoff,
@@ -420,7 +434,8 @@ export async function getGroupMatchesForPulse({ groupSlug, limit = 40 }) {
       .limit(200);
 
     if (error) throw new Error(error.message);
-    return normalizePulseMatches(data || [], limit);
+    const fifaMatchesById = await getFifaMatchesByIdSafe();
+    return normalizePulseMatches(data || [], limit, fifaMatchesById);
   }
 
   const [matches, teams] = await Promise.all([
@@ -429,6 +444,7 @@ export async function getGroupMatchesForPulse({ groupSlug, limit = 40 }) {
   ]);
   const teamByCode = new Map(teams.map((team) => [team.fifa_code, team]));
 
+  const fifaMatchesById = await getFifaMatchesByIdSafe();
   return matches
     .map((match) => ({
       external_match_id: match.external_match_id,
@@ -439,6 +455,7 @@ export async function getGroupMatchesForPulse({ groupSlug, limit = 40 }) {
       team_a: teamByCode.get(match.team_a_code) || null,
       team_b: teamByCode.get(match.team_b_code) || null,
     }))
+    .map((match) => overlayMatchResult(match, fifaMatchesById))
     .sort(sortByKickoffAsc)
     .slice(0, limit);
 }
@@ -711,19 +728,21 @@ async function readSeedJson(fileName) {
   return JSON.parse(text);
 }
 
-function normalizeSupabaseMatches(rows) {
+function normalizeSupabaseMatches(rows, fifaMatchesById = new Map()) {
   return rows
     .map((row) => row.matches)
     .filter(Boolean)
+    .map((match) => overlayMatchResult(match, fifaMatchesById))
     .filter((match) => new Date(match.kickoff_at).getTime() >= Date.now())
     .sort(sortByKickoffAsc)
     .slice(0, UPCOMING_MATCH_LIMIT);
 }
 
-function normalizePulseMatches(rows, limit) {
+function normalizePulseMatches(rows, limit, fifaMatchesById = new Map()) {
   return rows
     .map((row) => row.matches)
     .filter(Boolean)
+    .map((match) => overlayMatchResult(match, fifaMatchesById))
     .sort(sortByKickoffAsc)
     .slice(0, limit);
 }
@@ -758,6 +777,7 @@ function overlayMatchResult(match, fifaMatchesById = new Map()) {
 
   return {
     ...match,
+    kickoff_at: fifaMatch.kickoff_at || match.kickoff_at,
     status: fifaMatch.status || match.status,
     team_a_score: fifaMatch.team_a_score ?? match.team_a_score ?? null,
     team_b_score: fifaMatch.team_b_score ?? match.team_b_score ?? null,

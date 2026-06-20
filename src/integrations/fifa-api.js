@@ -45,6 +45,7 @@ export function normalizeFifaMatch(match) {
 
   return {
     external_match_id: String(match.IdMatch),
+    kickoff_at: match.Date || null,
     status,
     team_a_code: match.Home?.Abbreviation || null,
     team_b_code: match.Away?.Abbreviation || null,
