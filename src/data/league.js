@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
+import { getFifaMatchesById } from "@/integrations/fifa-api";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { scoreGroupStagePick, totalLeaderboardPoints } from "@/rules/scoring";
 
@@ -357,7 +358,8 @@ export async function getRecentResults({ groupSlug, limit = 8 }) {
       .limit(200);
 
     if (error) throw new Error(error.message);
-    return normalizeRecentResults(data || [], limit);
+    const fifaMatchesById = await getFifaMatchesByIdSafe();
+    return normalizeRecentResults(data || [], limit, fifaMatchesById);
   }
 
   const [matches, teams] = await Promise.all([
@@ -366,11 +368,9 @@ export async function getRecentResults({ groupSlug, limit = 8 }) {
   ]);
   const teamByCode = new Map(teams.map((team) => [team.fifa_code, team]));
 
+  const fifaMatchesById = await getFifaMatchesByIdSafe();
   return matches
-    .filter((match) => match.status === "finished")
-    .sort((a, b) => new Date(b.kickoff_at).getTime() - new Date(a.kickoff_at).getTime())
-    .slice(0, limit)
-    .map((match) => ({
+    .map((match) => overlayMatchResult({
       external_match_id: match.external_match_id,
       stage: match.stage,
       group_label: match.group_label,
@@ -382,7 +382,10 @@ export async function getRecentResults({ groupSlug, limit = 8 }) {
       length: match.length ?? null,
       team_a: teamByCode.get(match.team_a_code) || null,
       team_b: teamByCode.get(match.team_b_code) || null,
-    }));
+    }, fifaMatchesById))
+    .filter((match) => match.status === "finished")
+    .sort((a, b) => new Date(b.kickoff_at).getTime() - new Date(a.kickoff_at).getTime())
+    .slice(0, limit);
 }
 
 export async function getManagerPredictionState({ groupSlug, managerCode }) {
@@ -438,7 +441,9 @@ export async function getPredictionPulseState({ groupSlug }) {
       return {
         external_match_id: match.external_match_id,
         team_a_name: match.team_a?.name || null,
+        team_a_code: match.team_a?.fifa_code || null,
         team_b_name: match.team_b?.name || null,
+        team_b_code: match.team_b?.fifa_code || null,
         kickoff_at: match.kickoff_at,
         reveal,
         locked_until: reveal ? null : deadlineFor(match.kickoff_at, overview.lock_minutes_before_kickoff),
@@ -502,21 +507,25 @@ async function getGroupStagePointsByManager(overview) {
       managers!inner ( manager_code ),
       matches!inner (
         stage,
+        external_match_id,
         status,
         team_a_id,
         team_b_id,
         team_a_score,
         team_b_score,
-        winner_team_id
+        winner_team_id,
+        team_a:team_a_id ( fifa_code ),
+        team_b:team_b_id ( fifa_code )
       )
     `)
     .eq("group_id", overview.id)
     .eq("status", "active");
 
   if (error) throw new Error(error.message);
+  const fifaMatchesById = await getFifaMatchesByIdSafe();
 
   return (data || []).reduce((totals, prediction) => {
-    const match = prediction.matches;
+    const match = overlayMatchResult(prediction.matches, fifaMatchesById);
     const managerCode = prediction.managers?.manager_code;
     if (!managerCode || !isGroupStage(match?.stage)) return totals;
 
@@ -643,13 +652,45 @@ function normalizeSupabaseMatches(rows) {
     .slice(0, 8);
 }
 
-function normalizeRecentResults(rows, limit) {
+function normalizeRecentResults(rows, limit, fifaMatchesById = new Map()) {
   return rows
     .map((row) => row.matches)
     .filter(Boolean)
+    .map((match) => overlayMatchResult(match, fifaMatchesById))
     .filter((match) => match.status === "finished")
     .sort((a, b) => new Date(b.kickoff_at).getTime() - new Date(a.kickoff_at).getTime())
     .slice(0, limit);
+}
+
+function overlayMatchResult(match, fifaMatchesById = new Map()) {
+  if (!match?.external_match_id) return match;
+  const fifaMatch = fifaMatchesById.get(String(match.external_match_id));
+  if (!fifaMatch) return match;
+
+  const teamAWinner = fifaMatch.winner_code
+    && fifaMatch.winner_code === match.team_a?.fifa_code;
+  const teamBWinner = fifaMatch.winner_code
+    && fifaMatch.winner_code === match.team_b?.fifa_code;
+
+  return {
+    ...match,
+    status: fifaMatch.status || match.status,
+    team_a_score: fifaMatch.team_a_score ?? match.team_a_score ?? null,
+    team_b_score: fifaMatch.team_b_score ?? match.team_b_score ?? null,
+    winner_team_id: teamAWinner
+      ? match.team_a?.id || match.team_a_id || match.winner_team_id || null
+      : teamBWinner
+        ? match.team_b?.id || match.team_b_id || match.winner_team_id || null
+        : match.winner_team_id ?? null,
+  };
+}
+
+async function getFifaMatchesByIdSafe() {
+  try {
+    return await getFifaMatchesById();
+  } catch {
+    return new Map();
+  }
 }
 
 function formatPickLabel(pick) {

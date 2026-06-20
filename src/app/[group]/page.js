@@ -79,15 +79,15 @@ function PredictionPulse({ pulse }) {
             <div className="pulse-card-heading">
               <span>{formatKickoff(match.kickoff_at)}</span>
               <strong>
-                <TeamLabel name={match.team_a_name} />
+                <TeamLabel name={match.team_a_name} code={match.team_a_code} />
                 <em>vs</em>
-                <TeamLabel name={match.team_b_name} />
+                <TeamLabel name={match.team_b_name} code={match.team_b_code} />
               </strong>
             </div>
             <div className="pulse-bars">
-              <PulseChoice label={match.team_a_name} count={match.team_a_picks} managers={match.team_a_managers} />
+              <PulseChoice label={match.team_a_name} code={match.team_a_code} count={match.team_a_picks} managers={match.team_a_managers} />
               <PulseChoice label="Tie" count={match.tie_picks} managers={match.tie_managers} />
-              <PulseChoice label={match.team_b_name} count={match.team_b_picks} managers={match.team_b_managers} />
+              <PulseChoice label={match.team_b_name} code={match.team_b_code} count={match.team_b_picks} managers={match.team_b_managers} />
             </div>
           </article>
         ))}
@@ -96,11 +96,11 @@ function PredictionPulse({ pulse }) {
   );
 }
 
-function PulseChoice({ label, count, managers }) {
+function PulseChoice({ label, code, count, managers }) {
   return (
     <div className="pulse-choice">
       <div>
-        <strong>{label === "Tie" ? "Tie" : <TeamLabel name={label} compact />}</strong>
+        <strong>{label === "Tie" ? "Tie" : <TeamLabel name={label} code={code} compact />}</strong>
         <span>{managers || "No picks"}</span>
       </div>
       <b>{count}</b>
@@ -108,11 +108,12 @@ function PulseChoice({ label, count, managers }) {
   );
 }
 
-function TeamLabel({ name, compact = false }) {
+function TeamLabel({ name, code, team, compact = false }) {
+  const label = name || team?.name || "TBD";
   return (
     <span className={compact ? "team-label compact" : "team-label"}>
-      <span className="flag" aria-hidden="true">{flagForTeamName(name)}</span>
-      <span>{name || "TBD"}</span>
+      <span className="flag" aria-hidden="true">{flagForTeamCode(code || team?.fifa_code)}</span>
+      <span>{label}</span>
     </span>
   );
 }
@@ -189,11 +190,11 @@ function RecentResults({ results }) {
                 <strong>{match.group_label ? `Group ${match.group_label}` : match.stage}</strong>
               </div>
               <div className="result-scoreline">
-                <TeamLabel name={match.team_a?.name} />
+                <TeamLabel team={match.team_a} />
                 <b>{formatScore(match.team_a_score)}</b>
                 <span>-</span>
                 <b>{formatScore(match.team_b_score)}</b>
-                <TeamLabel name={match.team_b?.name} />
+                <TeamLabel team={match.team_b} />
               </div>
               <div className="result-footer">
                 <span>{formatKickoff(match.kickoff_at)}</span>
@@ -344,30 +345,57 @@ function formatResultStatus(match) {
   return "Final";
 }
 
-function flagForTeamName(name) {
-  const normalized = String(name || "").toLowerCase();
+function flagForTeamCode(code) {
+  const normalized = String(code || "").toUpperCase();
   const flags = {
-    australia: "🇦🇺",
-    belgium: "🇧🇪",
-    brazil: "🇧🇷",
-    "côte d'ivoire": "🇨🇮",
-    "cote d'ivoire": "🇨🇮",
-    "curaçao": "🇨🇼",
-    curacao: "🇨🇼",
-    ecuador: "🇪🇨",
-    germany: "🇩🇪",
-    haiti: "🇭🇹",
-    "ir iran": "🇮🇷",
-    japan: "🇯🇵",
-    netherlands: "🇳🇱",
-    paraguay: "🇵🇾",
-    "saudi arabia": "🇸🇦",
-    spain: "🇪🇸",
-    sweden: "🇸🇪",
-    tunisia: "🇹🇳",
-    türkiye: "🇹🇷",
-    turkey: "🇹🇷",
-    usa: "🇺🇸",
+    ALG: "🇩🇿",
+    ARG: "🇦🇷",
+    AUS: "🇦🇺",
+    AUT: "🇦🇹",
+    BEL: "🇧🇪",
+    BIH: "🇧🇦",
+    BRA: "🇧🇷",
+    CAN: "🇨🇦",
+    CIV: "🇨🇮",
+    COL: "🇨🇴",
+    COD: "🇨🇩",
+    CPV: "🇨🇻",
+    CRO: "🇭🇷",
+    CUW: "🇨🇼",
+    CZE: "🇨🇿",
+    ECU: "🇪🇨",
+    EGY: "🇪🇬",
+    ENG: "🏴",
+    ESP: "🇪🇸",
+    FRA: "🇫🇷",
+    GER: "🇩🇪",
+    GHA: "🇬🇭",
+    HAI: "🇭🇹",
+    IRN: "🇮🇷",
+    IRQ: "🇮🇶",
+    JOR: "🇯🇴",
+    JPN: "🇯🇵",
+    KOR: "🇰🇷",
+    KSA: "🇸🇦",
+    MAR: "🇲🇦",
+    MEX: "🇲🇽",
+    NED: "🇳🇱",
+    NOR: "🇳🇴",
+    NZL: "🇳🇿",
+    PAN: "🇵🇦",
+    PAR: "🇵🇾",
+    POR: "🇵🇹",
+    QAT: "🇶🇦",
+    RSA: "🇿🇦",
+    SCO: "🏴",
+    SEN: "🇸🇳",
+    SUI: "🇨🇭",
+    SWE: "🇸🇪",
+    TUN: "🇹🇳",
+    TUR: "🇹🇷",
+    URU: "🇺🇾",
+    USA: "🇺🇸",
+    UZB: "🇺🇿",
   };
   return flags[normalized] || "🏳";
 }
