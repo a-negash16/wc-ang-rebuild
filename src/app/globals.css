@@ -2,6 +2,8 @@
   --accent-900: #053b1f;
   --accent-700: #07592f;
   --accent-500: #0a8a47;
+  --accent-300: #63c48d;
+  --accent-100: #e6f5ec;
   --accent-soft: color-mix(in srgb, var(--accent-500) 10%, transparent);
   --accent-soft-strong: color-mix(in srgb, var(--accent-500) 20%, transparent);
   --accent-shadow: color-mix(in srgb, var(--accent-700) 28%, transparent);
@@ -43,18 +45,30 @@
   --accent-900: #053b1f;
   --accent-700: #07592f;
   --accent-500: #0a8a47;
+  --accent-300: #5cc987;
+  --accent-100: #e6f5ec;
+  --group-identity-band: #dff1e6;
+  --group-identity-rail: #c9e8d5;
 }
 
 .theme-tikur-abay {
   --accent-900: #0b2e5e;
   --accent-700: #144788;
   --accent-500: #1e5fb8;
+  --accent-300: #77a7e5;
+  --accent-100: #e8f0fb;
+  --group-identity-band: #e2ecfa;
+  --group-identity-rail: #c8daf4;
 }
 
 .theme-squad {
   --accent-900: #5a0b10;
   --accent-700: #8a1b21;
   --accent-500: #c1272d;
+  --accent-300: #e6767a;
+  --accent-100: #fde8e9;
+  --group-identity-band: #fae4e4;
+  --group-identity-rail: #f3c7c8;
 }
 
 * {
@@ -181,10 +195,11 @@ button:disabled {
 
 .hero {
   background:
-    radial-gradient(1200px 600px at 80% -20%, rgba(244, 193, 69, 0.28), transparent 70%),
-    radial-gradient(1000px 800px at 0% 110%, var(--accent-soft-strong), transparent 60%),
-    linear-gradient(180deg, var(--paper) 0%, var(--paper-soft) 100%);
-  border-bottom: 1px solid var(--line);
+    linear-gradient(90deg, var(--accent-700) 0 10px, transparent 10px),
+    radial-gradient(1200px 600px at 82% -20%, color-mix(in srgb, var(--accent-300) 28%, transparent), transparent 70%),
+    radial-gradient(900px 700px at -10% 110%, color-mix(in srgb, var(--accent-500) 22%, transparent), transparent 64%),
+    linear-gradient(180deg, var(--group-identity-band, var(--paper)) 0%, var(--paper) 88%);
+  border-bottom: 1px solid color-mix(in srgb, var(--accent-500) 26%, var(--line));
   display: grid;
   gap: 18px;
   overflow: hidden;
@@ -197,7 +212,7 @@ button:disabled {
 }
 
 .hero h1 {
-  color: var(--navy-900);
+  color: var(--accent-900);
   font-family: var(--font-display);
   font-size: clamp(3.2rem, 9vw, 6.5rem);
   font-weight: 400;
@@ -205,6 +220,7 @@ button:disabled {
   line-height: 0.92;
   margin: 0 0 var(--s-3);
   max-width: 880px;
+  text-shadow: 0 2px 0 color-mix(in srgb, var(--white) 80%, transparent);
 }
 
 .hero p {
@@ -237,8 +253,8 @@ button:disabled {
 
 .hero-row {
   align-items: center;
-  background: var(--white);
-  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--white) 84%, var(--accent-100));
+  border: 1px solid color-mix(in srgb, var(--accent-500) 22%, var(--line));
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-sm);
   display: grid;
@@ -248,7 +264,7 @@ button:disabled {
 }
 
 .hero-row span {
-  color: var(--accent-700);
+  color: var(--accent-900);
   font-family: var(--font-mono);
   font-size: 0.72rem;
   font-weight: 800;
@@ -269,10 +285,10 @@ button:disabled {
 }
 
 .hero-actions a {
-  background: transparent;
-  border: 1.5px solid var(--navy-900);
+  background: color-mix(in srgb, var(--white) 72%, var(--accent-100));
+  border: 1.5px solid color-mix(in srgb, var(--accent-700) 68%, var(--line));
   border-radius: var(--r-md);
-  color: var(--navy-900);
+  color: var(--accent-900);
   font-size: 0.95rem;
   font-weight: 700;
   letter-spacing: 0.02em;
@@ -282,7 +298,8 @@ button:disabled {
 }
 
 .hero-actions a:hover {
-  background: var(--navy-900);
+  background: var(--accent-900);
+  border-color: var(--accent-900);
   color: var(--white);
   transform: translateY(-1px);
 }
@@ -504,16 +521,24 @@ button:disabled {
 }
 
 .picks-section {
+  background:
+    linear-gradient(90deg, transparent, color-mix(in srgb, var(--group-identity-rail, var(--accent-100)) 34%, transparent), transparent),
+    linear-gradient(180deg, var(--paper) 0%, color-mix(in srgb, var(--group-identity-band, var(--paper-soft)) 56%, var(--paper)) 100%);
+  border-bottom: 1px solid color-mix(in srgb, var(--accent-500) 16%, var(--line));
+  border-top: 1px solid color-mix(in srgb, var(--accent-500) 14%, var(--line));
   gap: 18px;
 }
 
 .manager-panel {
-  background: var(--white);
-  border-color: var(--line);
+  background: color-mix(in srgb, var(--white) 88%, var(--accent-100));
+  border-color: color-mix(in srgb, var(--accent-500) 20%, var(--line));
+  box-shadow: 0 10px 26px color-mix(in srgb, var(--accent-700) 10%, transparent);
 }
 
 .checklist-mini {
   align-items: center;
+  background: color-mix(in srgb, var(--white) 84%, var(--accent-100));
+  border-color: color-mix(in srgb, var(--accent-500) 18%, var(--line));
   display: grid;
   gap: 12px;
   grid-template-columns: minmax(140px, 0.35fr) minmax(0, 1fr);
