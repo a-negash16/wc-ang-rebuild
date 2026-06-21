@@ -52,6 +52,11 @@ See [docs/supabase-setup.md](docs/supabase-setup.md) for the free-tier setup pat
 Use [docs/deployment-checklist.md](docs/deployment-checklist.md) before sending
 live links to managers.
 
+For workflow context, see:
+
+- [Plain-English workflow](docs/workflow-plain-english.md)
+- [Developer workflow guide](docs/developer-workflow.md)
+
 Generate a copy/paste SQL bundle with:
 
 ```sh
