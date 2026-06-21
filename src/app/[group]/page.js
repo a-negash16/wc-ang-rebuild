@@ -79,11 +79,7 @@ function PredictionPulse({ pulse }) {
           <article className="pulse-card" key={match.external_match_id}>
             <div className="pulse-card-heading">
               <span>{formatKickoff(match.kickoff_at)}</span>
-              <strong>
-                <TeamLabel name={match.team_a_name} code={match.team_a_code} />
-                <em>vs</em>
-                <TeamLabel name={match.team_b_name} code={match.team_b_code} />
-              </strong>
+              <PulseMatchup match={match} />
               <GroupChip group={match.group_label} fallback={match.stage} />
             </div>
             <div className="pulse-bars">
@@ -95,6 +91,16 @@ function PredictionPulse({ pulse }) {
         ))}
       </div>
     </section>
+  );
+}
+
+function PulseMatchup({ match }) {
+  return (
+    <div className="pulse-matchup">
+      <TeamLabel name={match.team_a_name} code={match.team_a_code} />
+      <em>vs</em>
+      <TeamLabel name={match.team_b_name} code={match.team_b_code} />
+    </div>
   );
 }
 
@@ -170,7 +176,7 @@ function Leaderboard({ leaderboard }) {
               <tbody>
                 {rows.map((row) => (
                   <tr key={row.manager_code}>
-                    <td>
+                    <td className="rank-cell">
                       <span className="rank-stack">
                         <strong>{row.rank}</strong>
                         <em>{formatRankDelta(row.rank_delta)}</em>

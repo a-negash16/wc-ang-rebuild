@@ -1090,7 +1090,7 @@ button:disabled {
   align-items: center;
   display: grid;
   gap: 14px;
-  grid-template-columns: 46px minmax(0, 1fr);
+  grid-template-columns: 58px minmax(0, 1fr);
   min-width: 0;
 }
 
@@ -1102,11 +1102,19 @@ button:disabled {
 
 .team-badge strong {
   color: #f8fbff;
-  font-size: 28px;
+  font-size: 30px;
   font-weight: 850;
   line-height: 1.1;
   max-width: 100%;
   overflow-wrap: anywhere;
+}
+
+.prediction-card .team-badge .flag {
+  font-size: 46px;
+}
+
+.prediction-card .pick-buttons .flag {
+  font-size: 26px;
 }
 
 .pick-buttons button {
@@ -1140,7 +1148,7 @@ button:disabled {
 
 .pulse-card-heading {
   display: grid;
-  gap: 6px;
+  gap: 12px;
 }
 
 .pulse-card-heading span,
@@ -1149,18 +1157,37 @@ button:disabled {
   color: rgba(255, 255, 255, 0.68);
 }
 
-.pulse-card-heading strong {
+.pulse-matchup {
   align-items: center;
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
   gap: 8px;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   font-size: 24px;
   line-height: 1.12;
 }
 
-.pulse-card-heading em {
+.pulse-matchup .team-label {
+  align-items: center;
+  color: #f8fbff;
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  text-align: center;
+}
+
+.pulse-matchup .team-label .flag {
+  font-size: 36px;
+}
+
+.pulse-matchup .team-label span:last-child {
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+
+.pulse-matchup em {
   color: var(--gold-500);
   font-family: var(--font-display);
+  font-size: 2rem;
   font-style: normal;
   font-weight: 900;
 }
@@ -1399,6 +1426,11 @@ button:disabled {
   width: 100%;
 }
 
+.leaderboard-table th:first-child,
+.leaderboard-table td.rank-cell {
+  width: 92px;
+}
+
 .leaderboard-table th,
 .leaderboard-table td {
   border-top: 1px solid var(--line);
@@ -1420,6 +1452,11 @@ button:disabled {
 .leaderboard-table thead th:nth-child(2),
 .leaderboard-table tbody th {
   text-align: left;
+}
+
+.leaderboard-table thead th:first-child,
+.leaderboard-table td.rank-cell {
+  text-align: center;
 }
 
 .leaderboard-table tbody tr:hover {
@@ -1450,13 +1487,17 @@ button:disabled {
 
 .rank-stack {
   align-items: center;
-  display: inline-flex;
-  gap: 0.5rem;
+  display: inline-grid;
+  gap: 0.1rem;
+  justify-items: center;
+  min-width: 2.25rem;
 }
 
 .rank-stack strong {
   color: var(--navy-900);
+  font-size: 1.08rem;
   font-weight: 900;
+  line-height: 1;
 }
 
 .rank-stack em {
@@ -1464,6 +1505,7 @@ button:disabled {
   font-size: 0.8rem;
   font-style: normal;
   font-weight: 900;
+  line-height: 1;
 }
 
 .results-grid {
@@ -1657,15 +1699,23 @@ button:disabled {
 
   .team-badge {
     gap: 10px;
-    grid-template-columns: 38px minmax(0, 1fr);
+    grid-template-columns: 50px minmax(0, 1fr);
   }
 
   .team-badge strong {
-    font-size: 22px !important;
+    font-size: 24px !important;
   }
 
   .flag {
     font-size: 30px;
+  }
+
+  .prediction-card .team-badge .flag {
+    font-size: 42px;
+  }
+
+  .prediction-card .pick-buttons .flag {
+    font-size: 23px;
   }
 
   .pick-buttons button {
@@ -1683,13 +1733,16 @@ button:disabled {
     padding: 16px;
   }
 
-  .pulse-card-heading strong {
-    align-items: flex-start;
-    flex-direction: column;
-    font-size: 20px;
+  .pulse-matchup {
+    gap: 6px;
+    font-size: 18px;
   }
 
-  .pulse-card-heading em {
+  .pulse-matchup .team-label .flag {
+    font-size: 30px;
+  }
+
+  .pulse-matchup em {
     font-size: 1.5rem;
     line-height: 0.8;
   }
