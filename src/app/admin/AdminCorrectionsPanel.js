@@ -46,10 +46,13 @@ export default function AdminCorrectionsPanel() {
   }, [selectedMatch]);
 
   useEffect(() => {
-    if (allowedPicks.length && !allowedPicks.some((pick) => pick.value === pickType)) {
-      setPickType(allowedPicks[0].value);
+    if (!allowedPicks.length) return;
+    if (currentPick?.pick_type && allowedPicks.some((pick) => pick.value === currentPick.pick_type)) {
+      setPickType(currentPick.pick_type);
+      return;
     }
-  }, [allowedPicks, pickType]);
+    setPickType(allowedPicks[0].value);
+  }, [allowedPicks, currentPick?.pick_type, externalMatchId, managerCode]);
 
   async function loadContext(token) {
     setBusy(true);
