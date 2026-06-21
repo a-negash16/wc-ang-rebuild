@@ -25,6 +25,7 @@ export default async function GroupPage({ params }) {
     <main className={`page theme-${group.slug}`}>
       <section className="hero hero-dashboard" aria-labelledby="group-title">
         <div className="hero-main">
+          <p className="hero-kicker">WC ANG</p>
           <h1 id="group-title">{group.name}</h1>
           <div className="hero-rows" aria-label="Group summary">
             <div className="hero-row hero-status-line">
@@ -76,16 +77,42 @@ function PredictionPulse({ pulse }) {
 
       <div className="swipe-rail pulse-rail" aria-label="Revealed prediction pulse cards">
         {matches.map((match) => (
-          <article className="pulse-card" key={match.external_match_id}>
+          <article className={`pulse-card pulse-card-${getPulseStatus(match)}`} key={match.external_match_id}>
             <div className="pulse-card-heading">
-              <span>{formatKickoff(match.kickoff_at)}</span>
+              <div className="pulse-meta-row">
+                <span>{formatKickoff(match.kickoff_at)}</span>
+                <span className={`match-state match-state-${getPulseStatus(match)}`}>
+                  {getPulseStatusLabel(match)}
+                </span>
+              </div>
               <PulseMatchup match={match} />
+              {match.status === "finished" ? <PulseScore match={match} /> : null}
               <GroupChip group={match.group_label} fallback={match.stage} />
             </div>
             <div className="pulse-bars">
-              <PulseChoice label={match.team_a_name} code={match.team_a_code} managers={match.team_a_managers} />
-              <PulseChoice label="Tie" managers={match.tie_managers} />
-              <PulseChoice label={match.team_b_name} code={match.team_b_code} managers={match.team_b_managers} />
+              <PulseChoice
+                label={match.team_a_name}
+                code={match.team_a_code}
+                managers={match.team_a_managers}
+                outcome="team_a"
+                winnerType={match.winner_type}
+                isFinished={match.status === "finished"}
+              />
+              <PulseChoice
+                label="Tie"
+                managers={match.tie_managers}
+                outcome="tie"
+                winnerType={match.winner_type}
+                isFinished={match.status === "finished"}
+              />
+              <PulseChoice
+                label={match.team_b_name}
+                code={match.team_b_code}
+                managers={match.team_b_managers}
+                outcome="team_b"
+                winnerType={match.winner_type}
+                isFinished={match.status === "finished"}
+              />
             </div>
           </article>
         ))}
@@ -104,18 +131,31 @@ function PulseMatchup({ match }) {
   );
 }
 
-function PulseChoice({ label, code, managers }) {
+function PulseScore({ match }) {
+  return (
+    <div className="pulse-score" aria-label="Final score">
+      <b>{formatScore(match.team_a_score)}</b>
+      <span>-</span>
+      <b>{formatScore(match.team_b_score)}</b>
+    </div>
+  );
+}
+
+function PulseChoice({ label, code, managers, outcome, winnerType, isFinished }) {
+  const resultClass = isFinished && winnerType
+    ? outcome === winnerType ? "is-correct" : "is-wrong"
+    : "";
   return (
     <div className="pulse-choice">
       <div>
         <strong>{label === "Tie" ? "Tie" : <TeamLabel name={label} code={code} compact />}</strong>
-        <ManagerChips managers={managers} />
+        <ManagerChips managers={managers} resultClass={resultClass} />
       </div>
     </div>
   );
 }
 
-function ManagerChips({ managers }) {
+function ManagerChips({ managers, resultClass = "" }) {
   const names = String(managers || "")
     .split(",")
     .map((name) => name.trim())
@@ -125,7 +165,7 @@ function ManagerChips({ managers }) {
   return (
     <span className="manager-chips">
       {names.map((name) => (
-        <em key={name}>{name}</em>
+        <em className={resultClass} key={name}>{name}</em>
       ))}
     </span>
   );
@@ -215,7 +255,7 @@ function RecentResults({ results }) {
         <span className="status-chip">{rows.length ? `${rows.length} finals` : "No finals yet"}</span>
       </div>
       {rows.length ? (
-        <div className="results-grid" aria-label="Recent finished matches">
+        <div className="swipe-rail results-rail" aria-label="Recent finished matches">
           {rows.map((match) => (
             <article className="result-card" key={match.external_match_id}>
               <div className="result-meta">
@@ -243,6 +283,18 @@ function RecentResults({ results }) {
       )}
     </section>
   );
+}
+
+function getPulseStatus(match) {
+  if (match.status === "finished") return "finished";
+  if (match.status === "live") return "live";
+  return "revealed";
+}
+
+function getPulseStatusLabel(match) {
+  if (match.status === "finished") return "Final";
+  if (match.status === "live") return "Live";
+  return "Locked";
 }
 
 function RulesSection() {

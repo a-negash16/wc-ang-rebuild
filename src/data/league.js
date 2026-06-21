@@ -834,6 +834,10 @@ export async function getPredictionPulseState({ groupSlug }) {
         team_b_name: match.team_b?.name || null,
         team_b_code: match.team_b?.fifa_code || null,
         kickoff_at: match.kickoff_at,
+        status: match.status,
+        team_a_score: match.team_a_score ?? null,
+        team_b_score: match.team_b_score ?? null,
+        winner_type: getPulseWinnerType(match),
         reveal,
         locked_until: reveal ? null : deadlineFor(match.kickoff_at, overview.lock_minutes_before_kickoff),
         team_a_picks: reveal ? Number(item?.team_a_picks || 0) : null,
@@ -861,6 +865,15 @@ export async function getPredictionPulseState({ groupSlug }) {
     group_slug: groupSlug,
     matches: pulseMatches,
   };
+}
+
+function getPulseWinnerType(match) {
+  const result = getGroupStageResult(match);
+  if (!result) return null;
+  if (result.winnerType === "tie") return "tie";
+  if (result.winnerTeamId && result.winnerTeamId === (match.team_a?.id || match.team_a_id)) return "team_a";
+  if (result.winnerTeamId && result.winnerTeamId === (match.team_b?.id || match.team_b_id)) return "team_b";
+  return null;
 }
 
 export async function getLeaderboardShell({ groupSlug }) {
