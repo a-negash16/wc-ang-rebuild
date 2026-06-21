@@ -743,8 +743,11 @@ export async function getGroupMatchesForPulse({ groupSlug, limit = 40 }) {
           group_label,
           kickoff_at,
           status,
-          team_a:team_a_id ( fifa_code, name ),
-          team_b:team_b_id ( fifa_code, name )
+          team_a_score,
+          team_b_score,
+          winner_team_id,
+          team_a:team_a_id ( id, fifa_code, name ),
+          team_b:team_b_id ( id, fifa_code, name )
         )
       `)
       .eq("group_id", group.id)
@@ -769,6 +772,9 @@ export async function getGroupMatchesForPulse({ groupSlug, limit = 40 }) {
       group_label: match.group_label,
       kickoff_at: match.kickoff_at,
       status: match.status,
+      team_a_score: match.team_a_score ?? null,
+      team_b_score: match.team_b_score ?? null,
+      winner_team_id: match.winner_team_id ?? null,
       team_a: teamByCode.get(match.team_a_code) || null,
       team_b: teamByCode.get(match.team_b_code) || null,
     }))
@@ -868,6 +874,15 @@ export async function getPredictionPulseState({ groupSlug }) {
 }
 
 function getPulseWinnerType(match) {
+  if (!match || match.status !== "finished") return null;
+  const teamAScore = numberOrNull(match.team_a_score);
+  const teamBScore = numberOrNull(match.team_b_score);
+
+  if (teamAScore !== null && teamBScore !== null) {
+    if (teamAScore === teamBScore) return "tie";
+    return teamAScore > teamBScore ? "team_a" : "team_b";
+  }
+
   const result = getGroupStageResult(match);
   if (!result) return null;
   if (result.winnerType === "tie") return "tie";

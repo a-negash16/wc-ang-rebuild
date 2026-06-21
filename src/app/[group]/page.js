@@ -9,6 +9,8 @@ import {
 import PredictionPanel from "./PredictionPanel";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = "force-no-store";
 
 export default async function GroupPage({ params }) {
   const { group: groupSlug } = await params;
