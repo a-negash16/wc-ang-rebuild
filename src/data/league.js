@@ -865,7 +865,7 @@ export async function getPredictionPulseState({ groupSlug }) {
     .filter((match) => !selectedIds.has(match.external_match_id))
     .sort(sortByKickoffDesc)
     .slice(0, Math.max(0, PULSE_RECENT_LIMIT - recentWithPicks.length));
-  const pulseMatches = [...recentWithPicks, ...fillerMatches].sort(sortByKickoffAsc);
+  const pulseMatches = [...recentWithPicks, ...fillerMatches].sort(sortByKickoffDesc);
 
   return {
     group_slug: groupSlug,
@@ -1193,8 +1193,7 @@ function normalizePulseMatches(rows, limit, fifaMatchesById = new Map()) {
     .filter(Boolean)
     .map((match) => overlayMatchResult(match, fifaMatchesById))
     .sort(sortByKickoffAsc)
-    .slice(0, limit)
-    .sort(sortByKickoffDesc);
+    .slice(0, limit);
 }
 
 function normalizeRecentResults(rows, limit, fifaMatchesById = new Map()) {
