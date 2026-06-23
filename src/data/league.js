@@ -1188,12 +1188,17 @@ function normalizeSupabaseMatches(rows, fifaMatchesById = new Map()) {
 }
 
 function normalizePulseMatches(rows, limit, fifaMatchesById = new Map()) {
+  //Added
   const now = Date.now();
   const lookaheadMs = 24 * 60 * 60 * 1000;
+  //
   return rows
     .map((row) => row.matches)
     .filter(Boolean)
     .map((match) => overlayMatchResult(match, fifaMatchesById))
+    //Added
+    .filter((match) => new Date(match.kickoff_at).getTime() <= now + lookaheadMs)
+    //
     .sort(sortByKickoffAsc)
     .slice(0, limit);
 }
