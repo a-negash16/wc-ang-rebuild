@@ -721,7 +721,7 @@ export async function getRecentResults({ groupSlug, limit = 8 }) {
     .slice(0, limit);
 }
 
-export async function getGroupMatchesForPulse({ groupSlug, limit = 40 }) {
+export async function getGroupMatchesForPulse({ groupSlug, limit = 60 }) {
   const supabase = getOptionalSupabaseClient();
   if (supabase) {
     const { data: group, error: groupError } = await supabase
@@ -1192,9 +1192,8 @@ function normalizePulseMatches(rows, limit, fifaMatchesById = new Map()) {
     .map((row) => row.matches)
     .filter(Boolean)
     .map((match) => overlayMatchResult(match, fifaMatchesById))
-    .sort(sortByKickoffDesc)
-    .slice(0, limit)
-    .sort(sortByKickoffAsc);
+    .sort(sortByKickoffAsc)
+    .slice(0, limit);
 }
 
 function normalizeRecentResults(rows, limit, fifaMatchesById = new Map()) {
