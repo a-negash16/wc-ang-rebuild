@@ -7,7 +7,7 @@ import { validatePickForMatch } from "@/rules/predictions";
 import { scoreGroupStagePick, totalLeaderboardPoints } from "@/rules/scoring";
 
 const SEED_DIR = path.join(process.cwd(), "supabase", "seed-data");
-const PULSE_RECENT_LIMIT = 6;
+const PULSE_RECENT_LIMIT = 3;
 const UPCOMING_MATCH_LIMIT = 16;
 
 export async function getGroups() {
@@ -1192,7 +1192,7 @@ function normalizePulseMatches(rows, limit, fifaMatchesById = new Map()) {
     .map((row) => row.matches)
     .filter(Boolean)
     .map((match) => overlayMatchResult(match, fifaMatchesById))
-    .sort(sortByKickoffAsc)
+    .sort(sortByKickoffDesc)
     .slice(0, limit);
 }
 
