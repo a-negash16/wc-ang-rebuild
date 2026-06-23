@@ -1192,8 +1192,9 @@ function normalizePulseMatches(rows, limit, fifaMatchesById = new Map()) {
     .map((row) => row.matches)
     .filter(Boolean)
     .map((match) => overlayMatchResult(match, fifaMatchesById))
-    .sort(sortByKickoffDesc)
-    .slice(0, limit);
+    .sort(sortByKickoffAsc)
+    .slice(0, limit)
+    .sort(sortByKickoffDesc);
 }
 
 function normalizeRecentResults(rows, limit, fifaMatchesById = new Map()) {
