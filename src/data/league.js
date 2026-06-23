@@ -1188,6 +1188,8 @@ function normalizeSupabaseMatches(rows, fifaMatchesById = new Map()) {
 }
 
 function normalizePulseMatches(rows, limit, fifaMatchesById = new Map()) {
+  const now = Date.now();
+  const lookaheadMs = 24 * 60 * 60 * 1000;
   return rows
     .map((row) => row.matches)
     .filter(Boolean)
