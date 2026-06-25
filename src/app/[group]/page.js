@@ -26,17 +26,23 @@ export default async function GroupPage({ params }) {
   return (
     <main className={`page theme-${group.slug}`}>
       <section className="hero hero-dashboard" aria-labelledby="group-title">
+        <div className="hero-pattern" aria-hidden="true"></div>
         <div className="hero-main">
-          <p className="hero-kicker">WC ANG</p>
+          <p className="hero-kicker">Private league · World Cup 2026</p>
           <h1 id="group-title">{group.name}</h1>
           <div className="hero-rows" aria-label="Group summary">
-            <div className="hero-row hero-status-line">
-              <span aria-hidden="true">⭐</span>
-              <strong>{summary.leaders}</strong>
-            </div>
-            <div className="hero-row hero-status-line">
-              <span aria-hidden="true">🤡</span>
-              <strong>{summary.lastPlace}</strong>
+            <div className="hero-meta">
+              <span className="status-dot" aria-hidden="true"></span>
+              <span className="hero-status-lines">
+                <span className="hero-status-line">
+                  <span className="hero-status-icon" aria-hidden="true">⭐</span>
+                  <strong>{summary.leaders}</strong>
+                </span>
+                <span className="hero-status-line">
+                  <span className="hero-status-icon" aria-hidden="true">🤡</span>
+                  <strong>{summary.lastPlace}</strong>
+                </span>
+              </span>
             </div>
             <nav className="hero-actions" aria-label="Page sections">
               <a href="#standings">View standings</a>
@@ -209,10 +215,10 @@ function Leaderboard({ leaderboard }) {
                 <tr>
                   <th>Rank</th>
                   <th>Manager</th>
+                  <th>Total</th>
                   <th>Group</th>
                   <th>Players</th>
                   <th>Teams</th>
-                  <th>Total</th>
                 </tr>
               </thead>
               <tbody>
@@ -221,14 +227,14 @@ function Leaderboard({ leaderboard }) {
                     <td className="rank-cell">
                       <span className="rank-stack">
                         <strong>{row.rank}</strong>
-                        <em>{formatRankDelta(row.rank_delta)}</em>
+                        <em className={rankDeltaClass(row.rank_delta)}>{formatRankDelta(row.rank_delta)}</em>
                       </span>
                     </td>
                     <th scope="row">{row.manager_name}</th>
+                    <td><b>{formatPoints(row.total_points)}</b></td>
                     <td>{formatPoints(row.group_stage_points)}</td>
                     <td>{formatPoints(row.drafted_players_points)}</td>
                     <td>{formatPoints(row.drafted_teams_points)}</td>
-                    <td><b>{formatPoints(row.total_points)}</b></td>
                   </tr>
                 ))}
               </tbody>
@@ -433,6 +439,13 @@ function formatRankDelta(value) {
   const delta = Number(value || 0);
   if (!delta) return "-";
   return delta > 0 ? `↑${delta}` : `↓${Math.abs(delta)}`;
+}
+
+function rankDeltaClass(value) {
+  const delta = Number(value || 0);
+  if (delta > 0) return "rank-up";
+  if (delta < 0) return "rank-down";
+  return "rank-flat";
 }
 
 function formatScore(value) {

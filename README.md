@@ -56,6 +56,7 @@ For workflow context, see:
 
 - [Plain-English workflow](docs/workflow-plain-english.md)
 - [Developer workflow guide](docs/developer-workflow.md)
+- [Commissioner missed prediction entry](docs/commissioner-missed-predictions.md)
 
 Generate a copy/paste SQL bundle with:
 

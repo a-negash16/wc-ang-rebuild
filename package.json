@@ -13,6 +13,7 @@
     "generate:session-secret": "node scripts/generate-session-secret.mjs",
     "generate:manager-pins": "node scripts/generate-manager-pins.mjs",
     "hash-pin": "node scripts/hash-pin.mjs",
+    "apply:missed-prediction": "node scripts/apply-missed-prediction.mjs",
     "set-manager-pin": "node scripts/set-manager-pin.mjs",
     "smoke:prediction": "node scripts/smoke-prediction-flow.mjs",
     "supabase:bundle": "node scripts/build-supabase-sql.mjs",
