@@ -721,7 +721,7 @@ export async function getRecentResults({ groupSlug, limit = 8 }) {
     .slice(0, limit);
 }
 
-export async function getGroupMatchesForPulse({ groupSlug, limit = 60 }) {
+export async function getGroupMatchesForPulse({ groupSlug, limit = 2-0 }) {
   const supabase = getOptionalSupabaseClient();
   if (supabase) {
     const { data: group, error: groupError } = await supabase
