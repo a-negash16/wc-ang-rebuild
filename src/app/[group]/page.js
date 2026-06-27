@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import {
   getGroupOverview,
   getLeaderboardShell,
+  getMissingPicksSummary,
   getPredictionPulseState,
   getRecentResults,
 } from "@/data/league";
@@ -14,11 +15,12 @@ export const fetchCache = "force-no-store";
 
 export default async function GroupPage({ params }) {
   const { group: groupSlug } = await params;
-  const [group, pulse, leaderboard, recentResults] = await Promise.all([
+  const [group, pulse, leaderboard, recentResults, missingPicks] = await Promise.all([
     getGroupOverview(groupSlug),
     getPredictionPulseState({ groupSlug }),
     getLeaderboardShell({ groupSlug }),
     getRecentResults({ groupSlug }),
+    getMissingPicksSummary({ groupSlug }),
   ]);
   if (!group) notFound();
   const summary = getStandingSummary(leaderboard?.rows || []);
@@ -53,6 +55,8 @@ export default async function GroupPage({ params }) {
         </div>
       </section>
 
+      <MissingPicksBar summary={missingPicks} />
+
       <PredictionPanel
         groupSlug={group.slug}
         managers={group.managers}
@@ -66,6 +70,41 @@ export default async function GroupPage({ params }) {
       <RulesSection />
       <RecentResults results={recentResults} />
     </main>
+  );
+}
+
+function MissingPicksBar({ summary }) {
+  const rows = summary?.rows || [];
+  if (!rows.length) return null;
+  const hasMonitoredMatches = Number(summary.match_count || 0) > 0;
+  const totalMissing = rows.reduce((sum, row) => sum + Number(row.missing_count || 0), 0);
+
+  return (
+    <section className="missing-picks-bar" aria-labelledby="missing-picks-title">
+      <div className="missing-picks-copy">
+        <p className="eyebrow">Next action</p>
+        <h2 id="missing-picks-title">Missing picks</h2>
+        <span>
+          {hasMonitoredMatches
+            ? `${summary.match_count} match${summary.match_count === 1 ? "" : "es"} lock within ${summary.warning_hours}h`
+            : `No picks locking within ${summary.warning_hours}h`}
+        </span>
+      </div>
+      <div className="missing-picks-chips" aria-label="Missing pick counts by manager">
+        {rows.map((row) => (
+          <span
+            className={Number(row.missing_count || 0) > 0 ? "missing-count-chip needs-action" : "missing-count-chip"}
+            key={row.manager_code}
+          >
+            <strong>{row.manager_name}</strong>
+            <b>{hasMonitoredMatches ? row.missing_count : "-"}</b>
+          </span>
+        ))}
+      </div>
+      <span className={totalMissing > 0 ? "missing-total needs-action" : "missing-total"}>
+        {hasMonitoredMatches ? `${totalMissing} missing` : "clear"}
+      </span>
+    </section>
   );
 }
 
@@ -351,8 +390,7 @@ function RulesSection() {
       body: "Winner picks become odds-weighted after the group stage.",
       rows: [
         ["Correct winner", "1-9"],
-        ["Length", "2"],
-        ["Goal scorer", "3"],
+        ["90/ET/Pens", "2"],
       ],
     },
   ];

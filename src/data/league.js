@@ -9,6 +9,7 @@ import { scoreGroupStagePick, totalLeaderboardPoints } from "@/rules/scoring";
 const SEED_DIR = path.join(process.cwd(), "supabase", "seed-data");
 const PULSE_RECENT_LIMIT = 6;
 const UPCOMING_MATCH_LIMIT = 16;
+const MISSING_PICK_WARNING_HOURS = 12;
 
 export async function getGroups() {
   const supabase = getOptionalSupabaseClient();
@@ -810,6 +811,112 @@ export async function getManagerPredictionState({ groupSlug, managerCode }) {
         is_missing: !pick,
       };
     }),
+  };
+}
+
+export async function getMissingPicksSummary({ groupSlug, warningHours = MISSING_PICK_WARNING_HOURS } = {}) {
+  const supabase = getOptionalSupabaseClient();
+  if (!supabase) {
+    const overview = await getGroupOverview(groupSlug);
+    return {
+      group_slug: groupSlug,
+      warning_hours: warningHours,
+      match_count: 0,
+      rows: (overview?.managers || []).map((manager) => ({
+        manager_code: manager.manager_code,
+        manager_name: manager.display_name,
+        missing_count: 0,
+      })),
+    };
+  }
+
+  const { data: group, error: groupError } = await supabase
+    .from("groups")
+    .select("id,slug,lock_minutes_before_kickoff")
+    .eq("slug", groupSlug)
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (groupError) throw new Error(groupError.message);
+  if (!group) return null;
+
+  const [
+    { data: managers, error: managersError },
+    { data: matchRows, error: matchesError },
+    { data: predictions, error: predictionsError },
+  ] = await Promise.all([
+    supabase
+      .from("managers")
+      .select("id,manager_code,display_name")
+      .eq("group_id", group.id)
+      .eq("is_active", true)
+      .order("display_name", { ascending: true }),
+    supabase
+      .from("group_matches")
+      .select(`
+        match_id,
+        matches (
+          id,
+          external_match_id,
+          kickoff_at,
+          status,
+          team_a:team_a_id ( fifa_code, name ),
+          team_b:team_b_id ( fifa_code, name )
+        )
+      `)
+      .eq("group_id", group.id)
+      .limit(200),
+    supabase
+      .from("predictions")
+      .select("manager_id,match_id")
+      .eq("group_id", group.id)
+      .eq("status", "active"),
+  ]);
+
+  if (managersError) throw new Error(managersError.message);
+  if (matchesError) throw new Error(matchesError.message);
+  if (predictionsError) throw new Error(predictionsError.message);
+
+  const fifaMatchesById = await getFifaMatchesByIdSafe();
+  const now = Date.now();
+  const warningUntil = now + Number(warningHours || MISSING_PICK_WARNING_HOURS) * 60 * 60 * 1000;
+  const monitoredMatches = (matchRows || [])
+    .map((row) => row.matches ? overlayMatchResult({ ...row.matches, id: row.match_id }, fifaMatchesById) : null)
+    .filter(Boolean)
+    .filter((match) => {
+      if (match.status === "finished") return false;
+      const deadline = new Date(deadlineFor(match.kickoff_at, group.lock_minutes_before_kickoff)).getTime();
+      return deadline >= now && deadline <= warningUntil;
+    })
+    .sort(sortByKickoffAsc);
+
+  const monitoredMatchIds = new Set(monitoredMatches.map((match) => match.id));
+  const pickedByManager = new Map();
+  for (const prediction of predictions || []) {
+    if (!monitoredMatchIds.has(prediction.match_id)) continue;
+    const managerPicks = pickedByManager.get(prediction.manager_id) || new Set();
+    managerPicks.add(prediction.match_id);
+    pickedByManager.set(prediction.manager_id, managerPicks);
+  }
+
+  const rows = (managers || []).map((manager) => {
+    const managerPicks = pickedByManager.get(manager.id) || new Set();
+    const missingMatches = monitoredMatches.filter((match) => !managerPicks.has(match.id));
+    return {
+      manager_code: manager.manager_code,
+      manager_name: manager.display_name,
+      missing_count: missingMatches.length,
+    };
+  });
+
+  return {
+    group_slug: group.slug,
+    warning_hours: warningHours,
+    match_count: monitoredMatches.length,
+    next_deadline_at: monitoredMatches[0]
+      ? deadlineFor(monitoredMatches[0].kickoff_at, group.lock_minutes_before_kickoff)
+      : null,
+    rows,
   };
 }
 

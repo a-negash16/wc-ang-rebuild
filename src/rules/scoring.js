@@ -1,7 +1,6 @@
 export const SCORING = Object.freeze({
   groupStageWinner: 3,
   groupStageTie: 5,
-  knockoutScorer: 3,
   knockoutLength: 2,
   draftedTeamStageAdvance: 10,
   playerGoal: 5,
@@ -37,12 +36,6 @@ export function scoreKnockoutWinnerPick({ pickedTeamId, winnerTeamId, teamPointV
 export function scoreKnockoutLengthPick({ pickedLength, actualLength }) {
   if (!MATCH_LENGTHS.includes(pickedLength) || !MATCH_LENGTHS.includes(actualLength)) return 0;
   return pickedLength === actualLength ? SCORING.knockoutLength : 0;
-}
-
-export function scoreKnockoutScorerPicks({ pickedPlayerIds = [], actualScorerIds = [] }) {
-  const actual = new Set(actualScorerIds.filter(Boolean));
-  const uniquePicks = [...new Set(pickedPlayerIds.filter(Boolean))].slice(0, 2);
-  return uniquePicks.filter((playerId) => actual.has(playerId)).length * SCORING.knockoutScorer;
 }
 
 export function scoreDraftedTeam({ stagesAdvanced }) {

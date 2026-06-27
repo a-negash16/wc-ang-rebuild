@@ -7,7 +7,6 @@ import {
   scoreFuturesChampionPick,
   scoreGroupStagePick,
   scoreKnockoutLengthPick,
-  scoreKnockoutScorerPicks,
   scoreKnockoutWinnerPick,
   totalLeaderboardPoints,
 } from "../src/rules/scoring.js";
@@ -45,14 +44,9 @@ test("knockout winner uses odds-weighted team point values", () => {
   }), 0);
 });
 
-test("knockout length and scorer picks score correctly", () => {
+test("knockout length picks score correctly", () => {
   assert.equal(scoreKnockoutLengthPick({ pickedLength: "ET", actualLength: "ET" }), 2);
   assert.equal(scoreKnockoutLengthPick({ pickedLength: "90", actualLength: "Pens" }), 0);
-
-  assert.equal(scoreKnockoutScorerPicks({
-    pickedPlayerIds: ["P001", "P002", "P002"],
-    actualScorerIds: ["P002", "P003"],
-  }), 3);
 });
 
 test("drafted teams score 10 points per stage advanced", () => {

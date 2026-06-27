@@ -369,6 +369,105 @@ button:disabled {
   transform: translateY(-1px);
 }
 
+.missing-picks-bar {
+  align-items: center;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--accent-100) 68%, var(--white)), var(--white));
+  border-bottom: 1px solid color-mix(in srgb, var(--accent-500) 16%, var(--line));
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(180px, 0.3fr) minmax(0, 1fr) auto;
+  padding: 16px max(var(--s-3), calc((100vw - 1120px) / 2));
+}
+
+.missing-picks-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.missing-picks-copy .eyebrow {
+  margin: 0;
+}
+
+.missing-picks-copy h2 {
+  color: var(--navy-900);
+  font-size: 1.12rem;
+  font-weight: 900;
+  line-height: 1.1;
+  margin: 0;
+}
+
+.missing-picks-copy span {
+  color: var(--ink-mute);
+  font-size: 0.84rem;
+  font-weight: 750;
+}
+
+.missing-picks-chips {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+  overflow-x: auto;
+  padding: 2px 2px 8px;
+  scrollbar-color: #b8c8bf transparent;
+}
+
+.missing-count-chip {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid color-mix(in srgb, var(--accent-500) 16%, var(--line));
+  border-radius: 999px;
+  color: var(--ink-soft);
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 8px;
+  min-height: 36px;
+  padding: 6px 8px 6px 12px;
+}
+
+.missing-count-chip strong {
+  font-size: 0.88rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.missing-count-chip b {
+  align-items: center;
+  background: var(--accent-soft);
+  border-radius: 999px;
+  color: var(--accent-900);
+  display: inline-grid;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  height: 24px;
+  min-width: 24px;
+  padding: 0 7px;
+  place-items: center;
+}
+
+.missing-count-chip.needs-action {
+  background: #fff7e6;
+  border-color: #f2cf88;
+}
+
+.missing-count-chip.needs-action b,
+.missing-total.needs-action {
+  background: #b54708;
+  color: var(--white);
+}
+
+.missing-total {
+  background: var(--accent-700);
+  border-radius: 999px;
+  color: var(--white);
+  font-size: 0.82rem;
+  font-weight: 900;
+  justify-self: end;
+  padding: 0.48rem 0.78rem;
+  white-space: nowrap;
+}
+
 .home-hero {
   min-height: 380px;
 }
@@ -1816,6 +1915,22 @@ button:disabled {
   .hero-actions a {
     flex: 1 1 auto;
     text-align: center;
+  }
+
+  .missing-picks-bar {
+    align-items: stretch;
+    grid-template-columns: 1fr;
+    padding: 14px var(--s-2);
+  }
+
+  .missing-picks-chips {
+    margin-inline: calc(var(--s-2) * -1);
+    padding-left: var(--s-2);
+    padding-right: var(--s-2);
+  }
+
+  .missing-total {
+    justify-self: start;
   }
 
   .swipe-rail > * {
