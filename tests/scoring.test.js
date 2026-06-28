@@ -34,13 +34,13 @@ test("knockout winner uses odds-weighted team point values", () => {
   assert.equal(scoreKnockoutWinnerPick({
     pickedTeamId: "UNDERDOG",
     winnerTeamId: "UNDERDOG",
-    teamPointValues: { FAVORITE: 2, UNDERDOG: 8 },
-  }), 8);
+    teamPointValues: { FAVORITE: 3, UNDERDOG: 6.5 },
+  }), 6.5);
 
   assert.equal(scoreKnockoutWinnerPick({
     pickedTeamId: "FAVORITE",
     winnerTeamId: "UNDERDOG",
-    teamPointValues: { FAVORITE: 2, UNDERDOG: 8 },
+    teamPointValues: { FAVORITE: 3, UNDERDOG: 7 },
   }), 0);
 });
 
@@ -54,18 +54,14 @@ test("drafted teams score 10 points per stage advanced", () => {
   assert.equal(scoreDraftedTeam({ stagesAdvanced: 3 }), 30);
 });
 
-test("drafted players respect position-specific scoring", () => {
+test("drafted players score goals, assists, and player of the match only", () => {
   assert.equal(scoreDraftedPlayer({
-    position: "GK",
     goals: 1,
     assists: 2,
-    motm: 1,
-    cleanSheets: 2,
-    penaltySaves: 1,
-  }), 34);
+    playerOfMatch: 1,
+  }), 18);
 
   assert.equal(scoreDraftedPlayer({
-    position: "MID",
     cleanSheets: 2,
     penaltySaves: 1,
   }), 0);

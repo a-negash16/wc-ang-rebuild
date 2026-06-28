@@ -123,6 +123,43 @@ export default function PredictionPanel({
     }
   }
 
+  async function submitLengthPick(match, lengthPick) {
+    if (!session?.token) {
+      setStatus("Unlock before picking.");
+      return;
+    }
+    const currentPick = pickByMatch.get(match.external_match_id);
+    if (!currentPick?.pick_type) {
+      setStatus("Pick a winner before selecting match length.");
+      return;
+    }
+    setBusy(true);
+    setStatus("Saving length...");
+    try {
+      const response = await fetch("/api/predictions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token: session.token,
+          external_match_id: match.external_match_id,
+          length_pick: lengthPick,
+        }),
+      });
+      const payload = await response.json();
+      if (!response.ok || !payload.ok) throw new Error(payload.message || "Could not save length");
+      const savedAt = payload.saved_at || new Date().toISOString();
+      setStatus(`Saved length: ${formatLengthPick(lengthPick)} at ${formatSavedAt(savedAt, timezone)}`);
+      const refreshed = await loadPickState(session.token, { clearOnError: false });
+      if (!refreshed) {
+        setStatus(`Saved length: ${formatLengthPick(lengthPick)}. Refresh to confirm latest card state.`);
+      }
+    } catch (error) {
+      setStatus(error.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function switchManager() {
     clearSession();
     setSession(null);
@@ -256,13 +293,15 @@ export default function PredictionPanel({
                       <b>{formatTimeLeft(deadline, now)}</b>
                       <span className={currentPick?.pick_label ? "pick-receipt saved" : "pick-receipt"}>
                         <strong>{currentPick?.pick_label ? `Saved: ${currentPick.pick_label}` : "No pick saved"}</strong>
+                        {currentPick?.length_label ? <small>Length: {currentPick.length_label}</small> : null}
                         {currentPick?.picked_at ? <small>Confirmed {formatSavedAt(currentPick.picked_at, timezone)}</small> : null}
                       </span>
                     </div>
-                    <div className="pick-buttons">
+                    <div className={match.stage === "Group Stage" ? "pick-buttons" : "pick-buttons pick-buttons-knockout"}>
                       <PickButton
                         disabled={busy || !session}
                         isSelected={currentPick?.pick_type === "team_a"}
+                        points={match.team_a_points}
                         team={match.team_a}
                         onClick={() => submitPick(match, "team_a")}
                       />
@@ -277,10 +316,27 @@ export default function PredictionPanel({
                       <PickButton
                         disabled={busy || !session}
                         isSelected={currentPick?.pick_type === "team_b"}
+                        points={match.team_b_points}
                         team={match.team_b}
                         onClick={() => submitPick(match, "team_b")}
                       />
                     </div>
+                    {match.stage !== "Group Stage" ? (
+                      <div className="length-pick-row" aria-label="Match length picks">
+                        {['90', 'ET', 'Pens'].map((lengthPick) => (
+                          <button
+                            className={currentPick?.length_pick === lengthPick ? "selected" : ""}
+                            disabled={busy || !session || !currentPick?.pick_type}
+                            key={lengthPick}
+                            type="button"
+                            onClick={() => submitLengthPick(match, lengthPick)}
+                          >
+                            <span>{formatLengthPick(lengthPick)}</span>
+                            <small>+2 pts</small>
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
                   </article>
                 );
               })}
@@ -343,7 +399,8 @@ function TeamBadge({ team }) {
   );
 }
 
-function PickButton({ disabled, isSelected, label, team, onClick }) {
+function PickButton({ disabled, isSelected, label, points, team, onClick }) {
+  const pointsLabel = formatPickPoints(points);
   return (
     <button
       className={isSelected ? "selected" : ""}
@@ -354,11 +411,28 @@ function PickButton({ disabled, isSelected, label, team, onClick }) {
       {team ? (
         <>
           <span className="flag" aria-hidden="true">{flagForTeam(team)}</span>
-          <span>{team.name}</span>
+          <span className="pick-button-label">
+            <span>{team.name}</span>
+            {pointsLabel ? <small>{pointsLabel}</small> : null}
+          </span>
         </>
       ) : label}
     </button>
   );
+}
+
+function formatPickPoints(points) {
+  if (points === null || points === undefined || points === "") return null;
+  const value = Number(points);
+  if (!Number.isFinite(value)) return null;
+  return `+${value % 1 === 0 ? value.toFixed(0) : value.toFixed(1)} pts`;
+}
+
+function formatLengthPick(value) {
+  if (value === "90") return "90 min";
+  if (value === "ET") return "Extra time";
+  if (value === "Pens") return "Pens";
+  return value || "";
 }
 
 function loadSession(groupSlug) {

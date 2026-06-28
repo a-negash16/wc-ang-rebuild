@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 
 import {
   getGroupOverview,
+  getDraftRoomState,
   getLeaderboardShell,
   getMissingPicksSummary,
   getPredictionPulseState,
@@ -15,12 +16,13 @@ export const fetchCache = "force-no-store";
 
 export default async function GroupPage({ params }) {
   const { group: groupSlug } = await params;
-  const [group, pulse, leaderboard, recentResults, missingPicks] = await Promise.all([
+  const [group, pulse, leaderboard, recentResults, missingPicks, draftRoom] = await Promise.all([
     getGroupOverview(groupSlug),
     getPredictionPulseState({ groupSlug }),
     getLeaderboardShell({ groupSlug }),
     getRecentResults({ groupSlug }),
     getMissingPicksSummary({ groupSlug }),
+    getDraftRoomState({ groupSlug }),
   ]);
   if (!group) notFound();
   const summary = getStandingSummary(leaderboard?.rows || []);
@@ -66,6 +68,7 @@ export default async function GroupPage({ params }) {
       />
 
       <PredictionPulse pulse={pulse} />
+      <DraftRoom draftRoom={draftRoom} />
       <Leaderboard leaderboard={leaderboard} />
       <RulesSection />
       <RecentResults results={recentResults} />
@@ -108,6 +111,69 @@ function MissingPicksBar({ summary }) {
   );
 }
 
+function DraftRoom({ draftRoom }) {
+  const rows = draftRoom?.rows || [];
+  const hasDrafts = rows.some((row) => row.teams.length || row.players.length);
+  return (
+    <section className="section section-band draft-room-section" id="draft-room" aria-labelledby="draft-room-title">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">Post group stage</p>
+          <h2 id="draft-room-title">Draft Room</h2>
+        </div>
+        <span className="status-chip">{rows.length} managers</span>
+      </div>
+      {hasDrafts ? (
+        <div className="draft-room-list" aria-label="Drafted teams and players by manager">
+          {rows.map((row) => (
+            <article className="draft-manager-card" key={row.manager_code}>
+              <header className="draft-manager-header">
+                <span className="draft-rank">{row.rank}</span>
+                <div>
+                  <h3>{row.manager_name}</h3>
+                  <span>{formatPoints(row.total_draft_points)} draft pts</span>
+                </div>
+              </header>
+              <div className="draft-columns">
+                <DraftColumn title="Drafted Teams" items={row.teams} emptyLabel="No teams drafted" />
+                <DraftColumn title="Drafted Players" items={row.players} emptyLabel="No players drafted" />
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <article className="panel empty-state">
+          <strong>No draft data yet.</strong>
+          <span>Drafted teams and players will appear here after the commissioner imports the post-group-stage draft.</span>
+        </article>
+      )}
+    </section>
+  );
+}
+
+function DraftColumn({ title, items, emptyLabel }) {
+  return (
+    <div className="draft-column">
+      <h4>{title}</h4>
+      {items.length ? (
+        <ul>
+          {items.map((item) => (
+            <li key={`${item.name}-${item.code || "no-code"}`}>
+              <span className="draft-item-name">
+                <span className="flag" aria-hidden="true">{flagForTeamCode(item.code)}</span>
+                <strong>{item.name}</strong>
+              </span>
+              <b>{formatSignedPoints(item.points)}</b>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p>{emptyLabel}</p>
+      )}
+    </div>
+  );
+}
+
 function PredictionPulse({ pulse }) {
   const matches = pulse?.matches || [];
   if (!matches.length) return null;
@@ -136,7 +202,7 @@ function PredictionPulse({ pulse }) {
               {match.status === "finished" ? <PulseScore match={match} /> : null}
               <GroupChip group={match.group_label} fallback={match.stage} />
             </div>
-            <div className="pulse-bars">
+            <div className={match.stage === "Group Stage" ? "pulse-bars" : "pulse-bars pulse-bars-knockout"}>
               <PulseChoice
                 label={match.team_a_name}
                 code={match.team_a_code}
@@ -145,13 +211,15 @@ function PredictionPulse({ pulse }) {
                 winnerType={match.winner_type}
                 isFinished={match.status === "finished"}
               />
-              <PulseChoice
-                label="Tie"
-                managers={match.tie_managers}
-                outcome="tie"
-                winnerType={match.winner_type}
-                isFinished={match.status === "finished"}
-              />
+              {match.stage === "Group Stage" ? (
+                <PulseChoice
+                  label="Tie"
+                  managers={match.tie_managers}
+                  outcome="tie"
+                  winnerType={match.winner_type}
+                  isFinished={match.status === "finished"}
+                />
+              ) : null}
               <PulseChoice
                 label={match.team_b_name}
                 code={match.team_b_code}
@@ -161,10 +229,52 @@ function PredictionPulse({ pulse }) {
                 isFinished={match.status === "finished"}
               />
             </div>
+            {match.stage !== "Group Stage" ? <PulseLengthSplit match={match} /> : null}
           </article>
         ))}
       </div>
     </section>
+  );
+}
+
+function PulseLengthSplit({ match }) {
+  const finished = match.status === "finished";
+  return (
+    <div className="pulse-length-split" aria-label="Length picks">
+      <PulseLengthChoice
+        actualLength={match.length}
+        isFinished={finished}
+        label="90'"
+        managers={match.length_90_managers}
+        value="90"
+      />
+      <PulseLengthChoice
+        actualLength={match.length}
+        isFinished={finished}
+        label="ET"
+        managers={match.length_et_managers}
+        value="ET"
+      />
+      <PulseLengthChoice
+        actualLength={match.length}
+        isFinished={finished}
+        label="Pens"
+        managers={match.length_pens_managers}
+        value="Pens"
+      />
+    </div>
+  );
+}
+
+function PulseLengthChoice({ actualLength, isFinished, label, managers, value }) {
+  const resultClass = isFinished && actualLength
+    ? actualLength === value ? "is-correct" : "is-wrong"
+    : "";
+  return (
+    <div className="pulse-length-choice">
+      <strong>{label}</strong>
+      <ManagerChips managers={managers} resultClass={resultClass} compact />
+    </div>
   );
 }
 
@@ -202,7 +312,7 @@ function PulseChoice({ label, code, managers, outcome, winnerType, isFinished })
   );
 }
 
-function ManagerChips({ managers, resultClass = "" }) {
+function ManagerChips({ managers, resultClass = "", compact = false }) {
   const names = String(managers || "")
     .split(",")
     .map((name) => name.trim())
@@ -210,7 +320,7 @@ function ManagerChips({ managers, resultClass = "" }) {
 
   if (!names.length) return <span className="manager-empty">No picks</span>;
   return (
-    <span className="manager-chips">
+    <span className={compact ? "manager-chips compact" : "manager-chips"}>
       {names.map((name) => (
         <em className={resultClass} key={name}>{name}</em>
       ))}
@@ -363,7 +473,6 @@ function RulesSection() {
         ["Goal", "5"],
         ["Assist", "3"],
         ["Player of match", "7"],
-        ["GK/CB clean sheet", "3"],
       ],
       draft: true,
     },
@@ -471,6 +580,11 @@ function formatNameList(names) {
 
 function formatPoints(value) {
   return Number(value || 0);
+}
+
+function formatSignedPoints(value) {
+  const points = Number(value || 0);
+  return points > 0 ? `+${points}` : "+0";
 }
 
 function formatRankDelta(value) {

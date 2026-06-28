@@ -4,7 +4,14 @@ import path from "node:path";
 import { getFifaMatchesById } from "@/integrations/fifa-api";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { validatePickForMatch } from "@/rules/predictions";
-import { scoreGroupStagePick, totalLeaderboardPoints } from "@/rules/scoring";
+import {
+  scoreDraftedPlayer,
+  scoreDraftedTeam,
+  scoreGroupStagePick,
+  scoreKnockoutLengthPick,
+  scoreKnockoutWinnerPick,
+  totalLeaderboardPoints,
+} from "@/rules/scoring";
 
 const SEED_DIR = path.join(process.cwd(), "supabase", "seed-data");
 const PULSE_RECENT_LIMIT = 6;
@@ -52,11 +59,14 @@ export async function getGroupOverview(groupSlug) {
           .from("group_matches")
           .select(`
             matches (
+              id,
               external_match_id,
               stage,
               group_label,
               kickoff_at,
               status,
+              team_a_id,
+              team_b_id,
               team_a:team_a_id ( fifa_code, name ),
               team_b:team_b_id ( fifa_code, name )
             )
@@ -70,11 +80,14 @@ export async function getGroupOverview(groupSlug) {
 
     const fifaMatchesById = await getFifaMatchesByIdSafe();
 
+    const upcomingMatches = normalizeSupabaseMatches(matches || [], fifaMatchesById);
+    await attachMatchPointValues({ supabase, matches: upcomingMatches });
+
     return {
       ...group,
       managers: managers || [],
       manager_count: managers?.length || 0,
-      upcoming_matches: normalizeSupabaseMatches(matches || [], fifaMatchesById),
+      upcoming_matches: upcomingMatches,
       data_mode: "supabase",
     };
   }
@@ -211,7 +224,7 @@ export async function getMatchForPrediction({ groupSlug, externalMatchId }) {
   };
 }
 
-export async function savePrediction({ groupSlug, managerCode, externalMatchId, pickType }) {
+export async function savePrediction({ groupSlug, managerCode, externalMatchId, pickType, lengthPick }) {
   const supabase = getOptionalSupabaseClient();
   if (!supabase) {
     throw new Error("Seed mode is read-only. Configure Supabase before saving predictions.");
@@ -267,7 +280,7 @@ export async function savePrediction({ groupSlug, managerCode, externalMatchId, 
 
   const { data: existing, error: existingError } = await supabase
     .from("predictions")
-    .select("id,pick_type,pick_team_id")
+    .select("id,pick_type,pick_team_id,length_pick")
     .eq("group_id", groupMatch.group_id)
     .eq("manager_id", manager.id)
     .eq("match_id", groupMatch.match_id)
@@ -276,10 +289,25 @@ export async function savePrediction({ groupSlug, managerCode, externalMatchId, 
 
   if (existingError) throw new Error(existingError.message);
 
+  if (!pickType && !existing) {
+    throw new Error("Pick a winner before selecting match length.");
+  }
+
+  const nextPickType = pickType || existing?.pick_type;
+  const nextPickTeamId = pickType
+    ? pickTeamId
+    : existing?.pick_team_id || null;
+  const nextLengthPick = lengthPick || existing?.length_pick || null;
+
   if (existing) {
     const { error: updateError } = await supabase
       .from("predictions")
-      .update(predictionRow)
+      .update({
+        ...predictionRow,
+        pick_type: nextPickType,
+        pick_team_id: nextPickTeamId,
+        length_pick: nextLengthPick,
+      })
       .eq("id", existing.id);
     if (updateError) throw new Error(updateError.message);
     await appendPredictionAudit({
@@ -290,19 +318,26 @@ export async function savePrediction({ groupSlug, managerCode, externalMatchId, 
       matchId: groupMatch.match_id,
       oldPickType: existing.pick_type,
       oldPickTeamId: existing.pick_team_id,
-      newPickType: pickType,
-      newPickTeamId: pickTeamId,
+      oldLengthPick: existing.length_pick,
+      newPickType: nextPickType,
+      newPickTeamId: nextPickTeamId,
+      newLengthPick: nextLengthPick,
       reason: "manager_update",
     });
-    return { ok: true, saved_at: savedAt };
+    return { ok: true, saved_at: savedAt, pick_type: nextPickType, length_pick: nextLengthPick };
   }
 
   const { error: insertError } = await supabase
     .from("predictions")
-    .insert(predictionRow);
+    .insert({
+      ...predictionRow,
+      pick_type: nextPickType,
+      pick_team_id: nextPickTeamId,
+      length_pick: nextLengthPick,
+    });
 
   if (insertError) throw new Error(insertError.message);
-  return { ok: true, saved_at: savedAt };
+  return { ok: true, saved_at: savedAt, pick_type: nextPickType, length_pick: nextLengthPick };
 }
 
 export async function getCommissionerCorrectionContext({ groupSlug }) {
@@ -684,6 +719,7 @@ export async function getRecentResults({ groupSlug, limit = 8 }) {
           team_b_score,
           winner_team_id,
           length,
+          length,
           team_a:team_a_id ( id, fifa_code, name ),
           team_b:team_b_id ( id, fifa_code, name )
         )
@@ -776,6 +812,7 @@ export async function getGroupMatchesForPulse({ groupSlug, limit = 200 }) {
       team_a_score: match.team_a_score ?? null,
       team_b_score: match.team_b_score ?? null,
       winner_team_id: match.winner_team_id ?? null,
+      length: match.length ?? null,
       team_a: teamByCode.get(match.team_a_code) || null,
       team_b: teamByCode.get(match.team_b_code) || null,
     }))
@@ -806,9 +843,11 @@ export async function getManagerPredictionState({ groupSlug, managerCode }) {
         team_a: match.team_a,
         team_b: match.team_b,
         pick_type: pick?.pick_type || null,
+        length_pick: pick?.length_pick || null,
         pick_label: formatPickLabel(pick),
+        length_label: formatLengthPickLabel(pick?.length_pick),
         picked_at: pick?.updated_at || null,
-        is_missing: !pick,
+        is_missing: !pick || (!isGroupStage(match.stage) && !pick.length_pick),
       };
     }),
   };
@@ -858,6 +897,7 @@ export async function getMissingPicksSummary({ groupSlug, warningHours = MISSING
         matches (
           id,
           external_match_id,
+          stage,
           kickoff_at,
           status,
           team_a:team_a_id ( fifa_code, name ),
@@ -868,7 +908,7 @@ export async function getMissingPicksSummary({ groupSlug, warningHours = MISSING
       .limit(200),
     supabase
       .from("predictions")
-      .select("manager_id,match_id")
+      .select("manager_id,match_id,pick_type,length_pick")
       .eq("group_id", group.id)
       .eq("status", "active"),
   ]);
@@ -891,9 +931,12 @@ export async function getMissingPicksSummary({ groupSlug, warningHours = MISSING
     .sort(sortByKickoffAsc);
 
   const monitoredMatchIds = new Set(monitoredMatches.map((match) => match.id));
+  const matchById = new Map(monitoredMatches.map((match) => [match.id, match]));
   const pickedByManager = new Map();
   for (const prediction of predictions || []) {
     if (!monitoredMatchIds.has(prediction.match_id)) continue;
+    const match = matchById.get(prediction.match_id);
+    if (!prediction.pick_type || (!isGroupStage(match?.stage) && !prediction.length_pick)) continue;
     const managerPicks = pickedByManager.get(prediction.manager_id) || new Set();
     managerPicks.add(prediction.match_id);
     pickedByManager.set(prediction.manager_id, managerPicks);
@@ -948,6 +991,7 @@ export async function getPredictionPulseState({ groupSlug }) {
         team_b_code: match.team_b?.fifa_code || null,
         kickoff_at: match.kickoff_at,
         status: match.status,
+        length: match.length ?? null,
         team_a_score: match.team_a_score ?? null,
         team_b_score: match.team_b_score ?? null,
         winner_type: getPulseWinnerType(match),
@@ -956,10 +1000,16 @@ export async function getPredictionPulseState({ groupSlug }) {
         team_a_picks: reveal ? Number(item?.team_a_picks || 0) : null,
         tie_picks: reveal ? Number(item?.tie_picks || 0) : null,
         team_b_picks: reveal ? Number(item?.team_b_picks || 0) : null,
+        length_90_picks: reveal ? Number(item?.length_90_picks || 0) : null,
+        length_et_picks: reveal ? Number(item?.length_et_picks || 0) : null,
+        length_pens_picks: reveal ? Number(item?.length_pens_picks || 0) : null,
         total_picks: reveal ? Number(item?.total_picks || 0) : null,
         team_a_managers: reveal ? item?.team_a_managers || "" : "",
         tie_managers: reveal ? item?.tie_managers || "" : "",
         team_b_managers: reveal ? item?.team_b_managers || "" : "",
+        length_90_managers: reveal ? item?.length_90_managers || "" : "",
+        length_et_managers: reveal ? item?.length_et_managers || "" : "",
+        length_pens_managers: reveal ? item?.length_pens_managers || "" : "",
       };
     })
     .filter((match) => match.reveal);
@@ -1001,28 +1051,39 @@ function getPulseWinnerType(match) {
 export async function getLeaderboardShell({ groupSlug }) {
   const overview = await getGroupOverview(groupSlug);
   if (!overview) return null;
-  const [groupStageSummary, manualPointsByManager] = await Promise.all([
-    getGroupStageScoringSummary(overview),
+  const [
+    predictionSummary,
+    manualPointsByManager,
+    draftedTeamPointsByManager,
+    draftedPlayerPointsByManager,
+  ] = await Promise.all([
+    getPredictionScoringSummary(overview),
     getManualPointsByManager(overview),
+    getDraftedTeamPointsByManager(overview),
+    getDraftedPlayerPointsByManager(overview),
   ]);
   const rows = overview.managers.map((manager) => {
-    const groupStage = groupStageSummary.pointsByManager.get(manager.manager_code) || 0;
-    const previousGroupStage = groupStageSummary.previousPointsByManager.get(manager.manager_code) || 0;
+    const groupStage = predictionSummary.groupStagePointsByManager.get(manager.manager_code) || 0;
+    const knockoutPredictions = predictionSummary.knockoutPointsByManager.get(manager.manager_code) || 0;
+    const previousGroupStage = predictionSummary.previousGroupStagePointsByManager.get(manager.manager_code) || 0;
+    const previousKnockoutPredictions = predictionSummary.previousKnockoutPointsByManager.get(manager.manager_code) || 0;
     const manualAdjustments = manualPointsByManager.get(manager.manager_code) || 0;
+    const draftedTeams = draftedTeamPointsByManager.get(manager.manager_code) || 0;
+    const draftedPlayers = draftedPlayerPointsByManager.get(manager.manager_code) || 0;
     const total = totalLeaderboardPoints({
       groupStage,
-      knockoutPredictions: 0,
+      knockoutPredictions,
       futures: 0,
-      draftedTeams: 0,
-      draftedPlayers: 0,
+      draftedTeams,
+      draftedPlayers,
       manualAdjustments,
     });
     const previousTotal = totalLeaderboardPoints({
       groupStage: previousGroupStage,
-      knockoutPredictions: 0,
+      knockoutPredictions: previousKnockoutPredictions,
       futures: 0,
-      draftedTeams: 0,
-      draftedPlayers: 0,
+      draftedTeams,
+      draftedPlayers,
       manualAdjustments,
     });
 
@@ -1032,10 +1093,10 @@ export async function getLeaderboardShell({ groupSlug }) {
       manager_name: manager.display_name,
       total_points: total,
       group_stage_points: groupStage,
-      knockout_prediction_points: 0,
+      knockout_prediction_points: knockoutPredictions,
       futures_points: 0,
-      drafted_teams_points: 0,
-      drafted_players_points: 0,
+      drafted_teams_points: draftedTeams,
+      drafted_players_points: draftedPlayers,
       manual_adjustment_points: manualAdjustments,
       previous_total_points: previousTotal,
       rank_delta: 0,
@@ -1049,7 +1110,7 @@ export async function getLeaderboardShell({ groupSlug }) {
   const previousRankByManager = new Map(previousRows.map((row) => [row.manager_code, row.rank]));
   const rowsWithMovement = rankedRows.map((row) => {
     const previousRank = previousRankByManager.get(row.manager_code);
-    const rankDelta = groupStageSummary.latestFinishedMatchId && previousRank
+    const rankDelta = predictionSummary.latestFinishedMatchId && previousRank
       ? previousRank - row.rank
       : 0;
     const { previous_total_points, ...publicRow } = row;
@@ -1062,8 +1123,41 @@ export async function getLeaderboardShell({ groupSlug }) {
   return {
     group_slug: groupSlug,
     scoring_status: "group_stage_live",
-    latest_rank_update_match_id: groupStageSummary.latestFinishedMatchId,
+    latest_rank_update_match_id: predictionSummary.latestFinishedMatchId,
     rows: rowsWithMovement,
+  };
+}
+
+export async function getDraftRoomState({ groupSlug }) {
+  const overview = await getGroupOverview(groupSlug);
+  if (!overview) return null;
+
+  const [teamDrafts, playerDrafts] = await Promise.all([
+    getDraftedTeamRows(overview),
+    getDraftedPlayerRows(overview),
+  ]);
+
+  const teamsByManager = groupRowsByManager(teamDrafts);
+  const playersByManager = groupRowsByManager(playerDrafts);
+  const rows = overview.managers.map((manager) => {
+    const teams = teamsByManager.get(manager.manager_code) || [];
+    const players = playersByManager.get(manager.manager_code) || [];
+    const teamsPoints = teams.reduce((sum, item) => sum + Number(item.points || 0), 0);
+    const playersPoints = players.reduce((sum, item) => sum + Number(item.points || 0), 0);
+    return {
+      manager_code: manager.manager_code,
+      manager_name: manager.display_name,
+      total_draft_points: teamsPoints + playersPoints,
+      drafted_teams_points: teamsPoints,
+      drafted_players_points: playersPoints,
+      teams,
+      players,
+    };
+  });
+
+  return {
+    group_slug: groupSlug,
+    rows: rankDraftRoomRows(rows),
   };
 }
 
@@ -1090,12 +1184,161 @@ async function getManualPointsByManager(overview) {
   }, new Map());
 }
 
-async function getGroupStageScoringSummary(overview) {
+async function getDraftedTeamPointsByManager(overview) {
+  const rows = await getDraftedTeamRows(overview);
+  return rows.reduce((totals, row) => {
+    if (!row.manager_code || !row.points) return totals;
+    totals.set(row.manager_code, (totals.get(row.manager_code) || 0) + row.points);
+    return totals;
+  }, new Map());
+}
+
+async function getDraftedTeamRows(overview) {
+  const supabase = getOptionalSupabaseClient();
+  if (!supabase || !overview?.id) return [];
+
+  const [
+    { data: draftedTeams, error: draftedTeamsError },
+    { data: matchRows, error: matchesError },
+  ] = await Promise.all([
+    supabase
+      .from("drafted_teams")
+      .select(`
+        team_id,
+        draft_slot,
+        managers!inner ( manager_code, display_name ),
+        teams!inner ( fifa_code, name )
+      `)
+      .eq("group_id", overview.id),
+    supabase
+      .from("group_matches")
+      .select(`
+        matches (
+          external_match_id,
+          stage,
+          status,
+          team_a_id,
+          team_b_id,
+          team_a_score,
+          team_b_score,
+          winner_team_id,
+          team_a:team_a_id ( id, fifa_code ),
+          team_b:team_b_id ( id, fifa_code )
+        )
+      `)
+      .eq("group_id", overview.id)
+      .limit(200),
+  ]);
+
+  if (draftedTeamsError) {
+    if (isMissingRelationError(draftedTeamsError)) return [];
+    throw new Error(draftedTeamsError.message);
+  }
+  if (matchesError) throw new Error(matchesError.message);
+
+  const fifaMatchesById = await getFifaMatchesByIdSafe();
+  const winsByTeamId = (matchRows || [])
+    .map((row) => row.matches)
+    .filter(Boolean)
+    .map((match) => overlayMatchResult(match, fifaMatchesById))
+    .filter((match) => match.status === "finished" && !isGroupStage(match.stage))
+    .map((match) => getKnockoutWinnerTeamId(match))
+    .filter(Boolean)
+    .reduce((wins, teamId) => {
+      wins.set(teamId, (wins.get(teamId) || 0) + 1);
+      return wins;
+    }, new Map());
+
+  return (draftedTeams || [])
+    .map((draft) => {
+      const wins = winsByTeamId.get(draft.team_id) || 0;
+      return {
+        manager_code: draft.managers?.manager_code || null,
+        manager_name: draft.managers?.display_name || null,
+        draft_slot: draft.draft_slot || null,
+        code: draft.teams?.fifa_code || null,
+        name: draft.teams?.name || "Unknown team",
+        points: scoreDraftedTeam({ stagesAdvanced: wins }),
+      };
+    })
+    .sort(sortDraftItems);
+}
+
+async function getDraftedPlayerPointsByManager(overview) {
+  const rows = await getDraftedPlayerRows(overview);
+  return rows.reduce((totals, row) => {
+    if (!row.manager_code || !row.points) return totals;
+    totals.set(row.manager_code, (totals.get(row.manager_code) || 0) + row.points);
+    return totals;
+  }, new Map());
+}
+
+async function getDraftedPlayerRows(overview) {
+  const supabase = getOptionalSupabaseClient();
+  if (!supabase || !overview?.id) return [];
+
+  const { data: draftedPlayers, error } = await supabase
+    .from("drafted_players")
+    .select(`
+      player_id,
+      draft_slot,
+      managers!inner ( manager_code, display_name ),
+      players!inner (
+        display_name,
+        position,
+        teams ( fifa_code, name )
+      )
+    `)
+    .eq("group_id", overview.id);
+
+  if (error) {
+    if (isMissingRelationError(error)) return [];
+    throw new Error(error.message);
+  }
+  if (!draftedPlayers?.length) return [];
+
+  const playerIds = [...new Set(draftedPlayers.map((draft) => draft.player_id).filter(Boolean))];
+  if (!playerIds.length) return [];
+
+  const { data: tallies, error: talliesError } = await supabase
+    .from("player_stat_tallies")
+    .select("player_id,goals,assists,player_of_match")
+    .in("player_id", playerIds);
+
+  if (talliesError) {
+    if (isMissingRelationError(talliesError)) return [];
+    throw new Error(talliesError.message);
+  }
+
+  const tallyByPlayer = new Map((tallies || []).map((tally) => [tally.player_id, tally]));
+  return draftedPlayers
+    .map((draft) => {
+      const tally = tallyByPlayer.get(draft.player_id);
+      return {
+        manager_code: draft.managers?.manager_code || null,
+        manager_name: draft.managers?.display_name || null,
+        draft_slot: draft.draft_slot || null,
+        code: draft.players?.teams?.fifa_code || null,
+        name: draft.players?.display_name || "Unknown player",
+        team_name: draft.players?.teams?.name || null,
+        points: scoreDraftedPlayer({
+          goals: tally?.goals || 0,
+          assists: tally?.assists || 0,
+          playerOfMatch: tally?.player_of_match || 0,
+        }),
+      };
+    })
+    .sort(sortDraftItems);
+}
+
+async function getPredictionScoringSummary(overview) {
   const supabase = getOptionalSupabaseClient();
   if (!supabase || !overview?.id) {
     return {
-      pointsByManager: new Map(),
-      previousPointsByManager: new Map(),
+      groupStagePointsByManager: new Map(),
+      knockoutPointsByManager: new Map(),
+      previousGroupStagePointsByManager: new Map(),
+      previousKnockoutPointsByManager: new Map(),
       latestFinishedMatchId: null,
     };
   }
@@ -1105,11 +1348,14 @@ async function getGroupStageScoringSummary(overview) {
     .select(`
       pick_type,
       pick_team_id,
+      length_pick,
       managers!inner ( manager_code ),
       matches!inner (
+        id,
         stage,
         external_match_id,
         status,
+        length,
         team_a_id,
         team_b_id,
         team_a_score,
@@ -1124,11 +1370,39 @@ async function getGroupStageScoringSummary(overview) {
 
   if (error) throw new Error(error.message);
   const fifaMatchesById = await getFifaMatchesByIdSafe();
+  const finishedKnockoutMatchIds = [...new Set((data || [])
+    .map((prediction) => overlayMatchResult(prediction.matches, fifaMatchesById))
+    .filter((match) => match?.status === "finished" && !isGroupStage(match.stage))
+    .map((match) => match.id)
+    .filter(Boolean))];
+  const knockoutPointValuesByMatch = await getMatchPickValuesByMatch({ supabase, matchIds: finishedKnockoutMatchIds });
   const scoredPredictions = (data || [])
     .map((prediction) => {
       const match = overlayMatchResult(prediction.matches, fifaMatchesById);
       const managerCode = prediction.managers?.manager_code;
-      if (!managerCode || !isGroupStage(match?.stage)) return null;
+      if (!managerCode || match?.status !== "finished") return null;
+
+      if (!isGroupStage(match.stage)) {
+        const winnerTeamId = getKnockoutWinnerTeamId(match);
+        if (!winnerTeamId) return null;
+        const teamPointValues = knockoutPointValuesByMatch.get(match.id) || {};
+        const winnerPoints = scoreKnockoutWinnerPick({
+          pickedTeamId: prediction.pick_team_id,
+          winnerTeamId,
+          teamPointValues,
+        });
+        const lengthPoints = scoreKnockoutLengthPick({
+          pickedLength: prediction.length_pick,
+          actualLength: match.length,
+        });
+
+        return {
+          managerCode,
+          match,
+          bucket: "knockout",
+          points: winnerPoints + lengthPoints,
+        };
+      }
 
       const result = getGroupStageResult(match);
       if (!result) return null;
@@ -1136,6 +1410,7 @@ async function getGroupStageScoringSummary(overview) {
       return {
         managerCode,
         match,
+        bucket: "groupStage",
         points: scoreGroupStagePick({
           pickType: prediction.pick_type === "tie" ? "tie" : "team",
           pickedTeamId: prediction.pick_team_id,
@@ -1148,22 +1423,46 @@ async function getGroupStageScoringSummary(overview) {
   const latestFinishedMatchId = getLatestFinishedMatchId(scoredPredictions.map((item) => item.match));
 
   return scoredPredictions.reduce((summary, item) => {
-    summary.pointsByManager.set(
+    const pointsMap = item.bucket === "knockout"
+      ? summary.knockoutPointsByManager
+      : summary.groupStagePointsByManager;
+    pointsMap.set(
       item.managerCode,
-      (summary.pointsByManager.get(item.managerCode) || 0) + item.points
+      (pointsMap.get(item.managerCode) || 0) + item.points
     );
     if (!latestFinishedMatchId || item.match.external_match_id !== latestFinishedMatchId) {
-      summary.previousPointsByManager.set(
+      const previousPointsMap = item.bucket === "knockout"
+        ? summary.previousKnockoutPointsByManager
+        : summary.previousGroupStagePointsByManager;
+      previousPointsMap.set(
         item.managerCode,
-        (summary.previousPointsByManager.get(item.managerCode) || 0) + item.points
+        (previousPointsMap.get(item.managerCode) || 0) + item.points
       );
     }
     return summary;
   }, {
-    pointsByManager: new Map(),
-    previousPointsByManager: new Map(),
+    groupStagePointsByManager: new Map(),
+    knockoutPointsByManager: new Map(),
+    previousGroupStagePointsByManager: new Map(),
+    previousKnockoutPointsByManager: new Map(),
     latestFinishedMatchId,
   });
+}
+
+async function getMatchPickValuesByMatch({ supabase, matchIds }) {
+  if (!matchIds.length) return new Map();
+  const { data, error } = await supabase
+    .from("match_pick_values")
+    .select("match_id,team_id,points")
+    .in("match_id", matchIds);
+
+  if (error) throw new Error(error.message);
+  return (data || []).reduce((byMatch, row) => {
+    const values = byMatch.get(row.match_id) || {};
+    values[row.team_id] = Number(row.points || 0);
+    byMatch.set(row.match_id, values);
+    return byMatch;
+  }, new Map());
 }
 
 function getLatestFinishedMatchId(matches) {
@@ -1213,6 +1512,18 @@ function getGroupStageResult(match) {
   return null;
 }
 
+function getKnockoutWinnerTeamId(match) {
+  if (!match || match.status !== "finished" || isGroupStage(match.stage)) return null;
+  const teamAScore = numberOrNull(match.team_a_score);
+  const teamBScore = numberOrNull(match.team_b_score);
+
+  if (teamAScore !== null && teamBScore !== null && teamAScore !== teamBScore) {
+    return teamAScore > teamBScore ? match.team_a_id : match.team_b_id;
+  }
+
+  return match.winner_team_id || null;
+}
+
 function rankLeaderboardRows(rows) {
   const sorted = [...rows].sort((a, b) => {
     const pointDiff = Number(b.total_points || 0) - Number(a.total_points || 0);
@@ -1229,6 +1540,41 @@ function rankLeaderboardRows(rows) {
     previousRank = rank;
     return { ...row, rank };
   });
+}
+
+function rankDraftRoomRows(rows) {
+  const sorted = [...rows].sort((a, b) => {
+    const pointDiff = Number(b.total_draft_points || 0) - Number(a.total_draft_points || 0);
+    if (pointDiff) return pointDiff;
+    return a.manager_name.localeCompare(b.manager_name);
+  });
+
+  let previousPoints = null;
+  let previousRank = 0;
+  return sorted.map((row, index) => {
+    const points = Number(row.total_draft_points || 0);
+    const rank = points === previousPoints ? previousRank : index + 1;
+    previousPoints = points;
+    previousRank = rank;
+    return { ...row, rank };
+  });
+}
+
+function groupRowsByManager(rows) {
+  return rows.reduce((grouped, row) => {
+    if (!row.manager_code) return grouped;
+    const managerRows = grouped.get(row.manager_code) || [];
+    managerRows.push(row);
+    grouped.set(row.manager_code, managerRows);
+    return grouped;
+  }, new Map());
+}
+
+function sortDraftItems(a, b) {
+  const slotA = Number(a.draft_slot || 999);
+  const slotB = Number(b.draft_slot || 999);
+  if (slotA !== slotB) return slotA - slotB;
+  return String(a.name || "").localeCompare(String(b.name || ""));
 }
 
 function isGroupStage(stage) {
@@ -1248,12 +1594,14 @@ async function appendPredictionAudit({
   matchId,
   oldPickType,
   oldPickTeamId,
+  oldLengthPick = null,
   newPickType,
   newPickTeamId,
+  newLengthPick = null,
   changedBy = null,
   reason = "manager_update",
 }) {
-  if (oldPickType === newPickType && oldPickTeamId === newPickTeamId) return;
+  if (oldPickType === newPickType && oldPickTeamId === newPickTeamId && oldLengthPick === newLengthPick) return;
 
   const { error } = await supabase
     .from("prediction_audit")
@@ -1264,8 +1612,10 @@ async function appendPredictionAudit({
       match_id: matchId,
       old_pick_type: oldPickType,
       old_pick_team_id: oldPickTeamId,
+      old_length_pick: oldLengthPick,
       new_pick_type: newPickType,
       new_pick_team_id: newPickTeamId,
+      new_length_pick: newLengthPick,
       changed_by: changedBy,
       reason,
     });
@@ -1279,9 +1629,35 @@ function getOptionalSupabaseClient() {
   return createSupabaseServerClient();
 }
 
+function isMissingRelationError(error) {
+  return error?.code === "42P01" || /relation .* does not exist/i.test(error?.message || "");
+}
+
 async function readSeedJson(fileName) {
   const text = await fs.readFile(path.join(SEED_DIR, fileName), "utf8");
   return JSON.parse(text);
+}
+
+async function attachMatchPointValues({ supabase, matches }) {
+  const matchIds = [...new Set((matches || []).map((match) => match.id).filter(Boolean))];
+  if (!supabase || !matchIds.length) return matches;
+
+  const { data, error } = await supabase
+    .from("match_pick_values")
+    .select("match_id,team_id,points")
+    .in("match_id", matchIds);
+
+  if (error) {
+    if (isMissingRelationError(error)) return matches;
+    throw new Error(error.message);
+  }
+
+  const pointsByMatchTeam = new Map((data || []).map((row) => [`${row.match_id}:${row.team_id}`, Number(row.points)]));
+  for (const match of matches) {
+    match.team_a_points = pointsByMatchTeam.get(`${match.id}:${match.team_a_id}`) ?? null;
+    match.team_b_points = pointsByMatchTeam.get(`${match.id}:${match.team_b_id}`) ?? null;
+  }
+  return matches;
 }
 
 function normalizeSupabaseMatches(rows, fifaMatchesById = new Map()) {
@@ -1357,6 +1733,13 @@ function formatPickLabel(pick) {
   if (!pick) return null;
   if (pick.pick_type === "tie") return "Tie";
   return pick.pick_team_name || null;
+}
+
+function formatLengthPickLabel(value) {
+  if (value === "90") return "90 min";
+  if (value === "ET") return "Extra time";
+  if (value === "Pens") return "Pens";
+  return null;
 }
 
 function pickNameForMatch({ match, pickType }) {

@@ -5,9 +5,14 @@ const root = process.cwd();
 const outputDir = path.join(root, "supabase", "generated");
 const outputFile = path.join(outputDir, "apply-all.sql");
 
+const migrationDir = path.join(root, "supabase", "migrations");
+const migrationFiles = (await fs.readdir(migrationDir))
+  .filter((fileName) => fileName.endsWith(".sql"))
+  .sort()
+  .map((fileName) => path.join(migrationDir, fileName));
+
 const files = [
-  path.join(root, "supabase", "migrations", "0001_initial_schema.sql"),
-  path.join(root, "supabase", "migrations", "0002_enable_rls.sql"),
+  ...migrationFiles,
   path.join(root, "supabase", "seed-data", "seed.sql"),
 ];
 

@@ -6,8 +6,6 @@ export const SCORING = Object.freeze({
   playerGoal: 5,
   playerAssist: 3,
   playerMotm: 7,
-  playerCleanSheet: 3,
-  playerPenaltySave: 10,
   futuresChampionMax: 100,
 });
 
@@ -30,7 +28,7 @@ export function scoreGroupStagePick({ pickType, pickedTeamId, result }) {
 export function scoreKnockoutWinnerPick({ pickedTeamId, winnerTeamId, teamPointValues }) {
   if (!pickedTeamId || !winnerTeamId || pickedTeamId !== winnerTeamId) return 0;
   const value = Number(teamPointValues?.[pickedTeamId] ?? 0);
-  return clampInteger(value, 1, 9);
+  return clampHalfPoint(value, 3, 7);
 }
 
 export function scoreKnockoutLengthPick({ pickedLength, actualLength }) {
@@ -43,27 +41,17 @@ export function scoreDraftedTeam({ stagesAdvanced }) {
 }
 
 export function scoreDraftedPlayer({
-  position,
   goals = 0,
   assists = 0,
   motm = 0,
-  cleanSheets = 0,
-  penaltySaves = 0,
+  playerOfMatch = 0,
 }) {
-  const normalizedPosition = String(position || "").toUpperCase();
-  const cleanSheetPoints = ["GK", "CB"].includes(normalizedPosition)
-    ? Number(cleanSheets || 0) * SCORING.playerCleanSheet
-    : 0;
-  const penaltySavePoints = normalizedPosition === "GK"
-    ? Number(penaltySaves || 0) * SCORING.playerPenaltySave
-    : 0;
+  const motmCount = Number(motm || playerOfMatch || 0);
 
   return (
     Number(goals || 0) * SCORING.playerGoal +
     Number(assists || 0) * SCORING.playerAssist +
-    Number(motm || 0) * SCORING.playerMotm +
-    cleanSheetPoints +
-    penaltySavePoints
+    motmCount * SCORING.playerMotm
   );
 }
 
@@ -88,4 +76,10 @@ export function totalLeaderboardPoints({
 function clampInteger(value, min, max) {
   if (!Number.isFinite(value)) return 0;
   return Math.max(min, Math.min(max, Math.round(value)));
+}
+
+function clampHalfPoint(value, min, max) {
+  if (!Number.isFinite(value)) return 0;
+  const rounded = Math.round(value * 2) / 2;
+  return Math.max(min, Math.min(max, rounded));
 }
