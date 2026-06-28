@@ -8,7 +8,6 @@ import {
   scoreDraftedPlayer,
   scoreDraftedTeam,
   scoreGroupStagePick,
-  scoreKnockoutLengthPick,
   scoreKnockoutWinnerPick,
   totalLeaderboardPoints,
 } from "@/rules/scoring";
@@ -224,7 +223,7 @@ export async function getMatchForPrediction({ groupSlug, externalMatchId }) {
   };
 }
 
-export async function savePrediction({ groupSlug, managerCode, externalMatchId, pickType, lengthPick }) {
+export async function savePrediction({ groupSlug, managerCode, externalMatchId, pickType }) {
   const supabase = getOptionalSupabaseClient();
   if (!supabase) {
     throw new Error("Seed mode is read-only. Configure Supabase before saving predictions.");
@@ -280,7 +279,7 @@ export async function savePrediction({ groupSlug, managerCode, externalMatchId, 
 
   const { data: existing, error: existingError } = await supabase
     .from("predictions")
-    .select("id,pick_type,pick_team_id,length_pick")
+    .select("id,pick_type,pick_team_id")
     .eq("group_id", groupMatch.group_id)
     .eq("manager_id", manager.id)
     .eq("match_id", groupMatch.match_id)
@@ -289,25 +288,10 @@ export async function savePrediction({ groupSlug, managerCode, externalMatchId, 
 
   if (existingError) throw new Error(existingError.message);
 
-  if (!pickType && !existing) {
-    throw new Error("Pick a winner before selecting match length.");
-  }
-
-  const nextPickType = pickType || existing?.pick_type;
-  const nextPickTeamId = pickType
-    ? pickTeamId
-    : existing?.pick_team_id || null;
-  const nextLengthPick = lengthPick || existing?.length_pick || null;
-
   if (existing) {
     const { error: updateError } = await supabase
       .from("predictions")
-      .update({
-        ...predictionRow,
-        pick_type: nextPickType,
-        pick_team_id: nextPickTeamId,
-        length_pick: nextLengthPick,
-      })
+      .update(predictionRow)
       .eq("id", existing.id);
     if (updateError) throw new Error(updateError.message);
     await appendPredictionAudit({
@@ -318,26 +302,19 @@ export async function savePrediction({ groupSlug, managerCode, externalMatchId, 
       matchId: groupMatch.match_id,
       oldPickType: existing.pick_type,
       oldPickTeamId: existing.pick_team_id,
-      oldLengthPick: existing.length_pick,
-      newPickType: nextPickType,
-      newPickTeamId: nextPickTeamId,
-      newLengthPick: nextLengthPick,
+      newPickType: pickType,
+      newPickTeamId: pickTeamId,
       reason: "manager_update",
     });
-    return { ok: true, saved_at: savedAt, pick_type: nextPickType, length_pick: nextLengthPick };
+    return { ok: true, saved_at: savedAt };
   }
 
   const { error: insertError } = await supabase
     .from("predictions")
-    .insert({
-      ...predictionRow,
-      pick_type: nextPickType,
-      pick_team_id: nextPickTeamId,
-      length_pick: nextLengthPick,
-    });
+    .insert(predictionRow);
 
   if (insertError) throw new Error(insertError.message);
-  return { ok: true, saved_at: savedAt, pick_type: nextPickType, length_pick: nextLengthPick };
+  return { ok: true, saved_at: savedAt };
 }
 
 export async function getCommissionerCorrectionContext({ groupSlug }) {
@@ -843,11 +820,9 @@ export async function getManagerPredictionState({ groupSlug, managerCode }) {
         team_a: match.team_a,
         team_b: match.team_b,
         pick_type: pick?.pick_type || null,
-        length_pick: pick?.length_pick || null,
         pick_label: formatPickLabel(pick),
-        length_label: formatLengthPickLabel(pick?.length_pick),
         picked_at: pick?.updated_at || null,
-        is_missing: !pick || (!isGroupStage(match.stage) && !pick.length_pick),
+        is_missing: !pick,
       };
     }),
   };
@@ -908,7 +883,7 @@ export async function getMissingPicksSummary({ groupSlug, warningHours = MISSING
       .limit(200),
     supabase
       .from("predictions")
-      .select("manager_id,match_id,pick_type,length_pick")
+      .select("manager_id,match_id")
       .eq("group_id", group.id)
       .eq("status", "active"),
   ]);
@@ -931,12 +906,9 @@ export async function getMissingPicksSummary({ groupSlug, warningHours = MISSING
     .sort(sortByKickoffAsc);
 
   const monitoredMatchIds = new Set(monitoredMatches.map((match) => match.id));
-  const matchById = new Map(monitoredMatches.map((match) => [match.id, match]));
   const pickedByManager = new Map();
   for (const prediction of predictions || []) {
     if (!monitoredMatchIds.has(prediction.match_id)) continue;
-    const match = matchById.get(prediction.match_id);
-    if (!prediction.pick_type || (!isGroupStage(match?.stage) && !prediction.length_pick)) continue;
     const managerPicks = pickedByManager.get(prediction.manager_id) || new Set();
     managerPicks.add(prediction.match_id);
     pickedByManager.set(prediction.manager_id, managerPicks);
@@ -991,7 +963,6 @@ export async function getPredictionPulseState({ groupSlug }) {
         team_b_code: match.team_b?.fifa_code || null,
         kickoff_at: match.kickoff_at,
         status: match.status,
-        length: match.length ?? null,
         team_a_score: match.team_a_score ?? null,
         team_b_score: match.team_b_score ?? null,
         winner_type: getPulseWinnerType(match),
@@ -1000,16 +971,10 @@ export async function getPredictionPulseState({ groupSlug }) {
         team_a_picks: reveal ? Number(item?.team_a_picks || 0) : null,
         tie_picks: reveal ? Number(item?.tie_picks || 0) : null,
         team_b_picks: reveal ? Number(item?.team_b_picks || 0) : null,
-        length_90_picks: reveal ? Number(item?.length_90_picks || 0) : null,
-        length_et_picks: reveal ? Number(item?.length_et_picks || 0) : null,
-        length_pens_picks: reveal ? Number(item?.length_pens_picks || 0) : null,
         total_picks: reveal ? Number(item?.total_picks || 0) : null,
         team_a_managers: reveal ? item?.team_a_managers || "" : "",
         tie_managers: reveal ? item?.tie_managers || "" : "",
         team_b_managers: reveal ? item?.team_b_managers || "" : "",
-        length_90_managers: reveal ? item?.length_90_managers || "" : "",
-        length_et_managers: reveal ? item?.length_et_managers || "" : "",
-        length_pens_managers: reveal ? item?.length_pens_managers || "" : "",
       };
     })
     .filter((match) => match.reveal);
@@ -1348,7 +1313,6 @@ async function getPredictionScoringSummary(overview) {
     .select(`
       pick_type,
       pick_team_id,
-      length_pick,
       managers!inner ( manager_code ),
       matches!inner (
         id,
@@ -1391,16 +1355,11 @@ async function getPredictionScoringSummary(overview) {
           winnerTeamId,
           teamPointValues,
         });
-        const lengthPoints = scoreKnockoutLengthPick({
-          pickedLength: prediction.length_pick,
-          actualLength: match.length,
-        });
-
         return {
           managerCode,
           match,
           bucket: "knockout",
-          points: winnerPoints + lengthPoints,
+          points: winnerPoints,
         };
       }
 
@@ -1594,14 +1553,12 @@ async function appendPredictionAudit({
   matchId,
   oldPickType,
   oldPickTeamId,
-  oldLengthPick = null,
   newPickType,
   newPickTeamId,
-  newLengthPick = null,
   changedBy = null,
   reason = "manager_update",
 }) {
-  if (oldPickType === newPickType && oldPickTeamId === newPickTeamId && oldLengthPick === newLengthPick) return;
+  if (oldPickType === newPickType && oldPickTeamId === newPickTeamId) return;
 
   const { error } = await supabase
     .from("prediction_audit")
@@ -1612,10 +1569,8 @@ async function appendPredictionAudit({
       match_id: matchId,
       old_pick_type: oldPickType,
       old_pick_team_id: oldPickTeamId,
-      old_length_pick: oldLengthPick,
       new_pick_type: newPickType,
       new_pick_team_id: newPickTeamId,
-      new_length_pick: newLengthPick,
       changed_by: changedBy,
       reason,
     });
@@ -1630,7 +1585,17 @@ function getOptionalSupabaseClient() {
 }
 
 function isMissingRelationError(error) {
-  return error?.code === "42P01" || /relation .* does not exist/i.test(error?.message || "");
+  const message = error?.message || "";
+  return error?.code === "42P01"
+    || error?.code === "PGRST205"
+    || /relation .* does not exist/i.test(message)
+    || /could not find the table/i.test(message);
+}
+
+function isMissingColumnError(error, columnName) {
+  if (!error) return false;
+  const message = error.message || "";
+  return error.code === "42703" || message.includes(`.${columnName}`) || message.includes(`column ${columnName}`);
 }
 
 async function readSeedJson(fileName) {
@@ -1733,13 +1698,6 @@ function formatPickLabel(pick) {
   if (!pick) return null;
   if (pick.pick_type === "tie") return "Tie";
   return pick.pick_team_name || null;
-}
-
-function formatLengthPickLabel(value) {
-  if (value === "90") return "90 min";
-  if (value === "ET") return "Extra time";
-  if (value === "Pens") return "Pens";
-  return null;
 }
 
 function pickNameForMatch({ match, pickType }) {

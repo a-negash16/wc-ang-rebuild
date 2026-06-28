@@ -1,7 +1,6 @@
 export const SCORING = Object.freeze({
   groupStageWinner: 3,
   groupStageTie: 5,
-  knockoutLength: 2,
   draftedTeamStageAdvance: 10,
   playerGoal: 5,
   playerAssist: 3,
@@ -9,7 +8,6 @@ export const SCORING = Object.freeze({
   futuresChampionMax: 100,
 });
 
-export const MATCH_LENGTHS = Object.freeze(["90", "ET", "Pens"]);
 export const POSITIONS = Object.freeze(["GK", "DEF", "CB", "MID", "FWD"]);
 
 export function scoreGroupStagePick({ pickType, pickedTeamId, result }) {
@@ -29,11 +27,6 @@ export function scoreKnockoutWinnerPick({ pickedTeamId, winnerTeamId, teamPointV
   if (!pickedTeamId || !winnerTeamId || pickedTeamId !== winnerTeamId) return 0;
   const value = Number(teamPointValues?.[pickedTeamId] ?? 0);
   return clampHalfPoint(value, 3, 7);
-}
-
-export function scoreKnockoutLengthPick({ pickedLength, actualLength }) {
-  if (!MATCH_LENGTHS.includes(pickedLength) || !MATCH_LENGTHS.includes(actualLength)) return 0;
-  return pickedLength === actualLength ? SCORING.knockoutLength : 0;
 }
 
 export function scoreDraftedTeam({ stagesAdvanced }) {

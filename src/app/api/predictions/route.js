@@ -1,6 +1,6 @@
 import { getMatchForPrediction, savePrediction } from "@/data/league";
 import { verifyManagerSessionToken } from "@/lib/auth/session";
-import { isPredictionLocked, validateLengthPickForMatch, validatePickForMatch } from "@/rules/predictions";
+import { isPredictionLocked, validatePickForMatch } from "@/rules/predictions";
 
 export async function POST(request) {
   try {
@@ -8,9 +8,8 @@ export async function POST(request) {
     const token = clean(body.token);
     const externalMatchId = clean(body.external_match_id);
     const pickType = clean(body.pick_type);
-    const lengthPick = clean(body.length_pick);
 
-    if (!token || !externalMatchId || (!pickType && !lengthPick)) {
+    if (!token || !externalMatchId || !pickType) {
       return jsonError("Session, match, and pick are required", 400);
     }
 
@@ -31,30 +30,21 @@ export async function POST(request) {
       return jsonError("Deadline passed", 400);
     }
 
-    if (pickType) {
-      const validation = validatePickForMatch({ pickType, match });
-      if (!validation.ok) return jsonError(validation.message, 400);
-    }
-
-    if (lengthPick) {
-      const lengthValidation = validateLengthPickForMatch({ lengthPick, match });
-      if (!lengthValidation.ok) return jsonError(lengthValidation.message, 400);
-    }
+    const validation = validatePickForMatch({ pickType, match });
+    if (!validation.ok) return jsonError(validation.message, 400);
 
     const saved = await savePrediction({
       groupSlug: session.group_slug,
       managerCode: session.manager_code,
       externalMatchId,
       pickType,
-      lengthPick,
     });
 
     return Response.json({
       ok: true,
       message: "Prediction saved",
       external_match_id: externalMatchId,
-      pick_type: saved.pick_type || pickType,
-      length_pick: saved.length_pick || lengthPick || null,
+      pick_type: pickType,
       saved_at: saved.saved_at,
     });
   } catch (error) {

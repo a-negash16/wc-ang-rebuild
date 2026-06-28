@@ -229,52 +229,10 @@ function PredictionPulse({ pulse }) {
                 isFinished={match.status === "finished"}
               />
             </div>
-            {match.stage !== "Group Stage" ? <PulseLengthSplit match={match} /> : null}
           </article>
         ))}
       </div>
     </section>
-  );
-}
-
-function PulseLengthSplit({ match }) {
-  const finished = match.status === "finished";
-  return (
-    <div className="pulse-length-split" aria-label="Length picks">
-      <PulseLengthChoice
-        actualLength={match.length}
-        isFinished={finished}
-        label="90'"
-        managers={match.length_90_managers}
-        value="90"
-      />
-      <PulseLengthChoice
-        actualLength={match.length}
-        isFinished={finished}
-        label="ET"
-        managers={match.length_et_managers}
-        value="ET"
-      />
-      <PulseLengthChoice
-        actualLength={match.length}
-        isFinished={finished}
-        label="Pens"
-        managers={match.length_pens_managers}
-        value="Pens"
-      />
-    </div>
-  );
-}
-
-function PulseLengthChoice({ actualLength, isFinished, label, managers, value }) {
-  const resultClass = isFinished && actualLength
-    ? actualLength === value ? "is-correct" : "is-wrong"
-    : "";
-  return (
-    <div className="pulse-length-choice">
-      <strong>{label}</strong>
-      <ManagerChips managers={managers} resultClass={resultClass} compact />
-    </div>
   );
 }
 
@@ -498,8 +456,7 @@ function RulesSection() {
       title: "Knockouts",
       body: "Winner picks become odds-weighted after the group stage.",
       rows: [
-        ["Correct winner", "1-9"],
-        ["90/ET/Pens", "2"],
+        ["Correct winner", "3-7"],
       ],
     },
   ];
