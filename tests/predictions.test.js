@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { isPredictionLocked, validatePickForMatch } from "../src/rules/predictions.js";
+import { isPredictionLocked, validateLengthPickForMatch, validatePickForMatch } from "../src/rules/predictions.js";
 
 test("prediction deadline locks before kickoff", () => {
   const now = new Date("2026-06-19T17:59:00Z");
@@ -16,6 +16,23 @@ test("prediction deadline locks before kickoff", () => {
     lockMinutesBeforeKickoff: 60,
     now: new Date("2026-06-19T18:00:00Z"),
   }), true);
+});
+
+test("knockout length picks are valid only for knockout matches", () => {
+  assert.deepEqual(validateLengthPickForMatch({
+    lengthPick: "Pens",
+    match: { stage: "Round of 32" },
+  }), { ok: true });
+
+  assert.equal(validateLengthPickForMatch({
+    lengthPick: "Pens",
+    match: { stage: "Group Stage" },
+  }).ok, false);
+
+  assert.equal(validateLengthPickForMatch({
+    lengthPick: "overtime",
+    match: { stage: "Round of 32" },
+  }).ok, false);
 });
 
 test("group stage allows tie but knockouts require a winner", () => {

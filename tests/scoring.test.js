@@ -6,6 +6,7 @@ import {
   scoreDraftedTeam,
   scoreFuturesChampionPick,
   scoreGroupStagePick,
+  scoreKnockoutLengthPick,
   scoreKnockoutWinnerPick,
   totalLeaderboardPoints,
 } from "../src/rules/scoring.js";
@@ -41,6 +42,14 @@ test("knockout winner uses odds-weighted team point values", () => {
     winnerTeamId: "UNDERDOG",
     teamPointValues: { FAVORITE: 3, UNDERDOG: 7 },
   }), 0);
+});
+
+test("knockout length picks are a flat bonus, not odds-weighted", () => {
+  assert.equal(scoreKnockoutLengthPick({ pickedLength: "ET", actualLength: "ET" }), 5);
+  assert.equal(scoreKnockoutLengthPick({ pickedLength: "Pens", actualLength: "Pens" }), 8);
+  assert.equal(scoreKnockoutLengthPick({ pickedLength: "90", actualLength: "90" }), 0);
+  assert.equal(scoreKnockoutLengthPick({ pickedLength: "ET", actualLength: "Pens" }), 0);
+  assert.equal(scoreKnockoutLengthPick({ pickedLength: "ET", actualLength: null }), 0);
 });
 
 test("drafted teams score 10 points per stage advanced", () => {

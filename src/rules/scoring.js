@@ -1,6 +1,8 @@
 export const SCORING = Object.freeze({
   groupStageWinner: 3,
   groupStageTie: 5,
+  knockoutExtraTime: 5,
+  knockoutPenalties: 8,
   draftedTeamStageAdvance: 10,
   playerGoal: 5,
   playerAssist: 3,
@@ -8,6 +10,7 @@ export const SCORING = Object.freeze({
   futuresChampionMax: 100,
 });
 
+export const MATCH_LENGTHS = Object.freeze(["90", "ET", "Pens"]);
 export const POSITIONS = Object.freeze(["GK", "DEF", "CB", "MID", "FWD"]);
 
 export function scoreGroupStagePick({ pickType, pickedTeamId, result }) {
@@ -27,6 +30,16 @@ export function scoreKnockoutWinnerPick({ pickedTeamId, winnerTeamId, teamPointV
   if (!pickedTeamId || !winnerTeamId || pickedTeamId !== winnerTeamId) return 0;
   const value = Number(teamPointValues?.[pickedTeamId] ?? 0);
   return clampHalfPoint(value, 3, 7);
+}
+
+// Flat bonus, unlike scoreKnockoutWinnerPick — calling ET/Pens isn't
+// odds-weighted, it's the same payout for everyone regardless of favorite/underdog.
+export function scoreKnockoutLengthPick({ pickedLength, actualLength }) {
+  if (!MATCH_LENGTHS.includes(pickedLength) || !MATCH_LENGTHS.includes(actualLength)) return 0;
+  if (pickedLength !== actualLength) return 0;
+  if (pickedLength === "ET") return SCORING.knockoutExtraTime;
+  if (pickedLength === "Pens") return SCORING.knockoutPenalties;
+  return 0;
 }
 
 export function scoreDraftedTeam({ stagesAdvanced }) {
