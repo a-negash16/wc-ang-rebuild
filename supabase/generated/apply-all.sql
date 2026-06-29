@@ -218,7 +218,7 @@ create table players (
   position text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  unique (team_id, display_name)
+  unique (display_name)
 );
 
 create table drafted_teams (
@@ -307,6 +307,34 @@ alter table match_pick_values
 
 alter table match_pick_values
   add constraint match_pick_values_points_check check (points between 3 and 7);
+
+-- ============================================================
+-- supabase/migrations/0005_group_comments.sql
+-- ============================================================
+create table group_comments (
+  id uuid primary key default gen_random_uuid(),
+  group_id uuid not null references groups(id) on delete cascade,
+  manager_id uuid not null references managers(id) on delete cascade,
+  body text not null check (char_length(body) between 1 and 30),
+  status text not null default 'active' check (status in ('active', 'hidden', 'deleted')),
+  created_at timestamptz not null default now()
+);
+
+create index group_comments_group_created_idx
+  on group_comments (group_id, created_at desc)
+  where status = 'active';
+
+alter table group_comments enable row level security;
+
+-- ============================================================
+-- supabase/migrations/0006_shorten_group_comments.sql
+-- ============================================================
+alter table group_comments
+  drop constraint if exists group_comments_body_check;
+
+alter table group_comments
+  add constraint group_comments_body_check
+  check (char_length(body) between 1 and 30);
 
 -- ============================================================
 -- supabase/seed-data/seed.sql

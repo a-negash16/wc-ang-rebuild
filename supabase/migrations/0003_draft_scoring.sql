@@ -6,7 +6,7 @@ create table players (
   position text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  unique (team_id, display_name)
+  unique (display_name)
 );
 
 create table drafted_teams (

@@ -14,6 +14,8 @@ export default function PredictionPanel({
   matches,
   lockMinutesBeforeKickoff,
   timezone = "America/New_York",
+  draftTeamManagersByCode = {},
+  draftPlayersByCode = {},
 }) {
   const [session, setSession] = useState(null);
   const [managerCode, setManagerCode] = useState(() => managers[0]?.manager_code || "");
@@ -239,21 +241,39 @@ export default function PredictionPanel({
               {items.map((match) => {
                 const currentPick = pickByMatch.get(match.external_match_id);
                 const deadline = getDeadline(match.kickoff_at, lockMinutesBeforeKickoff);
+                const teamACode = getTeamCode(match.team_a);
+                const teamBCode = getTeamCode(match.team_b);
                 return (
                   <article className={currentPick?.is_missing ? "prediction-card needs-pick" : "prediction-card"} key={match.external_match_id}>
                     <div className="ticket-meta">
                       <b className={groupClass(match.group_label)}>Group {match.group_label || "-"}</b>
                     </div>
-                    <div className="ticket-body">
-                      <TeamVersus teamA={match.team_a} teamB={match.team_b} />
-                      <div className="kickoff-block">
-                        <strong>Kickoff</strong>
-                        <span>{formatTicketKickoff(match.kickoff_at, timezone)}</span>
+                    <div className="ticket-body ticket-body-matchup">
+                      <TeamVersus
+                        teamA={match.team_a}
+                        teamB={match.team_b}
+                        teamADrafters={draftTeamManagersByCode[teamACode] || []}
+                        teamBDrafters={draftTeamManagersByCode[teamBCode] || []}
+                      />
+                      <WatchOutFor
+                        teamA={match.team_a}
+                        teamB={match.team_b}
+                        teamAPlayers={draftPlayersByCode[teamACode] || []}
+                        teamBPlayers={draftPlayersByCode[teamBCode] || []}
+                      />
+                      <div className="ticket-time-row">
+                        <div className="kickoff-block">
+                          <strong>Kickoff</strong>
+                          <span>{formatTicketKickoff(match.kickoff_at, timezone)}</span>
+                        </div>
+                        <div className="deadline-countdown" aria-label="Time left before prediction lock">
+                          <strong>Locks</strong>
+                          <b>{formatTimeLeft(deadline, now)}</b>
+                        </div>
                       </div>
                     </div>
                     <div className="ticket-divider" />
                     <div className="match-meta">
-                      <b>{formatTimeLeft(deadline, now)}</b>
                       <span className={currentPick?.pick_label ? "pick-receipt saved" : "pick-receipt"}>
                         <strong>{currentPick?.pick_label ? `Saved: ${currentPick.pick_label}` : "No pick saved"}</strong>
                         {currentPick?.picked_at ? <small>Confirmed {formatSavedAt(currentPick.picked_at, timezone)}</small> : null}
@@ -300,6 +320,38 @@ export default function PredictionPanel({
   );
 }
 
+function WatchOutFor({ teamA, teamB, teamAPlayers = [], teamBPlayers = [] }) {
+  if (!teamAPlayers.length && !teamBPlayers.length) return null;
+  return (
+    <div className="watchout-panel">
+      <strong>Watch out for</strong>
+      <div className="watchout-columns">
+        {teamAPlayers.length ? <WatchOutSide team={teamA} players={teamAPlayers} /> : null}
+        {teamBPlayers.length ? <WatchOutSide team={teamB} players={teamBPlayers} align="right" /> : null}
+      </div>
+    </div>
+  );
+}
+
+function WatchOutSide({ team, players, align = "left" }) {
+  return (
+    <div className={`watchout-side watchout-side-${align}`}>
+      <span className="watchout-team">
+        <span className="flag" aria-hidden="true">{flagForTeam(team)}</span>
+        {team?.name || "TBD"}
+      </span>
+      <span className="watchout-tags">
+        {players.map((player) => (
+          <em key={`${player.player_name}-${player.manager_name}`}>
+            <b>{player.player_name}</b>
+            <small>{player.manager_name}</small>
+          </em>
+        ))}
+      </span>
+    </div>
+  );
+}
+
 function SavedPicksPreview({ picks, timezone }) {
   return (
     <article className="panel saved-picks-panel">
@@ -327,21 +379,37 @@ function SavedPicksPreview({ picks, timezone }) {
   );
 }
 
-function TeamVersus({ teamA, teamB }) {
+function TeamVersus({ teamA, teamB, teamADrafters = [], teamBDrafters = [] }) {
   return (
     <div className="team-versus">
-      <TeamBadge team={teamA} />
-      <TeamBadge team={teamB} />
+      <TeamBadge team={teamA} drafters={teamADrafters} />
+      <span className="versus-mark" aria-hidden="true">V</span>
+      <TeamBadge team={teamB} drafters={teamBDrafters} align="right" />
     </div>
   );
 }
 
-function TeamBadge({ team }) {
+function TeamBadge({ team, drafters = [], align = "left" }) {
   return (
-    <div className="team-badge">
-      <span className="flag" aria-hidden="true">{flagForTeam(team)}</span>
-      <strong>{team?.name || "TBD"}</strong>
+    <div className={`team-badge team-badge-${align}`}>
+      <div className="team-badge-main">
+        <span className="flag" aria-hidden="true">{flagForTeam(team)}</span>
+        <strong>{team?.name || "TBD"}</strong>
+      </div>
+      <DraftManagerTags managers={drafters} />
     </div>
+  );
+}
+
+function DraftManagerTags({ managers }) {
+  const names = [...new Set((managers || []).filter(Boolean))];
+  if (!names.length) return <span className="draft-tags empty">No drafted team</span>;
+  return (
+    <span className="draft-tags">
+      {names.map((name) => (
+        <em key={name}>{name}</em>
+      ))}
+    </span>
   );
 }
 
@@ -458,6 +526,10 @@ function formatTeams(match) {
   return `${match.team_a?.name || "TBD"} vs ${match.team_b?.name || "TBD"}`;
 }
 
+function getTeamCode(team) {
+  return String(team?.fifa_code || "").toUpperCase();
+}
+
 function getPickLabel(match, pickType) {
   if (pickType === "tie") return "Tie";
   if (pickType === "team_a") return match.team_a?.name || "Team A";
@@ -489,7 +561,7 @@ function flagForTeam(team) {
     CZE: "🇨🇿",
     ECU: "🇪🇨",
     EGY: "🇪🇬",
-    ENG: "🏴",
+    ENG: "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
     ESP: "🇪🇸",
     FRA: "🇫🇷",
     GER: "🇩🇪",

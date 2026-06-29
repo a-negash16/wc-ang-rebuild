@@ -3,11 +3,13 @@ import { notFound } from "next/navigation";
 import {
   getGroupOverview,
   getDraftRoomState,
+  getGroupComments,
   getLeaderboardShell,
   getMissingPicksSummary,
   getPredictionPulseState,
   getRecentResults,
 } from "@/data/league";
+import CommentSection from "./CommentSection";
 import PredictionPanel from "./PredictionPanel";
 
 export const dynamic = "force-dynamic";
@@ -16,42 +18,31 @@ export const fetchCache = "force-no-store";
 
 export default async function GroupPage({ params }) {
   const { group: groupSlug } = await params;
-  const [group, pulse, leaderboard, recentResults, missingPicks, draftRoom] = await Promise.all([
+  const [group, pulse, leaderboard, recentResults, missingPicks, draftRoom, comments] = await Promise.all([
     getGroupOverview(groupSlug),
     getPredictionPulseState({ groupSlug }),
     getLeaderboardShell({ groupSlug }),
     getRecentResults({ groupSlug }),
     getMissingPicksSummary({ groupSlug }),
     getDraftRoomState({ groupSlug }),
+    getGroupComments({ groupSlug }),
   ]);
   if (!group) notFound();
-  const summary = getStandingSummary(leaderboard?.rows || []);
-
   return (
     <main className={`page theme-${group.slug}`}>
       <section className="hero hero-dashboard" aria-labelledby="group-title">
         <div className="hero-pattern" aria-hidden="true"></div>
         <div className="hero-main">
-          <p className="hero-kicker">Private league · World Cup 2026</p>
           <h1 id="group-title">{group.name}</h1>
-          <div className="hero-rows" aria-label="Group summary">
-            <div className="hero-meta">
-              <span className="status-dot" aria-hidden="true"></span>
-              <span className="hero-status-lines">
-                <span className="hero-status-line">
-                  <span className="hero-status-icon" aria-hidden="true">⭐</span>
-                  <strong>{summary.leaders}</strong>
-                </span>
-                <span className="hero-status-line">
-                  <span className="hero-status-icon" aria-hidden="true">🤡</span>
-                  <strong>{summary.lastPlace}</strong>
-                </span>
-              </span>
-            </div>
+          <div className="hero-rows" aria-label="Page sections">
             <nav className="hero-actions" aria-label="Page sections">
               <a href="#standings">View standings</a>
               <a href="#next-picks">Next Picks</a>
+              <a href="#prediction-pulse">Prediction Pulse</a>
+              <a href="#draft-room">Draft Room</a>
               <a href="#recent-results">Recent Results</a>
+              <a href="#rules">Rules</a>
+              <a href="#comments">Comments</a>
             </nav>
           </div>
         </div>
@@ -65,10 +56,13 @@ export default async function GroupPage({ params }) {
         matches={group.upcoming_matches}
         lockMinutesBeforeKickoff={group.lock_minutes_before_kickoff}
         timezone={group.timezone}
+        draftTeamManagersByCode={getDraftTeamManagersByCode(draftRoom)}
+        draftPlayersByCode={getDraftPlayersByCode(draftRoom)}
       />
 
       <PredictionPulse pulse={pulse} />
       <DraftRoom draftRoom={draftRoom} />
+      <CommentSection groupSlug={group.slug} initialComments={comments} />
       <Leaderboard leaderboard={leaderboard} />
       <RulesSection />
       <RecentResults results={recentResults} />
@@ -135,8 +129,8 @@ function DraftRoom({ draftRoom }) {
                 </div>
               </header>
               <div className="draft-columns">
-                <DraftColumn title="Drafted Teams" items={row.teams} emptyLabel="No teams drafted" />
-                <DraftColumn title="Drafted Players" items={row.players} emptyLabel="No players drafted" />
+                <DraftColumn title="Drafted Teams" items={row.teams} emptyLabel="No teams drafted" showFlags />
+                <DraftColumn title="Drafted Players" items={row.players} emptyLabel="No players drafted" showFlags />
               </div>
             </article>
           ))}
@@ -151,7 +145,7 @@ function DraftRoom({ draftRoom }) {
   );
 }
 
-function DraftColumn({ title, items, emptyLabel }) {
+function DraftColumn({ title, items, emptyLabel, showFlags = false }) {
   return (
     <div className="draft-column">
       <h4>{title}</h4>
@@ -159,8 +153,8 @@ function DraftColumn({ title, items, emptyLabel }) {
         <ul>
           {items.map((item) => (
             <li key={`${item.name}-${item.code || "no-code"}`}>
-              <span className="draft-item-name">
-                <span className="flag" aria-hidden="true">{flagForTeamCode(item.code)}</span>
+              <span className={showFlags ? "draft-item-name" : "draft-item-name no-flag"}>
+                {showFlags ? <span className="flag" aria-hidden="true">{flagForTeamCode(item.code)}</span> : null}
                 <strong>{item.name}</strong>
               </span>
               <b>{formatSignedPoints(item.points)}</b>
@@ -174,12 +168,41 @@ function DraftColumn({ title, items, emptyLabel }) {
   );
 }
 
+function getDraftTeamManagersByCode(draftRoom) {
+  const map = {};
+  for (const row of draftRoom?.rows || []) {
+    for (const team of row.teams || []) {
+      const code = String(team.code || "").toUpperCase();
+      if (!code) continue;
+      map[code] ||= [];
+      map[code].push(row.manager_name);
+    }
+  }
+  return map;
+}
+
+function getDraftPlayersByCode(draftRoom) {
+  const map = {};
+  for (const row of draftRoom?.rows || []) {
+    for (const player of row.players || []) {
+      const code = String(player.code || "").toUpperCase();
+      if (!code) continue;
+      map[code] ||= [];
+      map[code].push({
+        player_name: player.name,
+        manager_name: row.manager_name,
+      });
+    }
+  }
+  return map;
+}
+
 function PredictionPulse({ pulse }) {
   const matches = pulse?.matches || [];
   if (!matches.length) return null;
 
   return (
-    <section className="section section-dark pulse-section" aria-labelledby="prediction-pulse-title">
+    <section className="section section-dark pulse-section" id="prediction-pulse" aria-labelledby="prediction-pulse-title">
       <div className="section-heading">
         <div>
           <p className="eyebrow">Room energy</p>
@@ -324,6 +347,7 @@ function Leaderboard({ leaderboard }) {
                   <th>Manager</th>
                   <th>Total</th>
                   <th>Group</th>
+                  <th>KO</th>
                   <th>Players</th>
                   <th>Teams</th>
                 </tr>
@@ -340,6 +364,7 @@ function Leaderboard({ leaderboard }) {
                     <th scope="row">{row.manager_name}</th>
                     <td><b>{formatPoints(row.total_points)}</b></td>
                     <td>{formatPoints(row.group_stage_points)}</td>
+                    <td>{formatPoints(row.knockout_prediction_points)}</td>
                     <td>{formatPoints(row.drafted_players_points)}</td>
                     <td>{formatPoints(row.drafted_teams_points)}</td>
                   </tr>
@@ -440,15 +465,6 @@ function RulesSection() {
       body: "Drafted teams score every time they advance to another stage.",
       rows: [
         ["Each stage advanced", "10"],
-      ],
-    },
-    {
-      tag: "Future",
-      title: "Futures",
-      body: "Champion picks are commissioner-entered and odds-weighted.",
-      rows: [
-        ["Least likely champion", "up to 100"],
-        ["Favorites", "less"],
       ],
     },
     {
@@ -587,7 +603,7 @@ function flagForTeamCode(code) {
     CZE: "🇨🇿",
     ECU: "🇪🇨",
     EGY: "🇪🇬",
-    ENG: "🏴",
+    ENG: "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
     ESP: "🇪🇸",
     FRA: "🇫🇷",
     GER: "🇩🇪",

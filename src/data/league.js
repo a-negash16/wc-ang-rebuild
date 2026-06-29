@@ -670,6 +670,89 @@ export async function getPredictionPulse({ groupSlug, externalMatchIds = [] }) {
   return [];
 }
 
+export async function getGroupComments({ groupSlug, limit = 30 }) {
+  const supabase = getOptionalSupabaseClient();
+  if (!supabase) return [];
+
+  const { data: group, error: groupError } = await supabase
+    .from("groups")
+    .select("id")
+    .eq("slug", groupSlug)
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (groupError) throw new Error(groupError.message);
+  if (!group) return [];
+
+  const { data, error } = await supabase
+    .from("group_comments")
+    .select("id,body,created_at")
+    .eq("group_id", group.id)
+    .eq("status", "active")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    if (isMissingRelationError(error)) return [];
+    throw new Error(error.message);
+  }
+
+  return (data || []).map((row, index) => ({
+    id: row.id,
+    body: row.body,
+    created_at: row.created_at,
+    anonymous_label: `Anonymous ${index + 1}`,
+  }));
+}
+
+export async function saveGroupComment({ groupSlug, managerCode, body }) {
+  const supabase = getOptionalSupabaseClient();
+  if (!supabase) {
+    throw new Error("Comments require Supabase.");
+  }
+
+  const cleanBody = String(body || "").replace(/\s+/g, " ").trim();
+  if (!cleanBody) throw new Error("Comment is required.");
+  if (cleanBody.length > 30) throw new Error("Comment must be 30 characters or less.");
+
+  const { data: manager, error: managerError } = await supabase
+    .from("managers")
+    .select("id,group_id,groups!inner(slug,is_active)")
+    .eq("groups.slug", groupSlug)
+    .eq("groups.is_active", true)
+    .eq("manager_code", managerCode)
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (managerError) throw new Error(managerError.message);
+  if (!manager) throw new Error("Manager not found.");
+
+  const { data, error } = await supabase
+    .from("group_comments")
+    .insert({
+      group_id: manager.group_id,
+      manager_id: manager.id,
+      body: cleanBody,
+      status: "active",
+    })
+    .select("id,body,created_at")
+    .single();
+
+  if (error) {
+    if (isMissingRelationError(error)) {
+      throw new Error("Comments table is not set up yet.");
+    }
+    throw new Error(error.message);
+  }
+
+  return {
+    id: data.id,
+    body: data.body,
+    created_at: data.created_at,
+    anonymous_label: "Anonymous",
+  };
+}
+
 export async function getRecentResults({ groupSlug, limit = 8 }) {
   const supabase = getOptionalSupabaseClient();
   if (supabase) {
