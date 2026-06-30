@@ -1803,6 +1803,7 @@ button:disabled {
   align-items: center;
   color: #f8fbff;
   display: flex;
+  flex-wrap: wrap;
   gap: 0.65rem;
   justify-content: center;
 }
@@ -1817,6 +1818,17 @@ button:disabled {
 .pulse-score span {
   color: rgba(255, 255, 255, 0.54) !important;
   font-weight: 900;
+}
+
+.pulse-score small {
+  color: var(--gold-300);
+  flex-basis: 100%;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 950;
+  letter-spacing: 0.04em;
+  text-align: center;
+  text-transform: uppercase;
 }
 
 .pulse-locked {

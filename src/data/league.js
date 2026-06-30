@@ -1080,12 +1080,12 @@ export async function getPredictionPulseState({ groupSlug }) {
 
 function getPulseWinnerType(match) {
   if (!match || match.status !== "finished") return null;
-  const teamAScore = numberOrNull(match.team_a_score);
-  const teamBScore = numberOrNull(match.team_b_score);
 
-  if (teamAScore !== null && teamBScore !== null) {
-    if (teamAScore === teamBScore) return "tie";
-    return teamAScore > teamBScore ? "team_a" : "team_b";
+  if (!isGroupStage(match.stage)) {
+    const winnerTeamId = getKnockoutWinnerTeamId(match);
+    if (winnerTeamId && winnerTeamId === (match.team_a?.id || match.team_a_id)) return "team_a";
+    if (winnerTeamId && winnerTeamId === (match.team_b?.id || match.team_b_id)) return "team_b";
+    return null;
   }
 
   const result = getGroupStageResult(match);

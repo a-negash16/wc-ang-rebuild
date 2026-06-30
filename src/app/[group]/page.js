@@ -272,11 +272,13 @@ function PulseMatchup({ match }) {
 }
 
 function PulseScore({ match }) {
+  const winnerName = getKnockoutWinnerName(match);
   return (
     <div className="pulse-score" aria-label="Final score">
       <b>{formatScore(match.team_a_score)}</b>
       <span>-</span>
       <b>{formatScore(match.team_b_score)}</b>
+      {winnerName ? <small>{winnerName} advances</small> : null}
     </div>
   );
 }
@@ -580,9 +582,37 @@ function formatScore(value) {
 }
 
 function formatResultStatus(match) {
+  const winnerName = getKnockoutWinnerName(match);
+  if (winnerName) return `${winnerName} advances`;
   if (match.length === "ET") return "Final ET";
   if (match.length === "Pens") return "Final Pens";
   return "Final";
+}
+
+function getKnockoutWinnerName(match) {
+  if (!match || match.status !== "finished" || isGroupStageLabel(match.stage)) return null;
+  const teamAScore = numberOrNull(match.team_a_score);
+  const teamBScore = numberOrNull(match.team_b_score);
+  if (teamAScore !== null && teamBScore !== null && teamAScore !== teamBScore) return null;
+  if (match.winner_team_id && match.winner_team_id === (match.team_a?.id || match.team_a_id)) {
+    return match.team_a?.name || match.team_a_name || null;
+  }
+  if (match.winner_team_id && match.winner_team_id === (match.team_b?.id || match.team_b_id)) {
+    return match.team_b?.name || match.team_b_name || null;
+  }
+  if (match.winner_type === "team_a") return match.team_a?.name || match.team_a_name || null;
+  if (match.winner_type === "team_b") return match.team_b?.name || match.team_b_name || null;
+  return null;
+}
+
+function isGroupStageLabel(stage) {
+  return String(stage || "").toLowerCase().includes("group");
+}
+
+function numberOrNull(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 function flagForTeamCode(code) {
