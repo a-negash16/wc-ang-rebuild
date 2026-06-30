@@ -179,10 +179,10 @@ button:disabled {
 .hero {
   background:
     linear-gradient(180deg, rgba(5, 12, 24, 0.22), rgba(5, 12, 24, 0.68)),
-    url("/assets/world-cup-hero.png") center / cover no-repeat;
+    #eee5d8 url("/assets/world-cup-hero.png") center / contain no-repeat;
   border-bottom: 1px solid rgba(11, 29, 58, 0.22);
   display: grid;
-  min-height: clamp(460px, 58vw, 660px);
+  min-height: clamp(390px, 75vw, 640px);
   overflow: hidden;
   padding: clamp(28px, 4vw, 54px) max(var(--s-3), calc((100vw - 1120px) / 2));
   place-items: center;
@@ -209,19 +209,23 @@ button:disabled {
   box-shadow: none;
   color: #fff5cf;
   font-family: var(--font-display);
-  font-size: clamp(4rem, 10vw, 8.4rem);
+  font-size: clamp(3.2rem, 7vw, 6.4rem);
   font-weight: 800;
+  left: max(var(--s-3), calc((100vw - 1120px) / 2));
   letter-spacing: 0;
   line-height: 0.94;
   margin: 0;
-  max-width: min(960px, 100%);
+  max-width: min(720px, calc(100% - 2 * var(--s-3)));
   overflow-wrap: anywhere;
   padding: 0;
-  text-align: center;
+  position: absolute;
+  text-align: left;
   text-shadow:
     0 5px 22px rgba(0, 0, 0, 0.82),
     0 0 3px rgba(0, 0, 0, 0.74);
-  transform: translateY(clamp(78px, 10vw, 122px));
+  top: clamp(30px, 5vw, 64px);
+  transform: none;
+  z-index: 1;
 }
 
 .hero-kicker {
@@ -355,13 +359,13 @@ button:disabled {
 }
 
 .hero-actions {
-  bottom: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s-2);
-  justify-content: center;
+  bottom: clamp(24px, 3.4vw, 42px);
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(7, minmax(118px, 1fr));
   left: 0;
-  padding-top: var(--s-1);
+  margin: 0 auto;
+  max-width: min(1080px, calc(100% - 2 * var(--s-3)));
   position: absolute;
   right: 0;
 }
@@ -371,11 +375,13 @@ button:disabled {
   border: 1.5px solid rgba(255, 245, 207, 0.42);
   border-radius: var(--r-md);
   color: #fff5cf;
-  font-size: clamp(0.78rem, 1vw, 0.95rem);
+  font-size: clamp(0.74rem, 0.9vw, 0.88rem);
   font-weight: 700;
   letter-spacing: 0.02em;
-  padding: 0.68rem 0.95rem;
+  min-height: 38px;
+  padding: 0.55rem 0.68rem;
   text-decoration: none;
+  text-align: center;
   transition: transform 0.12s ease, box-shadow 0.15s ease, background 0.15s ease;
 }
 
@@ -1403,12 +1409,14 @@ button:disabled {
 }
 
 .watchout-panel {
+  align-items: center;
   background: rgba(255, 255, 255, 0.055);
   border: 1px solid rgba(255, 221, 128, 0.14);
   border-radius: 8px;
   display: grid;
-  gap: 10px;
-  padding: 12px;
+  gap: 7px;
+  grid-template-columns: auto minmax(0, 1fr);
+  padding: 9px 10px;
 }
 
 .watchout-panel > strong {
@@ -1417,17 +1425,23 @@ button:disabled {
   font-weight: 950;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .watchout-columns {
-  display: grid;
-  gap: 12px;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
 }
 
 .watchout-side {
-  display: grid;
-  gap: 8px;
+  align-items: center;
+  display: inline-flex;
+  flex: 1 1 min(100%, 220px);
+  flex-wrap: wrap;
+  gap: 5px;
+  max-width: 100%;
   min-width: 0;
 }
 
@@ -1442,8 +1456,10 @@ button:disabled {
   gap: 6px;
   font-size: 0.82rem !important;
   font-weight: 900;
+  flex: 0 0 auto;
   min-width: 0;
   max-width: 100%;
+  white-space: nowrap;
 }
 
 .watchout-team .flag {
@@ -1454,6 +1470,8 @@ button:disabled {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+  min-width: 0;
+  padding-bottom: 1px;
 }
 
 .watchout-side-right .watchout-tags {
@@ -1465,9 +1483,11 @@ button:disabled {
   border: 1px solid rgba(255, 221, 128, 0.2);
   border-radius: 999px;
   display: inline-grid;
+  flex: 0 1 auto;
   gap: 1px;
+  max-width: 138px;
   min-width: 0;
-  padding: 6px 9px;
+  padding: 5px 8px;
 }
 
 .watchout-tags b {
@@ -1544,6 +1564,15 @@ button:disabled {
 
 .team-badge-right .team-badge-main strong {
   text-align: right;
+}
+
+.team-badge strong {
+  color: #f8fbff;
+  font-size: clamp(1.28rem, 3.2vw, 1.74rem);
+  font-weight: 950;
+  line-height: 1.04;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .versus-mark {
@@ -2079,7 +2108,7 @@ button:disabled {
 .draft-manager-header {
   align-items: center;
   display: flex;
-  gap: 12px;
+  gap: 0;
 }
 
 .draft-rank {
@@ -2174,12 +2203,29 @@ button:disabled {
   white-space: nowrap;
 }
 
+.draft-item-name.eliminated .flag {
+  filter: grayscale(0.85);
+  opacity: 0.52;
+}
+
+.draft-item-name.eliminated strong {
+  color: rgba(248, 251, 255, 0.62);
+  text-decoration: line-through;
+  text-decoration-color: #ff3b30;
+  text-decoration-thickness: 3px;
+  text-decoration-skip-ink: none;
+}
+
 .draft-column li b {
   color: var(--gold-300);
   font-family: var(--font-mono);
   font-size: 0.9rem;
   font-weight: 950;
   text-align: right;
+}
+
+.draft-column li.eliminated b {
+  color: rgba(255, 176, 167, 0.72);
 }
 
 .draft-column p {
@@ -2470,13 +2516,41 @@ button:disabled {
     width: 100%;
   }
 
+  .hero {
+    background-position: 0 0, center;
+    background-size: auto, contain;
+    min-height: clamp(360px, 75vw, 500px);
+  }
+
+  .hero h1 {
+    font-size: clamp(2.8rem, 11vw, 4.4rem);
+    left: var(--s-2);
+    max-width: calc(100% - 2 * var(--s-2));
+    top: 28px;
+    transform: none;
+  }
+
   .hero-status-line + .hero-status-line {
     padding-left: 0;
   }
 
+  .hero-actions {
+    bottom: 22px;
+    gap: 7px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    max-width: min(460px, calc(100% - 2 * var(--s-2)));
+  }
+
   .hero-actions a {
-    flex: 1 1 auto;
-    text-align: center;
+    min-height: 36px;
+    font-size: 0.74rem;
+    padding-inline: 0.55rem;
+  }
+
+  .hero-actions a:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+    justify-self: center;
+    width: calc((100% - 7px) / 2);
   }
 
   .draft-room-list {
@@ -2583,19 +2657,26 @@ button:disabled {
   .prediction-card .team-badge-main,
   .prediction-card .team-badge-right .team-badge-main {
     gap: 8px;
-    grid-template-columns: 34px minmax(0, 1fr);
+  }
+
+  .prediction-card .team-badge-main {
+    grid-template-columns: 42px minmax(0, 1fr);
+  }
+
+  .prediction-card .team-badge-right .team-badge-main {
+    grid-template-columns: minmax(0, 1fr) 42px;
   }
 
   .team-badge-right .team-badge-main .flag {
-    order: 0;
+    order: 2;
   }
 
   .team-badge-right .team-badge-main strong {
-    text-align: left;
+    text-align: right;
   }
 
   .team-badge-right .draft-tags {
-    justify-content: flex-start;
+    justify-content: flex-end;
   }
 
   .versus-mark {
@@ -2608,19 +2689,19 @@ button:disabled {
   }
 
   .watchout-side-right {
-    justify-items: start;
+    justify-items: end;
   }
 
   .watchout-side-right .watchout-tags {
-    justify-content: flex-start;
+    justify-content: flex-end;
   }
 
   .team-badge strong {
-    font-size: clamp(0.86rem, 4vw, 1rem);
+    font-size: clamp(1.03rem, 4.6vw, 1.22rem);
   }
 
   .prediction-card .team-badge strong {
-    font-size: clamp(0.86rem, 4vw, 1rem);
+    font-size: clamp(1.03rem, 4.6vw, 1.22rem);
   }
 
   .flag {
@@ -2727,11 +2808,13 @@ button:disabled {
   }
 
   .team-versus {
-    gap: 10px;
-    grid-template-columns: 1fr;
+    align-items: start;
+    gap: 8px;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   }
 
   .versus-mark {
     justify-self: center;
+    margin-top: 13px;
   }
 }

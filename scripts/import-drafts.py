@@ -77,7 +77,7 @@ PLAYER_TEAM_ALIASES = {
     "oyarzabal": "Spain",
     "pedri": "Spain",
     "pulisic": "USA",
-    "quinonez": "Ecuador",
+    "quinonez": "Mexico",
     "ronaldo": "Portugal",
     "saibari": "Morocco",
     "saibiri": "Morocco",

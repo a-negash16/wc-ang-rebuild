@@ -122,7 +122,6 @@ function DraftRoom({ draftRoom }) {
           {rows.map((row) => (
             <article className="draft-manager-card" key={row.manager_code}>
               <header className="draft-manager-header">
-                <span className="draft-rank">{row.rank}</span>
                 <div>
                   <h3>{row.manager_name}</h3>
                   <span>{formatPoints(row.total_draft_points)} draft pts</span>
@@ -152,8 +151,11 @@ function DraftColumn({ title, items, emptyLabel, showFlags = false }) {
       {items.length ? (
         <ul>
           {items.map((item) => (
-            <li key={`${item.name}-${item.code || "no-code"}`}>
-              <span className={showFlags ? "draft-item-name" : "draft-item-name no-flag"}>
+            <li className={item.eliminated ? "eliminated" : ""} key={`${item.name}-${item.code || "no-code"}`}>
+              <span className={[
+                showFlags ? "draft-item-name" : "draft-item-name no-flag",
+                item.eliminated ? "eliminated" : "",
+              ].filter(Boolean).join(" ")}>
                 {showFlags ? <span className="flag" aria-hidden="true">{flagForTeamCode(item.code)}</span> : null}
                 <strong>{item.name}</strong>
               </span>

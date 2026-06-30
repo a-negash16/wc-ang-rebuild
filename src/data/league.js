@@ -1245,68 +1245,35 @@ async function getDraftedTeamRows(overview) {
   const supabase = getOptionalSupabaseClient();
   if (!supabase || !overview?.id) return [];
 
-  const [
-    { data: draftedTeams, error: draftedTeamsError },
-    { data: matchRows, error: matchesError },
-  ] = await Promise.all([
-    supabase
-      .from("drafted_teams")
-      .select(`
-        team_id,
-        draft_slot,
-        managers!inner ( manager_code, display_name ),
-        teams!inner ( fifa_code, name )
-      `)
-      .eq("group_id", overview.id),
-    supabase
-      .from("group_matches")
-      .select(`
-        matches (
-          external_match_id,
-          stage,
-          status,
-          team_a_id,
-          team_b_id,
-          team_a_score,
-          team_b_score,
-          winner_team_id,
-          team_a:team_a_id ( id, fifa_code ),
-          team_b:team_b_id ( id, fifa_code )
-        )
-      `)
-      .eq("group_id", overview.id)
-      .limit(200),
-  ]);
+  const { data: draftedTeams, error: draftedTeamsError } = await supabase
+    .from("drafted_teams")
+    .select(`
+      team_id,
+      draft_slot,
+      managers!inner ( manager_code, display_name ),
+      teams!inner ( fifa_code, name )
+    `)
+    .eq("group_id", overview.id);
 
   if (draftedTeamsError) {
     if (isMissingRelationError(draftedTeamsError)) return [];
     throw new Error(draftedTeamsError.message);
   }
-  if (matchesError) throw new Error(matchesError.message);
 
-  const fifaMatchesById = await getFifaMatchesByIdSafe();
-  const winsByTeamId = (matchRows || [])
-    .map((row) => row.matches)
-    .filter(Boolean)
-    .map((match) => overlayMatchResult(match, fifaMatchesById))
-    .filter((match) => match.status === "finished" && !isGroupStage(match.stage))
-    .map((match) => getKnockoutWinnerTeamId(match))
-    .filter(Boolean)
-    .reduce((wins, teamId) => {
-      wins.set(teamId, (wins.get(teamId) || 0) + 1);
-      return wins;
-    }, new Map());
+  const { winsByTeamCode, lossesByTeamCode } = await getKnockoutTeamOutcomeMaps(overview);
 
   return (draftedTeams || [])
     .map((draft) => {
-      const wins = winsByTeamId.get(draft.team_id) || 0;
+      const teamCode = normalizeTeamCode(draft.teams?.fifa_code);
+      const wins = winsByTeamCode.get(teamCode) || 0;
       return {
         manager_code: draft.managers?.manager_code || null,
         manager_name: draft.managers?.display_name || null,
         draft_slot: draft.draft_slot || null,
-        code: draft.teams?.fifa_code || null,
+        code: teamCode,
         name: draft.teams?.name || "Unknown team",
         points: scoreDraftedTeam({ stagesAdvanced: wins }),
+        eliminated: lossesByTeamCode.has(teamCode),
       };
     })
     .sort(sortDraftItems);
@@ -1334,7 +1301,7 @@ async function getDraftedPlayerRows(overview) {
       players!inner (
         display_name,
         position,
-        teams ( fifa_code, name )
+        teams ( id, fifa_code, name )
       )
     `)
     .eq("group_id", overview.id);
@@ -1359,16 +1326,19 @@ async function getDraftedPlayerRows(overview) {
   }
 
   const tallyByPlayer = new Map((tallies || []).map((tally) => [tally.player_id, tally]));
+  const { lossesByTeamCode } = await getKnockoutTeamOutcomeMaps(overview);
   return draftedPlayers
     .map((draft) => {
       const tally = tallyByPlayer.get(draft.player_id);
+      const teamCode = normalizeTeamCode(draft.players?.teams?.fifa_code);
       return {
         manager_code: draft.managers?.manager_code || null,
         manager_name: draft.managers?.display_name || null,
         draft_slot: draft.draft_slot || null,
-        code: draft.players?.teams?.fifa_code || null,
+        code: teamCode,
         name: draft.players?.display_name || "Unknown player",
         team_name: draft.players?.teams?.name || null,
+        eliminated: lossesByTeamCode.has(teamCode),
         points: scoreDraftedPlayer({
           goals: tally?.goals || 0,
           assists: tally?.assists || 0,
@@ -1377,6 +1347,58 @@ async function getDraftedPlayerRows(overview) {
       };
     })
     .sort(sortDraftItems);
+}
+
+async function getKnockoutTeamOutcomeMaps(overview) {
+  const supabase = getOptionalSupabaseClient();
+  if (!supabase || !overview?.id) {
+    return { winsByTeamCode: new Map(), lossesByTeamCode: new Set() };
+  }
+
+  const { data: matchRows, error } = await supabase
+    .from("group_matches")
+    .select(`
+      matches (
+        external_match_id,
+        stage,
+        status,
+        team_a_id,
+        team_b_id,
+        team_a_score,
+        team_b_score,
+        winner_team_id,
+        team_a:team_a_id ( id, fifa_code ),
+        team_b:team_b_id ( id, fifa_code )
+      )
+    `)
+    .eq("group_id", overview.id)
+    .limit(200);
+
+  if (error) throw new Error(error.message);
+
+  const fifaMatchesById = await getFifaMatchesByIdSafe();
+  const winsByTeamCode = new Map();
+  const lossesByTeamCode = new Set();
+
+  for (const match of (matchRows || []).map((row) => row.matches).filter(Boolean)) {
+    const scoredMatch = overlayMatchResult(match, fifaMatchesById);
+    if (scoredMatch.status !== "finished" || isGroupStage(scoredMatch.stage)) continue;
+
+    const winnerTeamId = getKnockoutWinnerTeamId(scoredMatch);
+    if (!winnerTeamId) continue;
+
+    const winnerTeamCode = winnerTeamId === scoredMatch.team_a_id
+      ? normalizeTeamCode(scoredMatch.team_a?.fifa_code)
+      : normalizeTeamCode(scoredMatch.team_b?.fifa_code);
+    const loserTeamCode = winnerTeamId === scoredMatch.team_a_id
+      ? normalizeTeamCode(scoredMatch.team_b?.fifa_code)
+      : normalizeTeamCode(scoredMatch.team_a?.fifa_code);
+
+    if (winnerTeamCode) winsByTeamCode.set(winnerTeamCode, (winsByTeamCode.get(winnerTeamCode) || 0) + 1);
+    if (loserTeamCode) lossesByTeamCode.add(loserTeamCode);
+  }
+
+  return { winsByTeamCode, lossesByTeamCode };
 }
 
 async function getPredictionScoringSummary(overview) {
@@ -1617,6 +1639,10 @@ function sortDraftItems(a, b) {
   const slotB = Number(b.draft_slot || 999);
   if (slotA !== slotB) return slotA - slotB;
   return String(a.name || "").localeCompare(String(b.name || ""));
+}
+
+function normalizeTeamCode(value) {
+  return String(value || "").trim().toUpperCase();
 }
 
 function isGroupStage(stage) {
