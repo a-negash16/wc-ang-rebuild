@@ -394,6 +394,7 @@ function Leaderboard({ leaderboard }) {
                   <th>Total</th>
                   <th>Group</th>
                   <th>KO</th>
+                  <th>Risks</th>
                   <th>Players</th>
                   <th>Teams</th>
                 </tr>
@@ -411,6 +412,7 @@ function Leaderboard({ leaderboard }) {
                     <td><b>{formatPoints(row.total_points)}</b></td>
                     <td>{formatPoints(row.group_stage_points)}</td>
                     <td>{formatPoints(row.knockout_prediction_points)}</td>
+                    <td>{formatPoints(row.knockout_risk_points)}</td>
                     <td>{formatPoints(row.drafted_players_points)}</td>
                     <td>{formatPoints(row.drafted_teams_points)}</td>
                   </tr>

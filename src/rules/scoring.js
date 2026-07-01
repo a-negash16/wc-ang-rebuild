@@ -75,12 +75,13 @@ export function scoreFuturesChampionPick({ pickedTeamId, championTeamId, teamPoi
 export function totalLeaderboardPoints({
   groupStage = 0,
   knockoutPredictions = 0,
+  knockoutRisks = 0,
   futures = 0,
   draftedTeams = 0,
   draftedPlayers = 0,
   manualAdjustments = 0,
 }) {
-  return [groupStage, knockoutPredictions, futures, draftedTeams, draftedPlayers, manualAdjustments]
+  return [groupStage, knockoutPredictions, knockoutRisks, futures, draftedTeams, draftedPlayers, manualAdjustments]
     .reduce((sum, value) => sum + Number(value || 0), 0);
 }
 

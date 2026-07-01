@@ -107,9 +107,10 @@ test("leaderboard total sums all scoring buckets", () => {
   assert.equal(totalLeaderboardPoints({
     groupStage: 15,
     knockoutPredictions: 12,
+    knockoutRisks: -2,
     futures: 100,
     draftedTeams: 30,
     draftedPlayers: 25,
     manualAdjustments: 20,
-  }), 202);
+  }), 200);
 });

@@ -1163,14 +1163,17 @@ export async function getLeaderboardShell({ groupSlug }) {
   const rows = overview.managers.map((manager) => {
     const groupStage = predictionSummary.groupStagePointsByManager.get(manager.manager_code) || 0;
     const knockoutPredictions = predictionSummary.knockoutPointsByManager.get(manager.manager_code) || 0;
+    const knockoutRisks = predictionSummary.riskPointsByManager.get(manager.manager_code) || 0;
     const previousGroupStage = predictionSummary.previousGroupStagePointsByManager.get(manager.manager_code) || 0;
     const previousKnockoutPredictions = predictionSummary.previousKnockoutPointsByManager.get(manager.manager_code) || 0;
+    const previousKnockoutRisks = predictionSummary.previousRiskPointsByManager.get(manager.manager_code) || 0;
     const manualAdjustments = manualPointsByManager.get(manager.manager_code) || 0;
     const draftedTeams = draftedTeamPointsByManager.get(manager.manager_code) || 0;
     const draftedPlayers = draftedPlayerPointsByManager.get(manager.manager_code) || 0;
     const total = totalLeaderboardPoints({
       groupStage,
       knockoutPredictions,
+      knockoutRisks,
       futures: 0,
       draftedTeams,
       draftedPlayers,
@@ -1179,6 +1182,7 @@ export async function getLeaderboardShell({ groupSlug }) {
     const previousTotal = totalLeaderboardPoints({
       groupStage: previousGroupStage,
       knockoutPredictions: previousKnockoutPredictions,
+      knockoutRisks: previousKnockoutRisks,
       futures: 0,
       draftedTeams,
       draftedPlayers,
@@ -1192,6 +1196,7 @@ export async function getLeaderboardShell({ groupSlug }) {
       total_points: total,
       group_stage_points: groupStage,
       knockout_prediction_points: knockoutPredictions,
+      knockout_risk_points: knockoutRisks,
       futures_points: 0,
       drafted_teams_points: draftedTeams,
       drafted_players_points: draftedPlayers,
@@ -1457,8 +1462,10 @@ async function getPredictionScoringSummary(overview) {
     return {
       groupStagePointsByManager: new Map(),
       knockoutPointsByManager: new Map(),
+      riskPointsByManager: new Map(),
       previousGroupStagePointsByManager: new Map(),
       previousKnockoutPointsByManager: new Map(),
+      previousRiskPointsByManager: new Map(),
       latestFinishedMatchId: null,
     };
   }
@@ -1547,7 +1554,8 @@ async function getPredictionScoringSummary(overview) {
           managerCode,
           match,
           bucket: "knockout",
-          points: winnerPoints + lengthRiskPoints,
+          points: winnerPoints,
+          riskPoints: lengthRiskPoints,
         };
       }
 
@@ -1586,12 +1594,26 @@ async function getPredictionScoringSummary(overview) {
         (previousPointsMap.get(item.managerCode) || 0) + item.points
       );
     }
+    if (item.bucket === "knockout" && item.riskPoints) {
+      summary.riskPointsByManager.set(
+        item.managerCode,
+        (summary.riskPointsByManager.get(item.managerCode) || 0) + item.riskPoints
+      );
+      if (!latestFinishedMatchId || item.match.external_match_id !== latestFinishedMatchId) {
+        summary.previousRiskPointsByManager.set(
+          item.managerCode,
+          (summary.previousRiskPointsByManager.get(item.managerCode) || 0) + item.riskPoints
+        );
+      }
+    }
     return summary;
   }, {
     groupStagePointsByManager: new Map(),
     knockoutPointsByManager: new Map(),
+    riskPointsByManager: new Map(),
     previousGroupStagePointsByManager: new Map(),
     previousKnockoutPointsByManager: new Map(),
+    previousRiskPointsByManager: new Map(),
     latestFinishedMatchId,
   });
 }

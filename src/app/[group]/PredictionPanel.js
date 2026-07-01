@@ -114,6 +114,7 @@ export default function PredictionPanel({
       const payload = await response.json();
       if (!response.ok || !payload.ok) throw new Error(payload.message || "Could not save pick");
       const savedAt = payload.saved_at || new Date().toISOString();
+      updateOptimisticPick({ match, pickType, lengthPick, savedAt });
       setStatus(`Saved: ${getPickLabel(match, pickType)} at ${formatSavedAt(savedAt, timezone)}`);
       const refreshed = await loadPickState(session.token, { clearOnError: false });
       if (!refreshed) {
@@ -136,6 +137,23 @@ export default function PredictionPanel({
       currentPick.pick_type,
       currentPick.length_pick === lengthPick ? null : lengthPick
     );
+  }
+
+  function updateOptimisticPick({ match, pickType, lengthPick, savedAt }) {
+    setPickState((current) => {
+      const nextPick = {
+        ...match,
+        pick_type: pickType,
+        length_pick: lengthPick,
+        pick_label: getPickLabel(match, pickType),
+        risk_label: formatRiskPickLabel(lengthPick),
+        picked_at: savedAt,
+        is_missing: false,
+      };
+      const index = current.findIndex((pick) => pick.external_match_id === match.external_match_id);
+      if (index === -1) return [...current, nextPick];
+      return current.map((pick, pickIndex) => pickIndex === index ? { ...pick, ...nextPick } : pick);
+    });
   }
 
   function switchManager() {
@@ -318,7 +336,7 @@ export default function PredictionPanel({
                     </div>
                     {match.stage === "Group Stage" ? null : (
                       <RiskBonusButtons
-                        disabled={busy || !session || !currentPick?.pick_type}
+                        disabled={busy || !session}
                         selected={currentPick?.length_pick}
                         onSelect={(lengthPick) => submitRiskPick(match, currentPick, lengthPick)}
                       />
@@ -587,6 +605,12 @@ function getPickLabel(match, pickType) {
   if (pickType === "team_a") return match.team_a?.name || "Team A";
   if (pickType === "team_b") return match.team_b?.name || "Team B";
   return "Pick";
+}
+
+function formatRiskPickLabel(lengthPick) {
+  if (lengthPick === "ET") return "ET risk: +4 / -2";
+  if (lengthPick === "Pens") return "Pens risk: +8 / -4";
+  return null;
 }
 
 function groupClass(group) {
