@@ -23,6 +23,7 @@ export default function PredictionPanel({
   const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
   const [pickState, setPickState] = useState([]);
+  const [pendingRiskByMatch, setPendingRiskByMatch] = useState({});
   const [now, setNow] = useState(() => Date.now());
 
   const openMatches = useMemo(() => matches.filter((match) => match.team_a && match.team_b), [matches]);
@@ -93,7 +94,7 @@ export default function PredictionPanel({
     }
   }
 
-  async function submitPick(match, pickType) {
+  async function submitPick(match, pickType, lengthPick = null) {
     if (!session?.token) {
       setStatus("Unlock before picking.");
       return;
@@ -108,12 +109,23 @@ export default function PredictionPanel({
           token: session.token,
           external_match_id: match.external_match_id,
           pick_type: pickType,
+          length_pick: lengthPick,
         }),
       });
       const payload = await response.json();
       if (!response.ok || !payload.ok) throw new Error(payload.message || "Could not save pick");
       const savedAt = payload.saved_at || new Date().toISOString();
-      setStatus(`Saved: ${getPickLabel(match, pickType)} at ${formatSavedAt(savedAt, timezone)}`);
+      const savedLengthPick = payload.length_pick_saved === false ? null : lengthPick;
+      updateOptimisticPick({ match, pickType, lengthPick: savedLengthPick, savedAt });
+      clearPendingRisk(match.external_match_id);
+      setStatus(formatSaveStatus({
+        match,
+        pickType,
+        lengthPick,
+        savedLengthPick,
+        savedAt,
+        timezone,
+      }));
       const refreshed = await loadPickState(session.token, { clearOnError: false });
       if (!refreshed) {
         setStatus(`Saved: ${getPickLabel(match, pickType)}. Refresh to confirm latest card state.`);
@@ -125,41 +137,60 @@ export default function PredictionPanel({
     }
   }
 
-  async function submitLengthPick(match, lengthPick) {
-    if (!session?.token) {
-      setStatus("Unlock before picking.");
-      return;
-    }
-    const currentPick = pickByMatch.get(match.external_match_id);
+  async function submitRiskPick(match, currentPick, lengthPick) {
+    const currentLengthPick = getSelectedRiskPick(match.external_match_id, currentPick);
+    const nextLengthPick = currentLengthPick === lengthPick ? null : lengthPick;
     if (!currentPick?.pick_type) {
-      setStatus("Pick a winner before selecting match length.");
+      setPendingRisk(match.external_match_id, nextLengthPick);
+      setStatus(nextLengthPick
+        ? `${nextLengthPick} risk selected. Pick a winner to save it.`
+        : "Risk Bonus cleared.");
       return;
     }
-    setBusy(true);
-    setStatus("Saving length...");
-    try {
-      const response = await fetch("/api/predictions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          token: session.token,
-          external_match_id: match.external_match_id,
-          length_pick: lengthPick,
-        }),
-      });
-      const payload = await response.json();
-      if (!response.ok || !payload.ok) throw new Error(payload.message || "Could not save length");
-      const savedAt = payload.saved_at || new Date().toISOString();
-      setStatus(`Saved length: ${formatLengthPick(lengthPick)} at ${formatSavedAt(savedAt, timezone)}`);
-      const refreshed = await loadPickState(session.token, { clearOnError: false });
-      if (!refreshed) {
-        setStatus(`Saved length: ${formatLengthPick(lengthPick)}. Refresh to confirm latest card state.`);
-      }
-    } catch (error) {
-      setStatus(error.message);
-    } finally {
-      setBusy(false);
-    }
+    await submitPick(
+      match,
+      currentPick.pick_type,
+      nextLengthPick
+    );
+  }
+
+  function getSelectedRiskPick(externalMatchId, currentPick) {
+    return Object.hasOwn(pendingRiskByMatch, externalMatchId)
+      ? pendingRiskByMatch[externalMatchId]
+      : currentPick?.length_pick || null;
+  }
+
+  function setPendingRisk(externalMatchId, lengthPick) {
+    setPendingRiskByMatch((current) => ({
+      ...current,
+      [externalMatchId]: lengthPick,
+    }));
+  }
+
+  function clearPendingRisk(externalMatchId) {
+    setPendingRiskByMatch((current) => {
+      if (!Object.hasOwn(current, externalMatchId)) return current;
+      const next = { ...current };
+      delete next[externalMatchId];
+      return next;
+    });
+  }
+
+  function updateOptimisticPick({ match, pickType, lengthPick, savedAt }) {
+    setPickState((current) => {
+      const nextPick = {
+        ...match,
+        pick_type: pickType,
+        length_pick: lengthPick,
+        pick_label: getPickLabel(match, pickType),
+        risk_label: formatRiskPickLabel(lengthPick),
+        picked_at: savedAt,
+        is_missing: false,
+      };
+      const index = current.findIndex((pick) => pick.external_match_id === match.external_match_id);
+      if (index === -1) return [...current, nextPick];
+      return current.map((pick, pickIndex) => pickIndex === index ? { ...pick, ...nextPick } : pick);
+    });
   }
 
   function switchManager() {
@@ -280,6 +311,7 @@ export default function PredictionPanel({
                 const deadline = getDeadline(match.kickoff_at, lockMinutesBeforeKickoff);
                 const teamACode = getTeamCode(match.team_a);
                 const teamBCode = getTeamCode(match.team_b);
+                const selectedRiskPick = getSelectedRiskPick(match.external_match_id, currentPick);
                 return (
                   <article className={currentPick?.is_missing ? "prediction-card needs-pick" : "prediction-card"} key={match.external_match_id}>
                     <div className="ticket-meta">
@@ -323,7 +355,7 @@ export default function PredictionPanel({
                         isSelected={currentPick?.pick_type === "team_a"}
                         points={match.team_a_points}
                         team={match.team_a}
-                        onClick={() => submitPick(match, "team_a")}
+                        onClick={() => submitPick(match, "team_a", selectedRiskPick)}
                       />
                       {match.stage === "Group Stage" ? (
                         <PickButton
@@ -338,25 +370,16 @@ export default function PredictionPanel({
                         isSelected={currentPick?.pick_type === "team_b"}
                         points={match.team_b_points}
                         team={match.team_b}
-                        onClick={() => submitPick(match, "team_b")}
+                        onClick={() => submitPick(match, "team_b", selectedRiskPick)}
                       />
                     </div>
-                    {match.stage !== "Group Stage" ? (
-                      <div className="length-pick-row" aria-label="Match length picks">
-                        {["90", "ET", "Pens"].map((lengthPick) => (
-                          <button
-                            className={currentPick?.length_pick === lengthPick ? "selected" : ""}
-                            disabled={busy || !session || !currentPick?.pick_type}
-                            key={lengthPick}
-                            type="button"
-                            onClick={() => submitLengthPick(match, lengthPick)}
-                          >
-                            <span>{formatLengthPick(lengthPick)}</span>
-                            <small>{lengthPick === "Pens" ? "+8 pts" : lengthPick === "ET" ? "+5 pts" : ""}</small>
-                          </button>
-                        ))}
-                      </div>
-                    ) : null}
+                    {match.stage === "Group Stage" ? null : (
+                      <RiskBonusButtons
+                        disabled={busy || !session}
+                        selected={selectedRiskPick}
+                        onSelect={(lengthPick) => submitRiskPick(match, currentPick, lengthPick)}
+                      />
+                    )}
                   </article>
                 );
               })}
@@ -422,6 +445,7 @@ function SavedPicksPreview({ picks, timezone }) {
             <div className="saved-pick-chip" key={pick.external_match_id}>
               <strong>{pick.pick_label}</strong>
               <span>{formatTeams(pick)}</span>
+              {pick.risk_label ? <em>{pick.risk_label}</em> : null}
               <small>{formatTicketKickoff(pick.kickoff_at, timezone)}</small>
             </div>
           ))}
@@ -430,6 +454,37 @@ function SavedPicksPreview({ picks, timezone }) {
         <p className="saved-picks-empty">Saved picks will appear here after you submit them.</p>
       )}
     </article>
+  );
+}
+
+function RiskBonusButtons({ disabled, selected, onSelect }) {
+  return (
+    <div className="risk-bonus-panel" aria-label="Knockout risk bonus">
+      <div>
+        <strong>Risk Bonus</strong>
+        <span>Optional gamble after picking a winner</span>
+      </div>
+      <div className="risk-buttons">
+        <button
+          className={selected === "ET" ? "selected" : ""}
+          type="button"
+          disabled={disabled}
+          onClick={() => onSelect("ET")}
+        >
+          <strong>ET</strong>
+          <span>Risk 2 to win 4</span>
+        </button>
+        <button
+          className={selected === "Pens" ? "selected" : ""}
+          type="button"
+          disabled={disabled}
+          onClick={() => onSelect("Pens")}
+        >
+          <strong>Pens</strong>
+          <span>Risk 4 to win 8</span>
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -596,6 +651,24 @@ function getPickLabel(match, pickType) {
   if (pickType === "team_a") return match.team_a?.name || "Team A";
   if (pickType === "team_b") return match.team_b?.name || "Team B";
   return "Pick";
+}
+
+function formatSaveStatus({ match, pickType, lengthPick, savedLengthPick, savedAt, timezone }) {
+  const pickLabel = getPickLabel(match, pickType);
+  const timeLabel = formatSavedAt(savedAt, timezone);
+  if (lengthPick && !savedLengthPick) {
+    return `Saved: ${pickLabel}. Risk Bonus needs the latest database migration.`;
+  }
+  const riskLabel = formatRiskPickLabel(savedLengthPick);
+  return riskLabel
+    ? `Saved: ${pickLabel} with ${riskLabel} at ${timeLabel}`
+    : `Saved: ${pickLabel} at ${timeLabel}`;
+}
+
+function formatRiskPickLabel(lengthPick) {
+  if (lengthPick === "ET") return "ET risk: +4 / -2";
+  if (lengthPick === "Pens") return "Pens risk: +8 / -4";
+  return null;
 }
 
 function groupClass(group) {

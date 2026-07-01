@@ -29,17 +29,15 @@ export function validatePickForMatch({ pickType, match }) {
   return { ok: true };
 }
 
-export const MATCH_LENGTH_PICKS = Object.freeze(["90", "ET", "Pens"]);
-
 export function validateLengthPickForMatch({ lengthPick, match }) {
   if (!lengthPick) return { ok: true };
 
-  if (match.stage === "Group Stage") {
-    return { ok: false, message: "Length picks only apply to knockout matches" };
+  if (!["ET", "Pens"].includes(lengthPick)) {
+    return { ok: false, message: "Risk pick must be ET or Pens" };
   }
 
-  if (!MATCH_LENGTH_PICKS.includes(lengthPick)) {
-    return { ok: false, message: "Length must be 90, ET, or Pens" };
+  if (match.stage === "Group Stage") {
+    return { ok: false, message: "Risk picks are only available for knockout matches" };
   }
 
   return { ok: true };

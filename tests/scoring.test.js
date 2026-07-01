@@ -6,7 +6,7 @@ import {
   scoreDraftedTeam,
   scoreFuturesChampionPick,
   scoreGroupStagePick,
-  scoreKnockoutLengthPick,
+  scoreKnockoutLengthRisk,
   scoreKnockoutWinnerPick,
   totalLeaderboardPoints,
 } from "../src/rules/scoring.js";
@@ -44,12 +44,31 @@ test("knockout winner uses odds-weighted team point values", () => {
   }), 0);
 });
 
-test("knockout length picks are a flat bonus, not odds-weighted", () => {
-  assert.equal(scoreKnockoutLengthPick({ pickedLength: "ET", actualLength: "ET" }), 5);
-  assert.equal(scoreKnockoutLengthPick({ pickedLength: "Pens", actualLength: "Pens" }), 8);
-  assert.equal(scoreKnockoutLengthPick({ pickedLength: "90", actualLength: "90" }), 0);
-  assert.equal(scoreKnockoutLengthPick({ pickedLength: "ET", actualLength: "Pens" }), 0);
-  assert.equal(scoreKnockoutLengthPick({ pickedLength: "ET", actualLength: null }), 0);
+test("knockout length risk wins and loses points", () => {
+  assert.equal(scoreKnockoutLengthRisk({
+    pickedLength: "ET",
+    actualLength: "ET",
+  }), 4);
+
+  assert.equal(scoreKnockoutLengthRisk({
+    pickedLength: "ET",
+    actualLength: "Pens",
+  }), -2);
+
+  assert.equal(scoreKnockoutLengthRisk({
+    pickedLength: "Pens",
+    actualLength: "Pens",
+  }), 8);
+
+  assert.equal(scoreKnockoutLengthRisk({
+    pickedLength: "Pens",
+    actualLength: "90",
+  }), -4);
+
+  assert.equal(scoreKnockoutLengthRisk({
+    pickedLength: null,
+    actualLength: "Pens",
+  }), 0);
 });
 
 test("drafted teams score 10 points per stage advanced", () => {
@@ -88,9 +107,10 @@ test("leaderboard total sums all scoring buckets", () => {
   assert.equal(totalLeaderboardPoints({
     groupStage: 15,
     knockoutPredictions: 12,
+    knockoutRisks: -2,
     futures: 100,
     draftedTeams: 30,
     draftedPlayers: 25,
     manualAdjustments: 20,
-  }), 202);
+  }), 200);
 });

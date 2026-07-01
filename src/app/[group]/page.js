@@ -122,7 +122,6 @@ function DraftRoom({ draftRoom }) {
           {rows.map((row) => (
             <article className="draft-manager-card" key={row.manager_code}>
               <header className="draft-manager-header">
-                <span className="draft-rank">{row.rank}</span>
                 <div>
                   <h3>{row.manager_name}</h3>
                   <span>{formatPoints(row.total_draft_points)} draft pts</span>
@@ -152,8 +151,11 @@ function DraftColumn({ title, items, emptyLabel, showFlags = false }) {
       {items.length ? (
         <ul>
           {items.map((item) => (
-            <li key={`${item.name}-${item.code || "no-code"}`}>
-              <span className={showFlags ? "draft-item-name" : "draft-item-name no-flag"}>
+            <li className={item.eliminated ? "eliminated" : ""} key={`${item.name}-${item.code || "no-code"}`}>
+              <span className={[
+                showFlags ? "draft-item-name" : "draft-item-name no-flag",
+                item.eliminated ? "eliminated" : "",
+              ].filter(Boolean).join(" ")}>
                 {showFlags ? <span className="flag" aria-hidden="true">{flagForTeamCode(item.code)}</span> : null}
                 <strong>{item.name}</strong>
               </span>
@@ -252,7 +254,7 @@ function PredictionPulse({ pulse }) {
                 isFinished={match.status === "finished"}
               />
             </div>
-            {match.stage !== "Group Stage" ? <PulseLengthSplit match={match} /> : null}
+            {match.stage === "Group Stage" ? null : <PulseRiskBonus match={match} />}
           </article>
         ))}
       </div>
@@ -260,42 +262,42 @@ function PredictionPulse({ pulse }) {
   );
 }
 
-function PulseLengthSplit({ match }) {
-  const finished = match.status === "finished";
+function PulseRiskBonus({ match }) {
+  if (!match.et_risk_managers && !match.pens_risk_managers) return null;
   return (
-    <div className="pulse-length-split" aria-label="Length picks">
-      <PulseLengthChoice
-        actualLength={match.length}
-        isFinished={finished}
-        label="90'"
-        managers={match.length_90_managers}
-        value="90"
-      />
-      <PulseLengthChoice
-        actualLength={match.length}
-        isFinished={finished}
-        label="ET"
-        managers={match.length_et_managers}
-        value="ET"
-      />
-      <PulseLengthChoice
-        actualLength={match.length}
-        isFinished={finished}
-        label="Pens"
-        managers={match.length_pens_managers}
-        value="Pens"
-      />
+    <div className="pulse-risk-panel">
+      <div className="pulse-risk-heading">
+        <strong>Risk Bonus</strong>
+        <span>{formatLengthResult(match)}</span>
+      </div>
+      <div className="pulse-risk-grid">
+        <PulseRiskChoice
+          label="ET"
+          managers={match.et_risk_managers}
+          isFinished={match.status === "finished"}
+          isCorrect={match.length === "ET"}
+          winLabel="+4"
+          lossLabel="-2"
+        />
+        <PulseRiskChoice
+          label="Pens"
+          managers={match.pens_risk_managers}
+          isFinished={match.status === "finished"}
+          isCorrect={match.length === "Pens"}
+          winLabel="+8"
+          lossLabel="-4"
+        />
+      </div>
     </div>
   );
 }
 
-function PulseLengthChoice({ actualLength, isFinished, label, managers, value }) {
-  const resultClass = isFinished && actualLength
-    ? actualLength === value ? "is-correct" : "is-wrong"
-    : "";
+function PulseRiskChoice({ label, managers, isFinished, isCorrect, winLabel, lossLabel }) {
+  const resultClass = isFinished ? isCorrect ? "is-correct" : "is-wrong" : "";
+  const pointsLabel = isFinished ? isCorrect ? winLabel : lossLabel : `${winLabel}/${lossLabel}`;
   return (
-    <div className="pulse-length-choice">
-      <strong>{label}</strong>
+    <div className="pulse-risk-choice">
+      <strong>{label} <small>{pointsLabel}</small></strong>
       <ManagerChips managers={managers} resultClass={resultClass} compact />
     </div>
   );
@@ -312,11 +314,13 @@ function PulseMatchup({ match }) {
 }
 
 function PulseScore({ match }) {
+  const winnerName = getKnockoutWinnerName(match);
   return (
     <div className="pulse-score" aria-label="Final score">
       <b>{formatScore(match.team_a_score)}</b>
       <span>-</span>
       <b>{formatScore(match.team_b_score)}</b>
+      {winnerName ? <small>{winnerName} advances</small> : null}
     </div>
   );
 }
@@ -390,6 +394,7 @@ function Leaderboard({ leaderboard }) {
                   <th>Total</th>
                   <th>Group</th>
                   <th>KO</th>
+                  <th>Risks</th>
                   <th>Players</th>
                   <th>Teams</th>
                 </tr>
@@ -407,6 +412,7 @@ function Leaderboard({ leaderboard }) {
                     <td><b>{formatPoints(row.total_points)}</b></td>
                     <td>{formatPoints(row.group_stage_points)}</td>
                     <td>{formatPoints(row.knockout_prediction_points)}</td>
+                    <td>{formatPoints(row.knockout_risk_points)}</td>
                     <td>{formatPoints(row.drafted_players_points)}</td>
                     <td>{formatPoints(row.drafted_teams_points)}</td>
                   </tr>
@@ -477,6 +483,13 @@ function getPulseStatusLabel(match) {
   if (match.status === "finished") return "Final";
   if (match.status === "live") return "Live";
   return "Locked";
+}
+
+function formatLengthResult(match) {
+  if (match.status !== "finished") return "Risk reveal";
+  if (match.length === "ET") return "Ended in ET";
+  if (match.length === "Pens") return "Ended in Pens";
+  return "Ended in 90";
 }
 
 function RulesSection() {
@@ -622,9 +635,37 @@ function formatScore(value) {
 }
 
 function formatResultStatus(match) {
+  const winnerName = getKnockoutWinnerName(match);
+  if (winnerName) return `${winnerName} advances`;
   if (match.length === "ET") return "Final ET";
   if (match.length === "Pens") return "Final Pens";
   return "Final";
+}
+
+function getKnockoutWinnerName(match) {
+  if (!match || match.status !== "finished" || isGroupStageLabel(match.stage)) return null;
+  const teamAScore = numberOrNull(match.team_a_score);
+  const teamBScore = numberOrNull(match.team_b_score);
+  if (teamAScore !== null && teamBScore !== null && teamAScore !== teamBScore) return null;
+  if (match.winner_team_id && match.winner_team_id === (match.team_a?.id || match.team_a_id)) {
+    return match.team_a?.name || match.team_a_name || null;
+  }
+  if (match.winner_team_id && match.winner_team_id === (match.team_b?.id || match.team_b_id)) {
+    return match.team_b?.name || match.team_b_name || null;
+  }
+  if (match.winner_type === "team_a") return match.team_a?.name || match.team_a_name || null;
+  if (match.winner_type === "team_b") return match.team_b?.name || match.team_b_name || null;
+  return null;
+}
+
+function isGroupStageLabel(stage) {
+  return String(stage || "").toLowerCase().includes("group");
+}
+
+function numberOrNull(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 function flagForTeamCode(code) {

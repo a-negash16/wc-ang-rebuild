@@ -1,16 +1,17 @@
 export const SCORING = Object.freeze({
   groupStageWinner: 3,
   groupStageTie: 5,
-  knockoutExtraTime: 5,
-  knockoutPenalties: 8,
   draftedTeamStageAdvance: 10,
   playerGoal: 5,
   playerAssist: 3,
   playerMotm: 7,
+  knockoutExtraTimeRiskWin: 4,
+  knockoutExtraTimeRiskLoss: -2,
+  knockoutPenaltiesRiskWin: 8,
+  knockoutPenaltiesRiskLoss: -4,
   futuresChampionMax: 100,
 });
 
-export const MATCH_LENGTHS = Object.freeze(["90", "ET", "Pens"]);
 export const POSITIONS = Object.freeze(["GK", "DEF", "CB", "MID", "FWD"]);
 
 export function scoreGroupStagePick({ pickType, pickedTeamId, result }) {
@@ -32,13 +33,17 @@ export function scoreKnockoutWinnerPick({ pickedTeamId, winnerTeamId, teamPointV
   return clampHalfPoint(value, 3, 7);
 }
 
-// Flat bonus, unlike scoreKnockoutWinnerPick — calling ET/Pens isn't
-// odds-weighted, it's the same payout for everyone regardless of favorite/underdog.
-export function scoreKnockoutLengthPick({ pickedLength, actualLength }) {
-  if (!MATCH_LENGTHS.includes(pickedLength) || !MATCH_LENGTHS.includes(actualLength)) return 0;
-  if (pickedLength !== actualLength) return 0;
-  if (pickedLength === "ET") return SCORING.knockoutExtraTime;
-  if (pickedLength === "Pens") return SCORING.knockoutPenalties;
+export function scoreKnockoutLengthRisk({ pickedLength, actualLength }) {
+  if (pickedLength === "ET") {
+    return actualLength === "ET"
+      ? SCORING.knockoutExtraTimeRiskWin
+      : SCORING.knockoutExtraTimeRiskLoss;
+  }
+  if (pickedLength === "Pens") {
+    return actualLength === "Pens"
+      ? SCORING.knockoutPenaltiesRiskWin
+      : SCORING.knockoutPenaltiesRiskLoss;
+  }
   return 0;
 }
 
@@ -70,12 +75,13 @@ export function scoreFuturesChampionPick({ pickedTeamId, championTeamId, teamPoi
 export function totalLeaderboardPoints({
   groupStage = 0,
   knockoutPredictions = 0,
+  knockoutRisks = 0,
   futures = 0,
   draftedTeams = 0,
   draftedPlayers = 0,
   manualAdjustments = 0,
 }) {
-  return [groupStage, knockoutPredictions, futures, draftedTeams, draftedPlayers, manualAdjustments]
+  return [groupStage, knockoutPredictions, knockoutRisks, futures, draftedTeams, draftedPlayers, manualAdjustments]
     .reduce((sum, value) => sum + Number(value || 0), 0);
 }
 

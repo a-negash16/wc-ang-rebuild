@@ -1,7 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { isPredictionLocked, validateLengthPickForMatch, validatePickForMatch } from "../src/rules/predictions.js";
+import {
+  isPredictionLocked,
+  validateLengthPickForMatch,
+  validatePickForMatch,
+} from "../src/rules/predictions.js";
 
 test("prediction deadline locks before kickoff", () => {
   const now = new Date("2026-06-19T17:59:00Z");
@@ -18,23 +22,6 @@ test("prediction deadline locks before kickoff", () => {
   }), true);
 });
 
-test("knockout length picks are valid only for knockout matches", () => {
-  assert.deepEqual(validateLengthPickForMatch({
-    lengthPick: "Pens",
-    match: { stage: "Round of 32" },
-  }), { ok: true });
-
-  assert.equal(validateLengthPickForMatch({
-    lengthPick: "Pens",
-    match: { stage: "Group Stage" },
-  }).ok, false);
-
-  assert.equal(validateLengthPickForMatch({
-    lengthPick: "overtime",
-    match: { stage: "Round of 32" },
-  }).ok, false);
-});
-
 test("group stage allows tie but knockouts require a winner", () => {
   assert.deepEqual(validatePickForMatch({
     pickType: "tie",
@@ -44,5 +31,27 @@ test("group stage allows tie but knockouts require a winner", () => {
   assert.equal(validatePickForMatch({
     pickType: "tie",
     match: { stage: "Round of 32", team_a: {}, team_b: {} },
+  }).ok, false);
+});
+
+test("length risk picks are knockout-only and ET/Pens-only", () => {
+  assert.deepEqual(validateLengthPickForMatch({
+    lengthPick: "ET",
+    match: { stage: "Round of 32" },
+  }), { ok: true });
+
+  assert.deepEqual(validateLengthPickForMatch({
+    lengthPick: "Pens",
+    match: { stage: "Round of 32" },
+  }), { ok: true });
+
+  assert.equal(validateLengthPickForMatch({
+    lengthPick: "90",
+    match: { stage: "Round of 32" },
+  }).ok, false);
+
+  assert.equal(validateLengthPickForMatch({
+    lengthPick: "Pens",
+    match: { stage: "Group Stage" },
   }).ok, false);
 });

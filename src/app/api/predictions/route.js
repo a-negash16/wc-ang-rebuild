@@ -8,7 +8,7 @@ export async function POST(request) {
     const token = clean(body.token);
     const externalMatchId = clean(body.external_match_id);
     const pickType = clean(body.pick_type);
-    const lengthPick = clean(body.length_pick);
+    const lengthPick = cleanOptional(body.length_pick);
 
     if (!token || !externalMatchId || (!pickType && !lengthPick)) {
       return jsonError("Session, match, and pick are required", 400);
@@ -31,15 +31,10 @@ export async function POST(request) {
       return jsonError("Deadline passed", 400);
     }
 
-    if (pickType) {
-      const validation = validatePickForMatch({ pickType, match });
-      if (!validation.ok) return jsonError(validation.message, 400);
-    }
-
-    if (lengthPick) {
-      const lengthValidation = validateLengthPickForMatch({ lengthPick, match });
-      if (!lengthValidation.ok) return jsonError(lengthValidation.message, 400);
-    }
+    const validation = validatePickForMatch({ pickType, match });
+    if (!validation.ok) return jsonError(validation.message, 400);
+    const lengthValidation = validateLengthPickForMatch({ lengthPick, match });
+    if (!lengthValidation.ok) return jsonError(lengthValidation.message, 400);
 
     const saved = await savePrediction({
       groupSlug: session.group_slug,
@@ -53,8 +48,9 @@ export async function POST(request) {
       ok: true,
       message: "Prediction saved",
       external_match_id: externalMatchId,
-      pick_type: saved.pick_type || pickType,
-      length_pick: saved.length_pick || lengthPick || null,
+      pick_type: pickType,
+      length_pick: lengthPick,
+      length_pick_saved: saved.length_pick_saved,
       saved_at: saved.saved_at,
     });
   } catch (error) {
@@ -64,6 +60,12 @@ export async function POST(request) {
 
 function clean(value) {
   return String(value || "").trim();
+}
+
+function cleanOptional(value) {
+  if (value === null || value === undefined) return null;
+  const cleanValue = String(value).trim();
+  return cleanValue || null;
 }
 
 function jsonError(message, status) {
