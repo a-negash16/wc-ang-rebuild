@@ -47,6 +47,7 @@ export function normalizeFifaMatch(match) {
     external_match_id: String(match.IdMatch),
     kickoff_at: match.Date || null,
     status,
+    length: normalizeLength(match, status),
     team_a_code: match.Home?.Abbreviation || null,
     team_b_code: match.Away?.Abbreviation || null,
     team_a_score: teamAScore,
@@ -84,6 +85,28 @@ function normalizeScore(value) {
   if (value === null || value === undefined || value === "") return null;
   const score = Number(value);
   return Number.isFinite(score) ? score : null;
+}
+
+function normalizeLength(match, status) {
+  if (status !== "finished") return null;
+
+  const resultType = Number(match.ResultType);
+  const hasPenaltyScore = match.HomeTeamPenaltyScore !== null
+    && match.HomeTeamPenaltyScore !== undefined
+    || match.AwayTeamPenaltyScore !== null
+    && match.AwayTeamPenaltyScore !== undefined;
+  if (resultType === 2 || hasPenaltyScore) return "Pens";
+
+  const hasExtraTimePeriod = Boolean(match.FirstHalfExtraTime || match.SecondHalfExtraTime);
+  const matchMinute = normalizeMatchMinute(match.MatchTime);
+  if (hasExtraTimePeriod || matchMinute >= 120) return "ET";
+
+  return "90";
+}
+
+function normalizeMatchMinute(value) {
+  const minute = Number(String(value || "").match(/\d+/)?.[0] || 0);
+  return Number.isFinite(minute) ? minute : 0;
 }
 
 function getWinnerCode({

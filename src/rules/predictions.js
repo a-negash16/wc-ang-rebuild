@@ -28,3 +28,17 @@ export function validatePickForMatch({ pickType, match }) {
 
   return { ok: true };
 }
+
+export function validateLengthPickForMatch({ lengthPick, match }) {
+  if (!lengthPick) return { ok: true };
+
+  if (!["ET", "Pens"].includes(lengthPick)) {
+    return { ok: false, message: "Risk pick must be ET or Pens" };
+  }
+
+  if (match.stage === "Group Stage") {
+    return { ok: false, message: "Risk picks are only available for knockout matches" };
+  }
+
+  return { ok: true };
+}

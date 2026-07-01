@@ -254,10 +254,52 @@ function PredictionPulse({ pulse }) {
                 isFinished={match.status === "finished"}
               />
             </div>
+            {match.stage === "Group Stage" ? null : <PulseRiskBonus match={match} />}
           </article>
         ))}
       </div>
     </section>
+  );
+}
+
+function PulseRiskBonus({ match }) {
+  if (!match.et_risk_managers && !match.pens_risk_managers) return null;
+  return (
+    <div className="pulse-risk-panel">
+      <div className="pulse-risk-heading">
+        <strong>Risk Bonus</strong>
+        <span>{formatLengthResult(match)}</span>
+      </div>
+      <div className="pulse-risk-grid">
+        <PulseRiskChoice
+          label="ET"
+          managers={match.et_risk_managers}
+          isFinished={match.status === "finished"}
+          isCorrect={match.length === "ET"}
+          winLabel="+4"
+          lossLabel="-2"
+        />
+        <PulseRiskChoice
+          label="Pens"
+          managers={match.pens_risk_managers}
+          isFinished={match.status === "finished"}
+          isCorrect={match.length === "Pens"}
+          winLabel="+8"
+          lossLabel="-4"
+        />
+      </div>
+    </div>
+  );
+}
+
+function PulseRiskChoice({ label, managers, isFinished, isCorrect, winLabel, lossLabel }) {
+  const resultClass = isFinished ? isCorrect ? "is-correct" : "is-wrong" : "";
+  const pointsLabel = isFinished ? isCorrect ? winLabel : lossLabel : `${winLabel}/${lossLabel}`;
+  return (
+    <div className="pulse-risk-choice">
+      <strong>{label} <small>{pointsLabel}</small></strong>
+      <ManagerChips managers={managers} resultClass={resultClass} compact />
+    </div>
   );
 }
 
@@ -439,6 +481,13 @@ function getPulseStatusLabel(match) {
   if (match.status === "finished") return "Final";
   if (match.status === "live") return "Live";
   return "Locked";
+}
+
+function formatLengthResult(match) {
+  if (match.status !== "finished") return "Risk reveal";
+  if (match.length === "ET") return "Ended in ET";
+  if (match.length === "Pens") return "Ended in Pens";
+  return "Ended in 90";
 }
 
 function RulesSection() {

@@ -895,6 +895,13 @@ button:disabled {
   white-space: nowrap;
 }
 
+.saved-pick-chip em {
+  color: var(--accent-700);
+  font-size: 0.78rem;
+  font-style: normal;
+  font-weight: 900;
+}
+
 .saved-picks-empty {
   margin: 0;
 }
@@ -1689,6 +1696,74 @@ button:disabled {
   color: #fff4bd;
 }
 
+.risk-bonus-panel {
+  background: rgba(255, 255, 255, 0.055);
+  border: 1px solid rgba(255, 221, 128, 0.18);
+  border-radius: 8px;
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+}
+
+.risk-bonus-panel > div:first-child {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  justify-content: space-between;
+}
+
+.risk-bonus-panel > div:first-child strong {
+  color: #ffe28a;
+  font-size: 0.9rem;
+  font-weight: 950;
+}
+
+.risk-bonus-panel > div:first-child span {
+  color: rgba(247, 250, 255, 0.6);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.risk-buttons {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.risk-buttons button {
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 221, 128, 0.2);
+  border-radius: 8px;
+  color: #d6deea;
+  display: grid;
+  gap: 2px;
+  min-height: 50px;
+  padding: 8px 10px;
+}
+
+.risk-buttons button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.risk-buttons button.selected {
+  background: rgba(255, 221, 128, 0.16);
+  border-color: #ffe28a;
+  color: #ffe28a;
+  box-shadow: 0 0 0 2px rgba(214, 161, 42, 0.24);
+}
+
+.risk-buttons strong {
+  font-size: 0.95rem;
+  font-weight: 950;
+}
+
+.risk-buttons span {
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
 .pulse-section {
   margin-top: 34px;
 }
@@ -1853,6 +1928,57 @@ button:disabled {
 
 .pulse-bars-knockout {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.pulse-risk-panel {
+  background: rgba(255, 255, 255, 0.075);
+  border: 1px solid rgba(255, 221, 128, 0.14);
+  border-radius: 8px;
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+
+.pulse-risk-heading {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.pulse-risk-heading strong {
+  color: #ffe28a;
+  font-weight: 950;
+}
+
+.pulse-risk-heading span {
+  color: rgba(247, 250, 255, 0.64);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.pulse-risk-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.pulse-risk-choice {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.pulse-risk-choice > strong {
+  color: #f8fbff;
+  font-size: 0.88rem;
+  font-weight: 950;
+}
+
+.pulse-risk-choice small {
+  color: rgba(255, 226, 138, 0.86);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
 }
 
 .pulse-choice {

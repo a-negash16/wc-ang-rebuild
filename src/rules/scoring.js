@@ -5,6 +5,10 @@ export const SCORING = Object.freeze({
   playerGoal: 5,
   playerAssist: 3,
   playerMotm: 7,
+  knockoutExtraTimeRiskWin: 4,
+  knockoutExtraTimeRiskLoss: -2,
+  knockoutPenaltiesRiskWin: 8,
+  knockoutPenaltiesRiskLoss: -4,
   futuresChampionMax: 100,
 });
 
@@ -27,6 +31,20 @@ export function scoreKnockoutWinnerPick({ pickedTeamId, winnerTeamId, teamPointV
   if (!pickedTeamId || !winnerTeamId || pickedTeamId !== winnerTeamId) return 0;
   const value = Number(teamPointValues?.[pickedTeamId] ?? 0);
   return clampHalfPoint(value, 3, 7);
+}
+
+export function scoreKnockoutLengthRisk({ pickedLength, actualLength }) {
+  if (pickedLength === "ET") {
+    return actualLength === "ET"
+      ? SCORING.knockoutExtraTimeRiskWin
+      : SCORING.knockoutExtraTimeRiskLoss;
+  }
+  if (pickedLength === "Pens") {
+    return actualLength === "Pens"
+      ? SCORING.knockoutPenaltiesRiskWin
+      : SCORING.knockoutPenaltiesRiskLoss;
+  }
+  return 0;
 }
 
 export function scoreDraftedTeam({ stagesAdvanced }) {

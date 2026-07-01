@@ -93,7 +93,7 @@ export default function PredictionPanel({
     }
   }
 
-  async function submitPick(match, pickType) {
+  async function submitPick(match, pickType, lengthPick = null) {
     if (!session?.token) {
       setStatus("Unlock before picking.");
       return;
@@ -108,6 +108,7 @@ export default function PredictionPanel({
           token: session.token,
           external_match_id: match.external_match_id,
           pick_type: pickType,
+          length_pick: lengthPick,
         }),
       });
       const payload = await response.json();
@@ -123,6 +124,18 @@ export default function PredictionPanel({
     } finally {
       setBusy(false);
     }
+  }
+
+  async function submitRiskPick(match, currentPick, lengthPick) {
+    if (!currentPick?.pick_type) {
+      setStatus("Pick a winner before adding a risk bonus.");
+      return;
+    }
+    await submitPick(
+      match,
+      currentPick.pick_type,
+      currentPick.length_pick === lengthPick ? null : lengthPick
+    );
   }
 
   function switchManager() {
@@ -285,7 +298,7 @@ export default function PredictionPanel({
                         isSelected={currentPick?.pick_type === "team_a"}
                         points={match.team_a_points}
                         team={match.team_a}
-                        onClick={() => submitPick(match, "team_a")}
+                        onClick={() => submitPick(match, "team_a", currentPick?.length_pick || null)}
                       />
                       {match.stage === "Group Stage" ? (
                         <PickButton
@@ -300,9 +313,16 @@ export default function PredictionPanel({
                         isSelected={currentPick?.pick_type === "team_b"}
                         points={match.team_b_points}
                         team={match.team_b}
-                        onClick={() => submitPick(match, "team_b")}
+                        onClick={() => submitPick(match, "team_b", currentPick?.length_pick || null)}
                       />
                     </div>
+                    {match.stage === "Group Stage" ? null : (
+                      <RiskBonusButtons
+                        disabled={busy || !session || !currentPick?.pick_type}
+                        selected={currentPick?.length_pick}
+                        onSelect={(lengthPick) => submitRiskPick(match, currentPick, lengthPick)}
+                      />
+                    )}
                   </article>
                 );
               })}
@@ -368,6 +388,7 @@ function SavedPicksPreview({ picks, timezone }) {
             <div className="saved-pick-chip" key={pick.external_match_id}>
               <strong>{pick.pick_label}</strong>
               <span>{formatTeams(pick)}</span>
+              {pick.risk_label ? <em>{pick.risk_label}</em> : null}
               <small>{formatTicketKickoff(pick.kickoff_at, timezone)}</small>
             </div>
           ))}
@@ -376,6 +397,37 @@ function SavedPicksPreview({ picks, timezone }) {
         <p className="saved-picks-empty">Saved picks will appear here after you submit them.</p>
       )}
     </article>
+  );
+}
+
+function RiskBonusButtons({ disabled, selected, onSelect }) {
+  return (
+    <div className="risk-bonus-panel" aria-label="Knockout risk bonus">
+      <div>
+        <strong>Risk Bonus</strong>
+        <span>Optional gamble after picking a winner</span>
+      </div>
+      <div className="risk-buttons">
+        <button
+          className={selected === "ET" ? "selected" : ""}
+          type="button"
+          disabled={disabled}
+          onClick={() => onSelect("ET")}
+        >
+          <strong>ET</strong>
+          <span>Risk 2 to win 4</span>
+        </button>
+        <button
+          className={selected === "Pens" ? "selected" : ""}
+          type="button"
+          disabled={disabled}
+          onClick={() => onSelect("Pens")}
+        >
+          <strong>Pens</strong>
+          <span>Risk 4 to win 8</span>
+        </button>
+      </div>
+    </div>
   );
 }
 

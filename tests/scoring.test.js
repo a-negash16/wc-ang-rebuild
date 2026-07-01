@@ -6,6 +6,7 @@ import {
   scoreDraftedTeam,
   scoreFuturesChampionPick,
   scoreGroupStagePick,
+  scoreKnockoutLengthRisk,
   scoreKnockoutWinnerPick,
   totalLeaderboardPoints,
 } from "../src/rules/scoring.js";
@@ -40,6 +41,33 @@ test("knockout winner uses odds-weighted team point values", () => {
     pickedTeamId: "FAVORITE",
     winnerTeamId: "UNDERDOG",
     teamPointValues: { FAVORITE: 3, UNDERDOG: 7 },
+  }), 0);
+});
+
+test("knockout length risk wins and loses points", () => {
+  assert.equal(scoreKnockoutLengthRisk({
+    pickedLength: "ET",
+    actualLength: "ET",
+  }), 4);
+
+  assert.equal(scoreKnockoutLengthRisk({
+    pickedLength: "ET",
+    actualLength: "Pens",
+  }), -2);
+
+  assert.equal(scoreKnockoutLengthRisk({
+    pickedLength: "Pens",
+    actualLength: "Pens",
+  }), 8);
+
+  assert.equal(scoreKnockoutLengthRisk({
+    pickedLength: "Pens",
+    actualLength: "90",
+  }), -4);
+
+  assert.equal(scoreKnockoutLengthRisk({
+    pickedLength: null,
+    actualLength: "Pens",
   }), 0);
 });
 
