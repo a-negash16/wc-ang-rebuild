@@ -280,7 +280,7 @@ export async function savePrediction({ groupSlug, managerCode, externalMatchId, 
     updated_at: savedAt,
   };
 
-  const { data: existing, error: existingError } = await supabase
+  let { data: existing, error: existingError } = await supabase
     .from("predictions")
     .select("id,pick_type,pick_team_id,length_pick")
     .eq("group_id", groupMatch.group_id)
@@ -288,6 +288,22 @@ export async function savePrediction({ groupSlug, managerCode, externalMatchId, 
     .eq("match_id", groupMatch.match_id)
     .eq("status", "active")
     .maybeSingle();
+
+  if (isMissingColumnError(existingError, "length_pick")) {
+    if (predictionRow.length_pick) {
+      throw new Error("Risk picks require the latest Supabase migration.");
+    }
+    const fallback = await supabase
+      .from("predictions")
+      .select("id,pick_type,pick_team_id")
+      .eq("group_id", groupMatch.group_id)
+      .eq("manager_id", manager.id)
+      .eq("match_id", groupMatch.match_id)
+      .eq("status", "active")
+      .maybeSingle();
+    existing = fallback.data ? { ...fallback.data, length_pick: null } : null;
+    existingError = fallback.error;
+  }
 
   if (existingError) throw new Error(existingError.message);
 
