@@ -203,28 +203,28 @@ button:disabled {
 }
 
 .hero h1 {
-  background: none;
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
+  background: rgba(7, 15, 30, 0.46);
+  border: 1px solid rgba(255, 245, 207, 0.34);
+  border-radius: var(--r-md);
+  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.28);
   color: #fff5cf;
   font-family: var(--font-display);
   font-size: clamp(3.2rem, 7vw, 6.4rem);
   font-weight: 800;
-  left: max(var(--s-3), calc((100vw - 1120px) / 2));
+  left: 50%;
   letter-spacing: 0;
   line-height: 0.94;
   margin: 0;
   max-width: min(720px, calc(100% - 2 * var(--s-3)));
   overflow-wrap: anywhere;
-  padding: 0;
+  padding: 0.22em 0.36em 0.26em;
   position: absolute;
-  text-align: left;
+  text-align: center;
   text-shadow:
     0 5px 22px rgba(0, 0, 0, 0.82),
     0 0 3px rgba(0, 0, 0, 0.74);
-  top: clamp(30px, 5vw, 64px);
-  transform: none;
+  top: 50%;
+  transform: translate(-50%, -50%);
   z-index: 1;
 }
 
@@ -2655,17 +2655,18 @@ button:disabled {
   }
 
   .hero {
-    background-position: 0 0, center;
-    background-size: auto, contain;
-    min-height: clamp(360px, 75vw, 500px);
+    background-position: 0 0, center center;
+    background-size: auto, cover;
+    min-height: clamp(430px, 68svh, 620px);
+    padding: var(--s-4) var(--s-2);
   }
 
   .hero h1 {
-    font-size: clamp(2.8rem, 11vw, 4.4rem);
-    left: var(--s-2);
-    max-width: calc(100% - 2 * var(--s-2));
-    top: 28px;
-    transform: none;
+    font-size: clamp(2.45rem, 10vw, 4rem);
+    left: 50%;
+    max-width: min(86vw, 420px);
+    top: 48%;
+    transform: translate(-50%, -50%);
   }
 
   .hero-status-line + .hero-status-line {
@@ -2673,22 +2674,34 @@ button:disabled {
   }
 
   .hero-actions {
-    bottom: 22px;
+    bottom: 16px;
+    display: flex;
     gap: 7px;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    max-width: min(460px, calc(100% - 2 * var(--s-2)));
+    left: var(--s-2);
+    max-width: calc(100% - 2 * var(--s-2));
+    overflow-x: auto;
+    padding: 0 0 3px;
+    right: auto;
+    scrollbar-width: none;
+    scroll-snap-type: x proximity;
+    width: calc(100% - 2 * var(--s-2));
+  }
+
+  .hero-actions::-webkit-scrollbar {
+    display: none;
   }
 
   .hero-actions a {
-    min-height: 36px;
-    font-size: 0.74rem;
-    padding-inline: 0.55rem;
+    flex: 0 0 auto;
+    font-size: 0.69rem;
+    min-height: 30px;
+    min-width: max-content;
+    padding: 0.42rem 0.58rem;
+    scroll-snap-align: start;
   }
 
   .hero-actions a:last-child:nth-child(odd) {
-    grid-column: 1 / -1;
-    justify-self: center;
-    width: calc((100% - 7px) / 2);
+    width: auto;
   }
 
   .draft-room-list {
