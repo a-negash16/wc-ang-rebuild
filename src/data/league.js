@@ -1812,7 +1812,13 @@ function isMissingRelationError(error) {
 function isMissingColumnError(error, columnName) {
   if (!error) return false;
   const message = error.message || "";
-  return error.code === "42703" || message.includes(`.${columnName}`) || message.includes(`column ${columnName}`);
+  return error.code === "42703"
+    || message.includes(`.${columnName}`)
+    || message.includes(`column ${columnName}`)
+    || message.includes(`'${columnName}' column`)
+    || message.includes(`"${columnName}" column`)
+    || message.includes(`column '${columnName}'`)
+    || message.includes(`column "${columnName}"`);
 }
 
 async function readSeedJson(fileName) {
