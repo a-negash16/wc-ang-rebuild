@@ -279,6 +279,7 @@ export async function savePrediction({ groupSlug, managerCode, externalMatchId, 
     status: "active",
     updated_at: savedAt,
   };
+  let lengthPickColumnMissing = false;
 
   let { data: existing, error: existingError } = await supabase
     .from("predictions")
@@ -290,9 +291,7 @@ export async function savePrediction({ groupSlug, managerCode, externalMatchId, 
     .maybeSingle();
 
   if (isMissingColumnError(existingError, "length_pick")) {
-    if (predictionRow.length_pick) {
-      throw new Error("Risk picks require the latest Supabase migration.");
-    }
+    lengthPickColumnMissing = true;
     const fallback = await supabase
       .from("predictions")
       .select("id,pick_type,pick_team_id")
@@ -313,9 +312,7 @@ export async function savePrediction({ groupSlug, managerCode, externalMatchId, 
       .update(predictionRow)
       .eq("id", existing.id);
     if (isMissingColumnError(updateError, "length_pick")) {
-      if (predictionRow.length_pick) {
-        throw new Error("Risk picks require the latest Supabase migration.");
-      }
+      lengthPickColumnMissing = true;
       const { length_pick, ...fallbackPredictionRow } = predictionRow;
       const fallback = await supabase
         .from("predictions")
@@ -338,16 +335,18 @@ export async function savePrediction({ groupSlug, managerCode, externalMatchId, 
       newLengthPick: predictionRow.length_pick,
       reason: "manager_update",
     });
-    return { ok: true, saved_at: savedAt };
+    return {
+      ok: true,
+      saved_at: savedAt,
+      length_pick_saved: Boolean(predictionRow.length_pick) ? !lengthPickColumnMissing : true,
+    };
   }
 
   let { error: insertError } = await supabase
     .from("predictions")
     .insert(predictionRow);
   if (isMissingColumnError(insertError, "length_pick")) {
-    if (predictionRow.length_pick) {
-      throw new Error("Risk picks require the latest Supabase migration.");
-    }
+    lengthPickColumnMissing = true;
     const { length_pick, ...fallbackPredictionRow } = predictionRow;
     const fallback = await supabase
       .from("predictions")
@@ -356,7 +355,11 @@ export async function savePrediction({ groupSlug, managerCode, externalMatchId, 
   }
 
   if (insertError) throw new Error(insertError.message);
-  return { ok: true, saved_at: savedAt };
+  return {
+    ok: true,
+    saved_at: savedAt,
+    length_pick_saved: Boolean(predictionRow.length_pick) ? !lengthPickColumnMissing : true,
+  };
 }
 
 export async function getCommissionerCorrectionContext({ groupSlug }) {

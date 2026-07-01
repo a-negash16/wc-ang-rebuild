@@ -23,6 +23,7 @@ export default function PredictionPanel({
   const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
   const [pickState, setPickState] = useState([]);
+  const [pendingRiskByMatch, setPendingRiskByMatch] = useState({});
   const [now, setNow] = useState(() => Date.now());
 
   const openMatches = useMemo(() => matches.filter((match) => match.team_a && match.team_b), [matches]);
@@ -114,8 +115,17 @@ export default function PredictionPanel({
       const payload = await response.json();
       if (!response.ok || !payload.ok) throw new Error(payload.message || "Could not save pick");
       const savedAt = payload.saved_at || new Date().toISOString();
-      updateOptimisticPick({ match, pickType, lengthPick, savedAt });
-      setStatus(`Saved: ${getPickLabel(match, pickType)} at ${formatSavedAt(savedAt, timezone)}`);
+      const savedLengthPick = payload.length_pick_saved === false ? null : lengthPick;
+      updateOptimisticPick({ match, pickType, lengthPick: savedLengthPick, savedAt });
+      clearPendingRisk(match.external_match_id);
+      setStatus(formatSaveStatus({
+        match,
+        pickType,
+        lengthPick,
+        savedLengthPick,
+        savedAt,
+        timezone,
+      }));
       const refreshed = await loadPickState(session.token, { clearOnError: false });
       if (!refreshed) {
         setStatus(`Saved: ${getPickLabel(match, pickType)}. Refresh to confirm latest card state.`);
@@ -128,15 +138,42 @@ export default function PredictionPanel({
   }
 
   async function submitRiskPick(match, currentPick, lengthPick) {
+    const currentLengthPick = getSelectedRiskPick(match.external_match_id, currentPick);
+    const nextLengthPick = currentLengthPick === lengthPick ? null : lengthPick;
     if (!currentPick?.pick_type) {
-      setStatus("Pick a winner before adding a risk bonus.");
+      setPendingRisk(match.external_match_id, nextLengthPick);
+      setStatus(nextLengthPick
+        ? `${nextLengthPick} risk selected. Pick a winner to save it.`
+        : "Risk Bonus cleared.");
       return;
     }
     await submitPick(
       match,
       currentPick.pick_type,
-      currentPick.length_pick === lengthPick ? null : lengthPick
+      nextLengthPick
     );
+  }
+
+  function getSelectedRiskPick(externalMatchId, currentPick) {
+    return Object.hasOwn(pendingRiskByMatch, externalMatchId)
+      ? pendingRiskByMatch[externalMatchId]
+      : currentPick?.length_pick || null;
+  }
+
+  function setPendingRisk(externalMatchId, lengthPick) {
+    setPendingRiskByMatch((current) => ({
+      ...current,
+      [externalMatchId]: lengthPick,
+    }));
+  }
+
+  function clearPendingRisk(externalMatchId) {
+    setPendingRiskByMatch((current) => {
+      if (!Object.hasOwn(current, externalMatchId)) return current;
+      const next = { ...current };
+      delete next[externalMatchId];
+      return next;
+    });
   }
 
   function updateOptimisticPick({ match, pickType, lengthPick, savedAt }) {
@@ -274,6 +311,7 @@ export default function PredictionPanel({
                 const deadline = getDeadline(match.kickoff_at, lockMinutesBeforeKickoff);
                 const teamACode = getTeamCode(match.team_a);
                 const teamBCode = getTeamCode(match.team_b);
+                const selectedRiskPick = getSelectedRiskPick(match.external_match_id, currentPick);
                 return (
                   <article className={currentPick?.is_missing ? "prediction-card needs-pick" : "prediction-card"} key={match.external_match_id}>
                     <div className="ticket-meta">
@@ -316,7 +354,7 @@ export default function PredictionPanel({
                         isSelected={currentPick?.pick_type === "team_a"}
                         points={match.team_a_points}
                         team={match.team_a}
-                        onClick={() => submitPick(match, "team_a", currentPick?.length_pick || null)}
+                        onClick={() => submitPick(match, "team_a", selectedRiskPick)}
                       />
                       {match.stage === "Group Stage" ? (
                         <PickButton
@@ -331,13 +369,13 @@ export default function PredictionPanel({
                         isSelected={currentPick?.pick_type === "team_b"}
                         points={match.team_b_points}
                         team={match.team_b}
-                        onClick={() => submitPick(match, "team_b", currentPick?.length_pick || null)}
+                        onClick={() => submitPick(match, "team_b", selectedRiskPick)}
                       />
                     </div>
                     {match.stage === "Group Stage" ? null : (
                       <RiskBonusButtons
                         disabled={busy || !session}
-                        selected={currentPick?.length_pick}
+                        selected={selectedRiskPick}
                         onSelect={(lengthPick) => submitRiskPick(match, currentPick, lengthPick)}
                       />
                     )}
@@ -605,6 +643,18 @@ function getPickLabel(match, pickType) {
   if (pickType === "team_a") return match.team_a?.name || "Team A";
   if (pickType === "team_b") return match.team_b?.name || "Team B";
   return "Pick";
+}
+
+function formatSaveStatus({ match, pickType, lengthPick, savedLengthPick, savedAt, timezone }) {
+  const pickLabel = getPickLabel(match, pickType);
+  const timeLabel = formatSavedAt(savedAt, timezone);
+  if (lengthPick && !savedLengthPick) {
+    return `Saved: ${pickLabel}. Risk Bonus needs the latest database migration.`;
+  }
+  const riskLabel = formatRiskPickLabel(savedLengthPick);
+  return riskLabel
+    ? `Saved: ${pickLabel} with ${riskLabel} at ${timeLabel}`
+    : `Saved: ${pickLabel} at ${timeLabel}`;
 }
 
 function formatRiskPickLabel(lengthPick) {

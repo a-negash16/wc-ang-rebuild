@@ -50,6 +50,7 @@ export async function POST(request) {
       external_match_id: externalMatchId,
       pick_type: pickType,
       length_pick: lengthPick,
+      length_pick_saved: saved.length_pick_saved,
       saved_at: saved.saved_at,
     });
   } catch (error) {
