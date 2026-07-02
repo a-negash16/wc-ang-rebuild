@@ -8,12 +8,20 @@ import {
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { playerNamesMatch } from "@/rules/player-matching";
 
+// Automated scoring only ever covers matches kicking off on or after this
+// instant. Manually entered totals in player_stat_tallies stay untouched —
+// the ledger (player_match_stats) is additive and the two never overlap,
+// so there's no risk of double-counting a goal someone already typed in.
+export const DEFAULT_SYNC_SINCE = "2026-07-02T00:00:00Z";
+
 export async function syncPlayerStats({
   supabase = createSupabaseServerClient(),
   fifaMatchesById,
+  sinceKickoffAt = DEFAULT_SYNC_SINCE,
   writeMode = false,
 } = {}) {
   const matchesById = fifaMatchesById || await getFifaMatchesById();
+  const sinceMs = new Date(sinceKickoffAt).getTime();
 
   const { data: matches, error: matchesError } = await supabase
     .from("matches")
@@ -24,7 +32,11 @@ export async function syncPlayerStats({
 
   const finishedMatches = (matches || [])
     .map((match) => ({ match, fifaMatch: matchesById.get(String(match.external_match_id)) }))
-    .filter(({ fifaMatch }) => fifaMatch?.status === "finished");
+    .filter(({ fifaMatch }) => {
+      if (fifaMatch?.status !== "finished") return false;
+      const kickoffMs = new Date(fifaMatch.kickoff_at).getTime();
+      return Number.isFinite(sinceMs) ? kickoffMs >= sinceMs : true;
+    });
 
   const { data: teams, error: teamsError } = await supabase
     .from("teams")
@@ -48,7 +60,7 @@ export async function syncPlayerStats({
     playersByTeam.get(player.team_id).push(player);
   }
 
-  const tallies = new Map();
+  const matchTallies = new Map();
   const newExternalLinks = [];
   const unmatched = [];
 
@@ -108,10 +120,11 @@ export async function syncPlayerStats({
         newExternalLinks.push({ playerId: player.id, externalPlayerId: event.playerId });
       }
 
-      const tally = tallies.get(player.id) || { goals: 0, assists: 0, name: player.display_name };
+      const key = `${player.id}:${match.id}`;
+      const tally = matchTallies.get(key) || { playerId: player.id, matchId: match.id, name: player.display_name, goals: 0, assists: 0 };
       if (event.type === GOAL_EVENT_TYPE) tally.goals += 1;
       if (event.type === ASSIST_EVENT_TYPE) tally.assists += 1;
-      tallies.set(player.id, tally);
+      matchTallies.set(key, tally);
     }
   }
 
@@ -123,15 +136,16 @@ export async function syncPlayerStats({
         .eq("id", link.playerId);
       if (error) throw new Error(error.message);
     }
-    for (const [playerId, tally] of tallies.entries()) {
+    for (const tally of matchTallies.values()) {
       const { error } = await supabase
-        .from("player_stat_tallies")
+        .from("player_match_stats")
         .upsert({
-          player_id: playerId,
+          player_id: tally.playerId,
+          match_id: tally.matchId,
           goals: tally.goals,
           assists: tally.assists,
           updated_at: new Date().toISOString(),
-        }, { onConflict: "player_id" });
+        }, { onConflict: "player_id,match_id" });
       if (error) throw new Error(error.message);
     }
   }
@@ -139,9 +153,10 @@ export async function syncPlayerStats({
   return {
     ok: true,
     mode: writeMode ? "write" : "dry-run",
+    since_kickoff_at: sinceKickoffAt,
     finished_matches: finishedMatches.length,
-    players_updated: tallies.size,
-    summary: [...tallies.entries()].map(([playerId, tally]) => ({ player_id: playerId, ...tally })),
+    match_stat_rows: matchTallies.size,
+    summary: [...matchTallies.values()],
     unmatched,
   };
 }

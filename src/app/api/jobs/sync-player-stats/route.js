@@ -12,8 +12,10 @@ export async function GET(request) {
 
   try {
     const searchParams = new URL(request.url).searchParams;
+    const since = searchParams.get("since");
     const result = await syncPlayerStats({
       writeMode: searchParams.get("dryRun") !== "1",
+      ...(since ? { sinceKickoffAt: since } : {}),
     });
     return Response.json(result);
   } catch (error) {

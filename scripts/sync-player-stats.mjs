@@ -5,18 +5,30 @@ const DEFAULT_SEASON_ID = "285023";
 const GOAL_EVENT_TYPE = 0;
 const ASSIST_EVENT_TYPE = 1;
 
+// Automated scoring only ever covers matches kicking off on or after this
+// instant. Manually entered totals in player_stat_tallies stay untouched —
+// the ledger (player_match_stats) is additive and the two never overlap,
+// so there's no risk of double-counting a goal someone already typed in.
+const DEFAULT_SYNC_SINCE = "2026-07-02T00:00:00Z";
+
 loadEnvLocal();
 requireEnv(["NEXT_PUBLIC_SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"]);
 
 const args = parseArgs(process.argv.slice(2));
 const writeMode = Boolean(args.write);
+const sinceKickoffAt = args.since || DEFAULT_SYNC_SINCE;
+const sinceMs = new Date(sinceKickoffAt).getTime();
 
 const fifaMatches = await fetchFifaMatches();
 const matches = await supabaseRest("/matches?select=id,external_match_id&external_match_id=not.is.null&limit=300");
 
 const finishedMatches = matches
   .map((match) => ({ match, fifaMatch: fifaMatches.get(String(match.external_match_id)) }))
-  .filter(({ fifaMatch }) => fifaMatch?.status === "finished");
+  .filter(({ fifaMatch }) => {
+    if (fifaMatch?.status !== "finished") return false;
+    const kickoffMs = new Date(fifaMatch.kickoff_at).getTime();
+    return Number.isFinite(sinceMs) ? kickoffMs >= sinceMs : true;
+  });
 
 const teams = await supabaseRest("/teams?select=id,fifa_code");
 const teamIdByFifaCode = new Map(teams.map((team) => [team.fifa_code, team.id]));
@@ -32,7 +44,7 @@ for (const player of players) {
   playersByTeam.get(player.team_id).push(player);
 }
 
-const tallies = new Map();
+const matchTallies = new Map();
 const newExternalLinks = [];
 const unmatched = [];
 const playerCache = new Map();
@@ -74,10 +86,11 @@ for (const { match, fifaMatch } of finishedMatches) {
       newExternalLinks.push({ playerId: player.id, externalPlayerId: event.playerId });
     }
 
-    const tally = tallies.get(player.id) || { goals: 0, assists: 0, name: player.display_name };
+    const key = `${player.id}:${match.id}`;
+    const tally = matchTallies.get(key) || { playerId: player.id, matchId: match.id, name: player.display_name, goals: 0, assists: 0 };
     if (event.type === GOAL_EVENT_TYPE) tally.goals += 1;
     if (event.type === ASSIST_EVENT_TYPE) tally.assists += 1;
-    tallies.set(player.id, tally);
+    matchTallies.set(key, tally);
   }
 }
 
@@ -88,22 +101,31 @@ if (writeMode) {
       body: JSON.stringify({ external_player_id: link.externalPlayerId }),
     });
   }
-  for (const [playerId, tally] of tallies.entries()) {
-    const existing = await supabaseRest(`/player_stat_tallies?select=id&player_id=eq.${playerId}&limit=1`);
-    const body = { player_id: playerId, goals: tally.goals, assists: tally.assists, updated_at: new Date().toISOString() };
+  for (const tally of matchTallies.values()) {
+    const existing = await supabaseRest(
+      `/player_match_stats?select=id&player_id=eq.${tally.playerId}&match_id=eq.${tally.matchId}&limit=1`
+    );
+    const body = {
+      player_id: tally.playerId,
+      match_id: tally.matchId,
+      goals: tally.goals,
+      assists: tally.assists,
+      updated_at: new Date().toISOString(),
+    };
     if (existing[0]?.id) {
-      await supabaseRest(`/player_stat_tallies?id=eq.${existing[0].id}`, { method: "PATCH", body: JSON.stringify(body) });
+      await supabaseRest(`/player_match_stats?id=eq.${existing[0].id}`, { method: "PATCH", body: JSON.stringify(body) });
     } else {
-      await supabaseRest("/player_stat_tallies", { method: "POST", body: JSON.stringify(body) });
+      await supabaseRest("/player_match_stats", { method: "POST", body: JSON.stringify(body) });
     }
   }
 }
 
 console.log(JSON.stringify({
   mode: writeMode ? "write" : "dry-run",
+  since_kickoff_at: sinceKickoffAt,
   finished_matches: finishedMatches.length,
-  players_updated: tallies.size,
-  summary: [...tallies.entries()].map(([playerId, tally]) => ({ player_id: playerId, ...tally })),
+  match_stat_rows: matchTallies.size,
+  summary: [...matchTallies.values()],
   unmatched,
 }, null, 2));
 
@@ -126,6 +148,7 @@ function normalizeFifaMatch(match) {
     id_competition: match.IdCompetition ? String(match.IdCompetition) : null,
     id_season: match.IdSeason ? String(match.IdSeason) : null,
     id_stage: match.IdStage ? String(match.IdStage) : null,
+    kickoff_at: match.Date || null,
     status,
   };
 }
