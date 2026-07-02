@@ -10,7 +10,7 @@ export async function POST(request) {
     const pickType = clean(body.pick_type);
     const lengthPick = cleanOptional(body.length_pick);
 
-    if (!token || !externalMatchId || !pickType) {
+    if (!token || !externalMatchId || (!pickType && !lengthPick)) {
       return jsonError("Session, match, and pick are required", 400);
     }
 

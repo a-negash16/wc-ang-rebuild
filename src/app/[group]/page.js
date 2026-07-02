@@ -525,9 +525,11 @@ function RulesSection() {
     {
       tag: "KO",
       title: "Knockouts",
-      body: "Winner picks become odds-weighted after the group stage.",
+      body: "Winner picks become odds-weighted after the group stage. Length picks are a flat bonus, no odds.",
       rows: [
         ["Correct winner", "3-7"],
+        ["Correctly call Extra Time", "5"],
+        ["Correctly call Penalties", "8"],
       ],
     },
   ];

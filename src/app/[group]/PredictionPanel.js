@@ -345,6 +345,7 @@ export default function PredictionPanel({
                     <div className="match-meta">
                       <span className={currentPick?.pick_label ? "pick-receipt saved" : "pick-receipt"}>
                         <strong>{currentPick?.pick_label ? `Saved: ${currentPick.pick_label}` : "No pick saved"}</strong>
+                        {currentPick?.length_label ? <small>Length: {currentPick.length_label}</small> : null}
                         {currentPick?.picked_at ? <small>Confirmed {formatSavedAt(currentPick.picked_at, timezone)}</small> : null}
                       </span>
                     </div>
@@ -548,6 +549,13 @@ function formatPickPoints(points) {
   const value = Number(points);
   if (!Number.isFinite(value)) return null;
   return `+${value % 1 === 0 ? value.toFixed(0) : value.toFixed(1)} pts`;
+}
+
+function formatLengthPick(value) {
+  if (value === "90") return "90 min";
+  if (value === "ET") return "Extra time";
+  if (value === "Pens") return "Pens";
+  return value || "";
 }
 
 function loadSession(groupSlug) {

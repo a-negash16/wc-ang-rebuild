@@ -40,6 +40,11 @@ test("length risk picks are knockout-only and ET/Pens-only", () => {
     match: { stage: "Round of 32" },
   }), { ok: true });
 
+  assert.deepEqual(validateLengthPickForMatch({
+    lengthPick: "Pens",
+    match: { stage: "Round of 32" },
+  }), { ok: true });
+
   assert.equal(validateLengthPickForMatch({
     lengthPick: "90",
     match: { stage: "Round of 32" },

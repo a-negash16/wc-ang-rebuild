@@ -240,7 +240,8 @@ export async function savePrediction({ groupSlug, managerCode, externalMatchId, 
         stage,
         team_a_id,
         team_b_id,
-        external_match_id
+        external_match_id,
+        stage
       )
     `)
     .eq("groups.slug", groupSlug)
@@ -1094,6 +1095,7 @@ export async function getPredictionPulseState({ groupSlug }) {
         team_b_code: match.team_b?.fifa_code || null,
         kickoff_at: match.kickoff_at,
         status: match.status,
+        length: match.length ?? null,
         team_a_score: match.team_a_score ?? null,
         team_b_score: match.team_b_score ?? null,
         winner_type: getPulseWinnerType(match),
@@ -1103,6 +1105,9 @@ export async function getPredictionPulseState({ groupSlug }) {
         team_a_picks: reveal ? Number(item?.team_a_picks || 0) : null,
         tie_picks: reveal ? Number(item?.tie_picks || 0) : null,
         team_b_picks: reveal ? Number(item?.team_b_picks || 0) : null,
+        length_90_picks: reveal ? Number(item?.length_90_picks || 0) : null,
+        length_et_picks: reveal ? Number(item?.length_et_picks || 0) : null,
+        length_pens_picks: reveal ? Number(item?.length_pens_picks || 0) : null,
         total_picks: reveal ? Number(item?.total_picks || 0) : null,
         team_a_managers: reveal ? item?.team_a_managers || "" : "",
         tie_managers: reveal ? item?.tie_managers || "" : "",
@@ -1383,11 +1388,31 @@ async function getDraftedPlayerRows(overview) {
     throw new Error(talliesError.message);
   }
 
+  // Automated goal/assist counts live in a separate per-match ledger so the
+  // sync job can never overwrite or double up on totals a commissioner
+  // already typed into player_stat_tallies by hand.
+  const { data: autoStats, error: autoStatsError } = await supabase
+    .from("player_match_stats")
+    .select("player_id,goals,assists")
+    .in("player_id", playerIds);
+
+  if (autoStatsError && !isMissingRelationError(autoStatsError)) {
+    throw new Error(autoStatsError.message);
+  }
+
   const tallyByPlayer = new Map((tallies || []).map((tally) => [tally.player_id, tally]));
+  const autoTotalsByPlayer = (autoStats || []).reduce((totals, row) => {
+    const current = totals.get(row.player_id) || { goals: 0, assists: 0 };
+    current.goals += row.goals || 0;
+    current.assists += row.assists || 0;
+    totals.set(row.player_id, current);
+    return totals;
+  }, new Map());
   const { lossesByTeamCode } = await getKnockoutTeamOutcomeMaps(overview);
   return draftedPlayers
     .map((draft) => {
       const tally = tallyByPlayer.get(draft.player_id);
+      const autoTotals = autoTotalsByPlayer.get(draft.player_id);
       const teamCode = normalizeTeamCode(draft.players?.teams?.fifa_code);
       return {
         manager_code: draft.managers?.manager_code || null,
@@ -1398,8 +1423,8 @@ async function getDraftedPlayerRows(overview) {
         team_name: draft.players?.teams?.name || null,
         eliminated: lossesByTeamCode.has(teamCode),
         points: scoreDraftedPlayer({
-          goals: tally?.goals || 0,
-          assists: tally?.assists || 0,
+          goals: (tally?.goals || 0) + (autoTotals?.goals || 0),
+          assists: (tally?.assists || 0) + (autoTotals?.assists || 0),
           playerOfMatch: tally?.player_of_match || 0,
         }),
       };

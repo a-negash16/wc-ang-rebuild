@@ -1,8 +1,14 @@
 const DEFAULT_SEASON_ID = "285023";
 const DEFAULT_BASE_URL = "https://api.fifa.com/api/v3/calendar/matches";
+const TIMELINE_BASE_URL = "https://api.fifa.com/api/v3/timelines";
+const PLAYER_BASE_URL = "https://api.fifa.com/api/v3/players";
 const CACHE_MS = 15 * 60 * 1000;
 
+export const GOAL_EVENT_TYPE = 0;
+export const ASSIST_EVENT_TYPE = 1;
+
 let cache = null;
+const playerCache = new Map();
 
 export async function getFifaMatchesById({ fetchImpl = globalThis.fetch } = {}) {
   const now = Date.now();
@@ -45,6 +51,9 @@ export function normalizeFifaMatch(match) {
 
   return {
     external_match_id: String(match.IdMatch),
+    id_competition: match.IdCompetition ? String(match.IdCompetition) : null,
+    id_season: match.IdSeason ? String(match.IdSeason) : null,
+    id_stage: match.IdStage ? String(match.IdStage) : null,
     kickoff_at: match.Date || null,
     status,
     length: normalizeLength(match, status),
@@ -63,6 +72,73 @@ export function normalizeFifaMatch(match) {
       teamBScore,
     }),
   };
+}
+
+export async function getFifaMatchTimeline({ idCompetition, idSeason, idStage, externalMatchId }, { fetchImpl = globalThis.fetch } = {}) {
+  if (!idCompetition || !idSeason || !idStage || !externalMatchId) {
+    throw new Error("getFifaMatchTimeline requires idCompetition, idSeason, idStage, and externalMatchId");
+  }
+
+  const url = `${TIMELINE_BASE_URL}/${idCompetition}/${idSeason}/${idStage}/${externalMatchId}`;
+  const response = await fetchImpl(url, {
+    headers: {
+      accept: "application/json",
+      "user-agent": "wc-ang-rebuild/1.0",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`FIFA timeline request failed with HTTP ${response.status}`);
+  }
+
+  const payload = await response.json();
+  return normalizeFifaTimeline(payload);
+}
+
+export function normalizeFifaTimeline(payload) {
+  const rawEvents = Array.isArray(payload?.Event) ? payload.Event : [];
+  const events = rawEvents
+    .filter((event) => event.Type === GOAL_EVENT_TYPE || event.Type === ASSIST_EVENT_TYPE)
+    .map((event) => ({
+      eventId: event.EventId ? String(event.EventId) : null,
+      type: event.Type,
+      playerId: event.IdPlayer ? String(event.IdPlayer) : null,
+      teamId: event.IdTeam ? String(event.IdTeam) : null,
+      isOwnGoal: isOwnGoalDescription(event.EventDescription),
+    }))
+    .filter((event) => event.playerId);
+
+  return { events };
+}
+
+function isOwnGoalDescription(descriptions) {
+  const text = Array.isArray(descriptions) ? descriptions[0]?.Description || "" : "";
+  return /own goal/i.test(text);
+}
+
+export async function getFifaPlayer(playerId, { fetchImpl = globalThis.fetch } = {}) {
+  if (!playerId) return null;
+  if (playerCache.has(playerId)) return playerCache.get(playerId);
+
+  const response = await fetchImpl(`${PLAYER_BASE_URL}/${playerId}?language=en`, {
+    headers: {
+      accept: "application/json",
+      "user-agent": "wc-ang-rebuild/1.0",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`FIFA player request failed with HTTP ${response.status}`);
+  }
+
+  const payload = await response.json();
+  const player = {
+    id: playerId,
+    name: payload?.Name?.[0]?.Description || null,
+    countryCode: payload?.IdCountry || null,
+  };
+  playerCache.set(playerId, player);
+  return player;
 }
 
 function buildFifaMatchesUrl() {
