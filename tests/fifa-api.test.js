@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { normalizeFifaMatch } from "../src/integrations/fifa-api.js";
+import { normalizeFifaMatch, normalizeFifaTimeline } from "../src/integrations/fifa-api.js";
 
 test("FIFA tied knockout score still preserves the declared winner", () => {
   const match = normalizeFifaMatch({
@@ -74,4 +74,32 @@ test("FIFA extra-time result normalizes match length to ET without penalties", (
   });
 
   assert.equal(match.length, "ET");
+});
+
+test("FIFA timeline extracts goal and assist events, drops everything else", () => {
+  const timeline = normalizeFifaTimeline({
+    Event: [
+      { EventId: "1", Type: 79, IdPlayer: "1" },
+      { EventId: "2", Type: 0, IdPlayer: "429157", EventDescription: [{ Description: "Julian QUINONES (Mexico) scores!!" }] },
+      { EventId: "3", Type: 1, IdPlayer: "419518", EventDescription: [{ Description: "Assisted by Erik LIRA." }] },
+      { EventId: "4", Type: 18, IdPlayer: "395050" },
+    ],
+  });
+
+  assert.equal(timeline.events.length, 2);
+  assert.deepEqual(timeline.events.map((event) => event.type), [0, 1]);
+  assert.equal(timeline.events[0].playerId, "429157");
+  assert.equal(timeline.events[1].playerId, "419518");
+});
+
+test("FIFA timeline flags own goals so they don't credit the scorer", () => {
+  const timeline = normalizeFifaTimeline({
+    Event: [
+      { EventId: "1", Type: 0, IdPlayer: "1", EventDescription: [{ Description: "Own Goal by Aubrey MODIBA." }] },
+      { EventId: "2", Type: 0, IdPlayer: "2", EventDescription: [{ Description: "Raul JIMENEZ (Mexico) scores!!" }] },
+    ],
+  });
+
+  assert.equal(timeline.events[0].isOwnGoal, true);
+  assert.equal(timeline.events[1].isOwnGoal, false);
 });
