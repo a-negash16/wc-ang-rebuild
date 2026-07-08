@@ -6,7 +6,6 @@ const STORAGE_KEY = "wc_ang_rebuild_session";
 const TODAY = "Today";
 const TOMORROW = "Tomorrow";
 const LATER = "Later";
-const PICK_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 export default function PredictionPanel({
   groupSlug,
@@ -30,26 +29,27 @@ export default function PredictionPanel({
   const pickByMatch = useMemo(() => {
     return new Map(pickState.map((pick) => [pick.external_match_id, pick]));
   }, [pickState]);
-  const urgentMatches = useMemo(() => {
-    return openMatches.filter((match) => {
+  const openPickMatches = useMemo(() => {
+    const unlockedMatches = openMatches.filter((match) => {
       const deadline = getDeadline(match.kickoff_at, lockMinutesBeforeKickoff);
-      const msUntilDeadline = deadline.getTime() - now;
-      return msUntilDeadline > 0 && msUntilDeadline <= PICK_WINDOW_MS;
+      return deadline.getTime() > now;
     });
+    return getCurrentPredictionRoundMatches(unlockedMatches);
   }, [lockMinutesBeforeKickoff, now, openMatches]);
-  const groupedMatches = useMemo(() => groupMatches(urgentMatches, timezone), [urgentMatches, timezone]);
-  const urgentPickState = useMemo(() => {
-    const urgentIds = new Set(urgentMatches.map((match) => match.external_match_id));
-    return pickState.filter((match) => urgentIds.has(match.external_match_id));
-  }, [pickState, urgentMatches]);
+  const groupedMatches = useMemo(() => groupMatches(openPickMatches, timezone), [openPickMatches, timezone]);
+  const activeRoundLabel = useMemo(() => getPredictionRoundLabel(openPickMatches), [openPickMatches]);
+  const openPickState = useMemo(() => {
+    const openIds = new Set(openPickMatches.map((match) => match.external_match_id));
+    return pickState.filter((match) => openIds.has(match.external_match_id));
+  }, [pickState, openPickMatches]);
   const savedPicks = useMemo(() => {
     return pickState
       .filter((match) => !match.is_missing)
       .sort((left, right) => new Date(left.kickoff_at).getTime() - new Date(right.kickoff_at).getTime());
   }, [pickState]);
-  const missingCount = urgentPickState.filter((match) => match.is_missing).length;
-  const savedCount = urgentPickState.filter((match) => !match.is_missing).length;
-  const nextMissingPick = urgentPickState.find((match) => match.is_missing);
+  const missingCount = openPickState.filter((match) => match.is_missing).length;
+  const savedCount = openPickState.filter((match) => !match.is_missing).length;
+  const nextMissingPick = openPickState.find((match) => match.is_missing);
 
   useEffect(() => {
     setSession(loadSession(groupSlug));
@@ -292,12 +292,12 @@ export default function PredictionPanel({
       <div className="section-heading compact">
         <div>
           <p className="eyebrow">Open picks</p>
-          <h2>Closing Soon</h2>
+          <h2>{activeRoundLabel || "Open Round"}</h2>
         </div>
-        <span className="status-chip">24-hour window</span>
+        <span className="status-chip">Round open</span>
       </div>
 
-      {urgentMatches.length ? (
+      {openPickMatches.length ? (
         Object.entries(groupedMatches).map(([label, items]) => items.length ? (
           <div className="match-day" key={label}>
             <div className="rail-heading">
@@ -388,8 +388,8 @@ export default function PredictionPanel({
         ) : null)
       ) : (
         <article className="panel empty-state">
-          <strong>No picks closing in the next 24 hours.</strong>
-          <span>Upcoming matches will appear here when they enter the pick window.</span>
+          <strong>No open picks right now.</strong>
+          <span>Upcoming round matches will appear here once teams are set and deadlines are open.</span>
         </article>
       )}
     </section>
@@ -602,6 +602,23 @@ function groupMatches(matches, timezone) {
     else buckets[LATER].push(match);
   });
   return buckets;
+}
+
+function getCurrentPredictionRoundMatches(matches) {
+  const sorted = [...matches].sort((left, right) => {
+    return new Date(left.kickoff_at).getTime() - new Date(right.kickoff_at).getTime();
+  });
+  const firstMatch = sorted[0];
+  if (!firstMatch) return [];
+  const stage = firstMatch.stage || "";
+  return sorted.filter((match) => (match.stage || "") === stage);
+}
+
+function getPredictionRoundLabel(matches) {
+  const stage = matches[0]?.stage;
+  if (!stage) return null;
+  if (stage === "Group Stage") return "Open Picks";
+  return `${stage} Picks`;
 }
 
 function getDeadline(kickoffAt, lockMinutesBeforeKickoff) {

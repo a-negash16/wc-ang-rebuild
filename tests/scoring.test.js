@@ -38,6 +38,12 @@ test("knockout winner uses odds-weighted team point values", () => {
   }), 6.5);
 
   assert.equal(scoreKnockoutWinnerPick({
+    pickedTeamId: "QF_UNDERDOG",
+    winnerTeamId: "QF_UNDERDOG",
+    teamPointValues: { QF_FAVORITE: 5, QF_UNDERDOG: 10 },
+  }), 10);
+
+  assert.equal(scoreKnockoutWinnerPick({
     pickedTeamId: "FAVORITE",
     winnerTeamId: "UNDERDOG",
     teamPointValues: { FAVORITE: 3, UNDERDOG: 7 },

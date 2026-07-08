@@ -30,7 +30,7 @@ export function scoreGroupStagePick({ pickType, pickedTeamId, result }) {
 export function scoreKnockoutWinnerPick({ pickedTeamId, winnerTeamId, teamPointValues }) {
   if (!pickedTeamId || !winnerTeamId || pickedTeamId !== winnerTeamId) return 0;
   const value = Number(teamPointValues?.[pickedTeamId] ?? 0);
-  return clampHalfPoint(value, 3, 7);
+  return clampHalfPoint(value, 0, 15);
 }
 
 export function scoreKnockoutLengthRisk({ pickedLength, actualLength }) {
