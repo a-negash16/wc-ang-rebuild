@@ -263,31 +263,63 @@ function PredictionPulse({ pulse }) {
 }
 
 function PulseRiskBonus({ match }) {
-  if (!match.et_risk_managers && !match.pens_risk_managers) return null;
+  const hasLengthRisk = match.et_risk_managers || match.pens_risk_managers;
+  const hasFirstScoreRisk = match.team_a_first_score_managers || match.team_b_first_score_managers;
+  if (!hasLengthRisk && !hasFirstScoreRisk) return null;
   return (
     <div className="pulse-risk-panel">
-      <div className="pulse-risk-heading">
-        <strong>Risk Bonus</strong>
-        <span>{formatLengthResult(match)}</span>
-      </div>
-      <div className="pulse-risk-grid">
-        <PulseRiskChoice
-          label="ET"
-          managers={match.et_risk_managers}
-          isFinished={match.status === "finished"}
-          isCorrect={match.length === "ET"}
-          winLabel="+4"
-          lossLabel="-2"
-        />
-        <PulseRiskChoice
-          label="Pens"
-          managers={match.pens_risk_managers}
-          isFinished={match.status === "finished"}
-          isCorrect={match.length === "Pens"}
-          winLabel="+8"
-          lossLabel="-4"
-        />
-      </div>
+      {hasLengthRisk ? (
+        <>
+          <div className="pulse-risk-heading">
+            <strong>Risk Bonus</strong>
+            <span>{formatLengthResult(match)}</span>
+          </div>
+          <div className="pulse-risk-grid">
+            <PulseRiskChoice
+              label="ET"
+              managers={match.et_risk_managers}
+              isFinished={match.status === "finished"}
+              isCorrect={match.length === "ET"}
+              winLabel="+4"
+              lossLabel="-2"
+            />
+            <PulseRiskChoice
+              label="Pens"
+              managers={match.pens_risk_managers}
+              isFinished={match.status === "finished"}
+              isCorrect={match.length === "Pens"}
+              winLabel="+8"
+              lossLabel="-4"
+            />
+          </div>
+        </>
+      ) : null}
+      {hasFirstScoreRisk ? (
+        <>
+          <div className="pulse-risk-heading">
+            <strong>Score First</strong>
+            <span>{formatFirstScoreResult(match)}</span>
+          </div>
+          <div className="pulse-risk-grid">
+            <PulseRiskChoice
+              label={match.team_a_name || "Team A"}
+              managers={match.team_a_first_score_managers}
+              isFinished={match.status === "finished" && Boolean(match.first_score_team_id)}
+              isCorrect={match.first_score_team_id === match.team_a_id}
+              winLabel="+3"
+              lossLabel="-1"
+            />
+            <PulseRiskChoice
+              label={match.team_b_name || "Team B"}
+              managers={match.team_b_first_score_managers}
+              isFinished={match.status === "finished" && Boolean(match.first_score_team_id)}
+              isCorrect={match.first_score_team_id === match.team_b_id}
+              winLabel="+3"
+              lossLabel="-1"
+            />
+          </div>
+        </>
+      ) : null}
     </div>
   );
 }
@@ -501,6 +533,13 @@ function formatLengthResult(match) {
   return "Ended in 90";
 }
 
+function formatFirstScoreResult(match) {
+  if (match.status !== "finished") return "Risk reveal";
+  if (match.first_score_team_id === match.team_a_id) return `${match.team_a_name} scored first`;
+  if (match.first_score_team_id === match.team_b_id) return `${match.team_b_name} scored first`;
+  return "Awaiting first scorer";
+}
+
 function RulesSection() {
   const rules = [
     {
@@ -536,7 +575,12 @@ function RulesSection() {
       title: "Knockouts",
       body: "Winner picks become odds-weighted after the group stage.",
       rows: [
-        ["Correct winner", "3-7"],
+        ["R32 & R16", "3-7"],
+        ["QF", "11-4"],
+        ["SF", "13-7"],
+        ["3rd", "15-10"],
+        ["Final", "20-10"],
+        ["Score first risk", "+3 / -1"],
       ],
     },
   ];

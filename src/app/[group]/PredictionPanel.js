@@ -23,6 +23,7 @@ export default function PredictionPanel({
   const [busy, setBusy] = useState(false);
   const [pickState, setPickState] = useState([]);
   const [pendingRiskByMatch, setPendingRiskByMatch] = useState({});
+  const [pendingFirstScoreRiskByMatch, setPendingFirstScoreRiskByMatch] = useState({});
   const [now, setNow] = useState(() => Date.now());
 
   const openMatches = useMemo(() => matches.filter((match) => match.team_a && match.team_b), [matches]);
@@ -94,7 +95,7 @@ export default function PredictionPanel({
     }
   }
 
-  async function submitPick(match, pickType, lengthPick = null) {
+  async function submitPick(match, pickType, lengthPick = null, firstScorePick = null) {
     if (!session?.token) {
       setStatus("Unlock before picking.");
       return;
@@ -110,19 +111,30 @@ export default function PredictionPanel({
           external_match_id: match.external_match_id,
           pick_type: pickType,
           length_pick: lengthPick,
+          first_score_pick: firstScorePick,
         }),
       });
       const payload = await response.json();
       if (!response.ok || !payload.ok) throw new Error(payload.message || "Could not save pick");
       const savedAt = payload.saved_at || new Date().toISOString();
       const savedLengthPick = payload.length_pick_saved === false ? null : lengthPick;
-      updateOptimisticPick({ match, pickType, lengthPick: savedLengthPick, savedAt });
+      const savedFirstScorePick = payload.first_score_pick_saved === false ? null : firstScorePick;
+      updateOptimisticPick({
+        match,
+        pickType,
+        lengthPick: savedLengthPick,
+        firstScorePick: savedFirstScorePick,
+        savedAt,
+      });
       clearPendingRisk(match.external_match_id);
+      clearPendingFirstScoreRisk(match.external_match_id);
       setStatus(formatSaveStatus({
         match,
         pickType,
         lengthPick,
         savedLengthPick,
+        firstScorePick,
+        savedFirstScorePick,
         savedAt,
         timezone,
       }));
@@ -150,7 +162,26 @@ export default function PredictionPanel({
     await submitPick(
       match,
       currentPick.pick_type,
-      nextLengthPick
+      nextLengthPick,
+      getSelectedFirstScoreRiskPick(match.external_match_id, currentPick)
+    );
+  }
+
+  async function submitFirstScoreRiskPick(match, currentPick, firstScorePick) {
+    const currentFirstScorePick = getSelectedFirstScoreRiskPick(match.external_match_id, currentPick);
+    const nextFirstScorePick = currentFirstScorePick === firstScorePick ? null : firstScorePick;
+    if (!currentPick?.pick_type) {
+      setPendingFirstScoreRisk(match.external_match_id, nextFirstScorePick);
+      setStatus(nextFirstScorePick
+        ? `${getPickLabel(match, nextFirstScorePick)} first-score risk selected. Pick a winner to save it.`
+        : "First-score risk cleared.");
+      return;
+    }
+    await submitPick(
+      match,
+      currentPick.pick_type,
+      getSelectedRiskPick(match.external_match_id, currentPick),
+      nextFirstScorePick
     );
   }
 
@@ -176,14 +207,38 @@ export default function PredictionPanel({
     });
   }
 
-  function updateOptimisticPick({ match, pickType, lengthPick, savedAt }) {
+  function getSelectedFirstScoreRiskPick(externalMatchId, currentPick) {
+    return Object.hasOwn(pendingFirstScoreRiskByMatch, externalMatchId)
+      ? pendingFirstScoreRiskByMatch[externalMatchId]
+      : currentPick?.first_score_pick || null;
+  }
+
+  function setPendingFirstScoreRisk(externalMatchId, firstScorePick) {
+    setPendingFirstScoreRiskByMatch((current) => ({
+      ...current,
+      [externalMatchId]: firstScorePick,
+    }));
+  }
+
+  function clearPendingFirstScoreRisk(externalMatchId) {
+    setPendingFirstScoreRiskByMatch((current) => {
+      if (!Object.hasOwn(current, externalMatchId)) return current;
+      const next = { ...current };
+      delete next[externalMatchId];
+      return next;
+    });
+  }
+
+  function updateOptimisticPick({ match, pickType, lengthPick, firstScorePick, savedAt }) {
     setPickState((current) => {
       const nextPick = {
         ...match,
         pick_type: pickType,
         length_pick: lengthPick,
+        first_score_pick: firstScorePick,
         pick_label: getPickLabel(match, pickType),
         risk_label: formatRiskPickLabel(lengthPick),
+        first_score_risk_label: formatFirstScoreRiskPickLabel(match, firstScorePick),
         picked_at: savedAt,
         is_missing: false,
       };
@@ -312,6 +367,7 @@ export default function PredictionPanel({
                 const teamACode = getTeamCode(match.team_a);
                 const teamBCode = getTeamCode(match.team_b);
                 const selectedRiskPick = getSelectedRiskPick(match.external_match_id, currentPick);
+                const selectedFirstScoreRiskPick = getSelectedFirstScoreRiskPick(match.external_match_id, currentPick);
                 return (
                   <article className={currentPick?.is_missing ? "prediction-card needs-pick" : "prediction-card"} key={match.external_match_id}>
                     <div className="ticket-meta">
@@ -354,7 +410,7 @@ export default function PredictionPanel({
                         isSelected={currentPick?.pick_type === "team_a"}
                         points={match.team_a_points}
                         team={match.team_a}
-                        onClick={() => submitPick(match, "team_a", selectedRiskPick)}
+                        onClick={() => submitPick(match, "team_a", selectedRiskPick, selectedFirstScoreRiskPick)}
                       />
                       {match.stage === "Group Stage" ? (
                         <PickButton
@@ -369,15 +425,24 @@ export default function PredictionPanel({
                         isSelected={currentPick?.pick_type === "team_b"}
                         points={match.team_b_points}
                         team={match.team_b}
-                        onClick={() => submitPick(match, "team_b", selectedRiskPick)}
+                        onClick={() => submitPick(match, "team_b", selectedRiskPick, selectedFirstScoreRiskPick)}
                       />
                     </div>
                     {match.stage === "Group Stage" ? null : (
-                      <RiskBonusButtons
-                        disabled={busy || !session}
-                        selected={selectedRiskPick}
-                        onSelect={(lengthPick) => submitRiskPick(match, currentPick, lengthPick)}
-                      />
+                      <>
+                        <RiskBonusButtons
+                          disabled={busy || !session}
+                          selected={selectedRiskPick}
+                          onSelect={(lengthPick) => submitRiskPick(match, currentPick, lengthPick)}
+                        />
+                        <FirstScoreRiskButtons
+                          disabled={busy || !session}
+                          selected={selectedFirstScoreRiskPick}
+                          teamA={match.team_a}
+                          teamB={match.team_b}
+                          onSelect={(firstScorePick) => submitFirstScoreRiskPick(match, currentPick, firstScorePick)}
+                        />
+                      </>
                     )}
                   </article>
                 );
@@ -445,6 +510,7 @@ function SavedPicksPreview({ picks, timezone }) {
               <strong>{pick.pick_label}</strong>
               <span>{formatTeams(pick)}</span>
               {pick.risk_label ? <em>{pick.risk_label}</em> : null}
+              {pick.first_score_risk_label ? <em>{pick.first_score_risk_label}</em> : null}
               <small>{formatTicketKickoff(pick.kickoff_at, timezone)}</small>
             </div>
           ))}
@@ -481,6 +547,37 @@ function RiskBonusButtons({ disabled, selected, onSelect }) {
         >
           <strong>Pens</strong>
           <span>Risk 4 to win 8</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function FirstScoreRiskButtons({ disabled, selected, teamA, teamB, onSelect }) {
+  return (
+    <div className="risk-bonus-panel first-score-risk-panel" aria-label="Team to score first risk bonus">
+      <div>
+        <strong>Score First</strong>
+        <span>Optional risk: right +3, wrong -1</span>
+      </div>
+      <div className="risk-buttons first-score-risk-buttons">
+        <button
+          className={selected === "team_a" ? "selected" : ""}
+          type="button"
+          disabled={disabled}
+          onClick={() => onSelect("team_a")}
+        >
+          <strong>{teamA?.name || "Team A"}</strong>
+          <span>+3 / -1</span>
+        </button>
+        <button
+          className={selected === "team_b" ? "selected" : ""}
+          type="button"
+          disabled={disabled}
+          onClick={() => onSelect("team_b")}
+        >
+          <strong>{teamB?.name || "Team B"}</strong>
+          <span>+3 / -1</span>
         </button>
       </div>
     </div>
@@ -662,21 +759,41 @@ function getPickLabel(match, pickType) {
   return "Pick";
 }
 
-function formatSaveStatus({ match, pickType, lengthPick, savedLengthPick, savedAt, timezone }) {
+function formatSaveStatus({
+  match,
+  pickType,
+  lengthPick,
+  savedLengthPick,
+  firstScorePick,
+  savedFirstScorePick,
+  savedAt,
+  timezone,
+}) {
   const pickLabel = getPickLabel(match, pickType);
   const timeLabel = formatSavedAt(savedAt, timezone);
   if (lengthPick && !savedLengthPick) {
     return `Saved: ${pickLabel}. Risk Bonus needs the latest database migration.`;
   }
+  if (firstScorePick && !savedFirstScorePick) {
+    return `Saved: ${pickLabel}. First-score risk needs the latest database migration.`;
+  }
   const riskLabel = formatRiskPickLabel(savedLengthPick);
-  return riskLabel
-    ? `Saved: ${pickLabel} with ${riskLabel} at ${timeLabel}`
+  const firstScoreRiskLabel = formatFirstScoreRiskPickLabel(match, savedFirstScorePick);
+  const extras = [riskLabel, firstScoreRiskLabel].filter(Boolean);
+  return extras.length
+    ? `Saved: ${pickLabel} with ${extras.join(" and ")} at ${timeLabel}`
     : `Saved: ${pickLabel} at ${timeLabel}`;
 }
 
 function formatRiskPickLabel(lengthPick) {
   if (lengthPick === "ET") return "ET risk: +4 / -2";
   if (lengthPick === "Pens") return "Pens risk: +8 / -4";
+  return null;
+}
+
+function formatFirstScoreRiskPickLabel(match, firstScorePick) {
+  if (firstScorePick === "team_a") return `${match.team_a?.name || "Team A"} first score: +3 / -1`;
+  if (firstScorePick === "team_b") return `${match.team_b?.name || "Team B"} first score: +3 / -1`;
   return null;
 }
 

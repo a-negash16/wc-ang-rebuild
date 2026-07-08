@@ -1,6 +1,11 @@
 import { getMatchForPrediction, savePrediction } from "@/data/league";
 import { verifyManagerSessionToken } from "@/lib/auth/session";
-import { isPredictionLocked, validateLengthPickForMatch, validatePickForMatch } from "@/rules/predictions";
+import {
+  isPredictionLocked,
+  validateFirstScorePickForMatch,
+  validateLengthPickForMatch,
+  validatePickForMatch,
+} from "@/rules/predictions";
 
 export async function POST(request) {
   try {
@@ -9,6 +14,7 @@ export async function POST(request) {
     const externalMatchId = clean(body.external_match_id);
     const pickType = clean(body.pick_type);
     const lengthPick = cleanOptional(body.length_pick);
+    const firstScorePick = cleanOptional(body.first_score_pick);
 
     if (!token || !externalMatchId || !pickType) {
       return jsonError("Session, match, and pick are required", 400);
@@ -35,6 +41,8 @@ export async function POST(request) {
     if (!validation.ok) return jsonError(validation.message, 400);
     const lengthValidation = validateLengthPickForMatch({ lengthPick, match });
     if (!lengthValidation.ok) return jsonError(lengthValidation.message, 400);
+    const firstScoreValidation = validateFirstScorePickForMatch({ firstScorePick, match });
+    if (!firstScoreValidation.ok) return jsonError(firstScoreValidation.message, 400);
 
     const saved = await savePrediction({
       groupSlug: session.group_slug,
@@ -42,6 +50,7 @@ export async function POST(request) {
       externalMatchId,
       pickType,
       lengthPick,
+      firstScorePick,
     });
 
     return Response.json({
@@ -51,6 +60,8 @@ export async function POST(request) {
       pick_type: pickType,
       length_pick: lengthPick,
       length_pick_saved: saved.length_pick_saved,
+      first_score_pick: firstScorePick,
+      first_score_pick_saved: saved.first_score_pick_saved,
       saved_at: saved.saved_at,
     });
   } catch (error) {

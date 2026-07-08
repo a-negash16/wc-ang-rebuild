@@ -7,6 +7,7 @@ import { validatePickForMatch } from "@/rules/predictions";
 import {
   scoreDraftedPlayer,
   scoreDraftedTeam,
+  scoreFirstScoreRisk,
   scoreGroupStagePick,
   scoreKnockoutLengthRisk,
   scoreKnockoutWinnerPick,
@@ -67,8 +68,8 @@ export async function getGroupOverview(groupSlug) {
               status,
               team_a_id,
               team_b_id,
-              team_a:team_a_id ( fifa_code, name ),
-              team_b:team_b_id ( fifa_code, name )
+              team_a:team_a_id ( id, fifa_code, name ),
+              team_b:team_b_id ( id, fifa_code, name )
             )
           `)
           .eq("group_id", group.id)
@@ -224,7 +225,14 @@ export async function getMatchForPrediction({ groupSlug, externalMatchId }) {
   };
 }
 
-export async function savePrediction({ groupSlug, managerCode, externalMatchId, pickType, lengthPick = null }) {
+export async function savePrediction({
+  groupSlug,
+  managerCode,
+  externalMatchId,
+  pickType,
+  lengthPick = null,
+  firstScorePick = null,
+}) {
   const supabase = getOptionalSupabaseClient();
   if (!supabase) {
     throw new Error("Seed mode is read-only. Configure Supabase before saving predictions.");
@@ -267,8 +275,14 @@ export async function savePrediction({ groupSlug, managerCode, externalMatchId, 
     : pickType === "team_b"
       ? groupMatch.matches.team_b_id
       : null;
+  const firstScorePickTeamId = firstScorePick === "team_a"
+    ? groupMatch.matches.team_a_id
+    : firstScorePick === "team_b"
+      ? groupMatch.matches.team_b_id
+      : null;
 
   const savedAt = new Date().toISOString();
+  const firstScorePickValue = isGroupStage(groupMatch.matches.stage) ? null : firstScorePickTeamId;
   const predictionRow = {
     group_id: groupMatch.group_id,
     manager_id: manager.id,
@@ -276,31 +290,40 @@ export async function savePrediction({ groupSlug, managerCode, externalMatchId, 
     pick_type: pickType,
     pick_team_id: pickTeamId,
     length_pick: isGroupStage(groupMatch.matches.stage) ? null : lengthPick,
+    first_score_pick_team_id: firstScorePickValue,
     status: "active",
     updated_at: savedAt,
   };
   let lengthPickColumnMissing = false;
+  let firstScorePickColumnMissing = false;
 
   let { data: existing, error: existingError } = await supabase
     .from("predictions")
-    .select("id,pick_type,pick_team_id,length_pick")
+    .select("id,pick_type,pick_team_id,length_pick,first_score_pick_team_id")
     .eq("group_id", groupMatch.group_id)
     .eq("manager_id", manager.id)
     .eq("match_id", groupMatch.match_id)
     .eq("status", "active")
     .maybeSingle();
 
-  if (isMissingColumnError(existingError, "length_pick")) {
-    lengthPickColumnMissing = true;
+  if (isMissingColumnError(existingError, "length_pick") || isMissingColumnError(existingError, "first_score_pick_team_id")) {
+    lengthPickColumnMissing = isMissingColumnError(existingError, "length_pick");
+    firstScorePickColumnMissing = isMissingColumnError(existingError, "first_score_pick_team_id");
     const fallback = await supabase
       .from("predictions")
-      .select("id,pick_type,pick_team_id")
+      .select(lengthPickColumnMissing ? "id,pick_type,pick_team_id" : "id,pick_type,pick_team_id,length_pick")
       .eq("group_id", groupMatch.group_id)
       .eq("manager_id", manager.id)
       .eq("match_id", groupMatch.match_id)
       .eq("status", "active")
       .maybeSingle();
-    existing = fallback.data ? { ...fallback.data, length_pick: null } : null;
+    existing = fallback.data
+      ? {
+          ...fallback.data,
+          length_pick: fallback.data.length_pick || null,
+          first_score_pick_team_id: null,
+        }
+      : null;
     existingError = fallback.error;
   }
 
@@ -313,10 +336,23 @@ export async function savePrediction({ groupSlug, managerCode, externalMatchId, 
       .eq("id", existing.id);
     if (isMissingColumnError(updateError, "length_pick")) {
       lengthPickColumnMissing = true;
-      const { length_pick, ...fallbackPredictionRow } = predictionRow;
       const fallback = await supabase
         .from("predictions")
-        .update(fallbackPredictionRow)
+        .update(stripUnsupportedPredictionColumns(predictionRow, {
+          lengthPickColumnMissing,
+          firstScorePickColumnMissing,
+        }))
+        .eq("id", existing.id);
+      updateError = fallback.error;
+    }
+    if (isMissingColumnError(updateError, "first_score_pick_team_id")) {
+      firstScorePickColumnMissing = true;
+      const fallback = await supabase
+        .from("predictions")
+        .update(stripUnsupportedPredictionColumns(predictionRow, {
+          lengthPickColumnMissing,
+          firstScorePickColumnMissing,
+        }))
         .eq("id", existing.id);
       updateError = fallback.error;
     }
@@ -330,15 +366,18 @@ export async function savePrediction({ groupSlug, managerCode, externalMatchId, 
       oldPickType: existing.pick_type,
       oldPickTeamId: existing.pick_team_id,
       oldLengthPick: existing.length_pick,
+      oldFirstScorePickTeamId: existing.first_score_pick_team_id,
       newPickType: pickType,
       newPickTeamId: pickTeamId,
       newLengthPick: predictionRow.length_pick,
+      newFirstScorePickTeamId: predictionRow.first_score_pick_team_id,
       reason: "manager_update",
     });
     return {
       ok: true,
       saved_at: savedAt,
       length_pick_saved: Boolean(predictionRow.length_pick) ? !lengthPickColumnMissing : true,
+      first_score_pick_saved: Boolean(predictionRow.first_score_pick_team_id) ? !firstScorePickColumnMissing : true,
     };
   }
 
@@ -347,10 +386,22 @@ export async function savePrediction({ groupSlug, managerCode, externalMatchId, 
     .insert(predictionRow);
   if (isMissingColumnError(insertError, "length_pick")) {
     lengthPickColumnMissing = true;
-    const { length_pick, ...fallbackPredictionRow } = predictionRow;
     const fallback = await supabase
       .from("predictions")
-      .insert(fallbackPredictionRow);
+      .insert(stripUnsupportedPredictionColumns(predictionRow, {
+        lengthPickColumnMissing,
+        firstScorePickColumnMissing,
+      }));
+    insertError = fallback.error;
+  }
+  if (isMissingColumnError(insertError, "first_score_pick_team_id")) {
+    firstScorePickColumnMissing = true;
+    const fallback = await supabase
+      .from("predictions")
+      .insert(stripUnsupportedPredictionColumns(predictionRow, {
+        lengthPickColumnMissing,
+        firstScorePickColumnMissing,
+      }));
     insertError = fallback.error;
   }
 
@@ -359,6 +410,7 @@ export async function savePrediction({ groupSlug, managerCode, externalMatchId, 
     ok: true,
     saved_at: savedAt,
     length_pick_saved: Boolean(predictionRow.length_pick) ? !lengthPickColumnMissing : true,
+    first_score_pick_saved: Boolean(predictionRow.first_score_pick_team_id) ? !firstScorePickColumnMissing : true,
   };
 }
 
@@ -889,6 +941,9 @@ export async function getGroupMatchesForPulse({ groupSlug, limit = 200 }) {
           team_b_score,
           winner_team_id,
           length,
+          first_score_team_id,
+          team_a_id,
+          team_b_id,
           team_a:team_a_id ( id, fifa_code, name ),
           team_b:team_b_id ( id, fifa_code, name )
         )
@@ -896,7 +951,35 @@ export async function getGroupMatchesForPulse({ groupSlug, limit = 200 }) {
       .eq("group_id", group.id)
       .limit(200);
 
-    if (error) throw new Error(error.message);
+    if (error) {
+      if (isMissingColumnError(error, "first_score_team_id")) {
+        const fallback = await supabase
+          .from("group_matches")
+          .select(`
+            matches (
+              external_match_id,
+              stage,
+              group_label,
+              kickoff_at,
+              status,
+              team_a_score,
+              team_b_score,
+              winner_team_id,
+              length,
+              team_a_id,
+              team_b_id,
+              team_a:team_a_id ( id, fifa_code, name ),
+              team_b:team_b_id ( id, fifa_code, name )
+            )
+          `)
+          .eq("group_id", group.id)
+          .limit(200);
+        if (fallback.error) throw new Error(fallback.error.message);
+        const fifaMatchesById = await getFifaMatchesByIdSafe();
+        return normalizePulseMatches(fallback.data || [], limit, fifaMatchesById);
+      }
+      throw new Error(error.message);
+    }
     const fifaMatchesById = await getFifaMatchesByIdSafe();
     return normalizePulseMatches(data || [], limit, fifaMatchesById);
   }
@@ -950,8 +1033,16 @@ export async function getManagerPredictionState({ groupSlug, managerCode }) {
         team_b: match.team_b,
         pick_type: pick?.pick_type || null,
         length_pick: pick?.length_pick || null,
+        first_score_pick: getFirstScorePickType({
+          firstScorePickTeamId: pick?.first_score_pick_team_id,
+          match,
+        }),
         pick_label: formatPickLabel(pick),
         risk_label: formatRiskPickLabel(pick?.length_pick),
+        first_score_risk_label: formatFirstScoreRiskPickLabel({
+          firstScorePickTeamId: pick?.first_score_pick_team_id,
+          match,
+        }),
         picked_at: pick?.updated_at || null,
         is_missing: !pick,
       };
@@ -1090,8 +1181,10 @@ export async function getPredictionPulseState({ groupSlug }) {
         external_match_id: match.external_match_id,
         group_label: match.group_label,
         stage: match.stage,
+        team_a_id: match.team_a?.id || match.team_a_id || null,
         team_a_name: match.team_a?.name || null,
         team_a_code: match.team_a?.fifa_code || null,
+        team_b_id: match.team_b?.id || match.team_b_id || null,
         team_b_name: match.team_b?.name || null,
         team_b_code: match.team_b?.fifa_code || null,
         kickoff_at: match.kickoff_at,
@@ -1100,6 +1193,7 @@ export async function getPredictionPulseState({ groupSlug }) {
         team_b_score: match.team_b_score ?? null,
         winner_type: winnerType,
         length: match.length ?? null,
+        first_score_team_id: match.first_score_team_id ?? null,
         reveal,
         locked_until: reveal ? null : deadlineFor(match.kickoff_at, overview.lock_minutes_before_kickoff),
         team_a_picks: reveal ? Number(item?.team_a_picks || 0) : null,
@@ -1113,6 +1207,8 @@ export async function getPredictionPulseState({ groupSlug }) {
         pens_risk_picks: reveal ? Number(item?.pens_risk_picks || 0) : null,
         et_risk_managers: reveal ? item?.et_risk_managers || "" : "",
         pens_risk_managers: reveal ? item?.pens_risk_managers || "" : "",
+        team_a_first_score_managers: reveal ? item?.team_a_first_score_managers || "" : "",
+        team_b_first_score_managers: reveal ? item?.team_b_first_score_managers || "" : "",
       };
     })
     .filter((match) => match.reveal);
@@ -1496,6 +1592,7 @@ async function getPredictionScoringSummary(overview) {
       pick_type,
       pick_team_id,
       length_pick,
+      first_score_pick_team_id,
       managers!inner ( manager_code ),
       matches!inner (
         id,
@@ -1503,6 +1600,7 @@ async function getPredictionScoringSummary(overview) {
         external_match_id,
         status,
         length,
+        first_score_team_id,
         team_a_id,
         team_b_id,
         team_a_score,
@@ -1515,12 +1613,18 @@ async function getPredictionScoringSummary(overview) {
     .eq("group_id", overview.id)
     .eq("status", "active");
 
-  if (isMissingColumnError(error, "length_pick")) {
+  if (
+    isMissingColumnError(error, "length_pick")
+    || isMissingColumnError(error, "first_score_pick_team_id")
+    || isMissingColumnError(error, "first_score_team_id")
+  ) {
+    const lengthPickMissing = isMissingColumnError(error, "length_pick");
     const fallback = await supabase
       .from("predictions")
       .select(`
         pick_type,
         pick_team_id,
+        ${lengthPickMissing ? "" : "length_pick,"}
         managers!inner ( manager_code ),
         matches!inner (
           id,
@@ -1539,7 +1643,15 @@ async function getPredictionScoringSummary(overview) {
       `)
       .eq("group_id", overview.id)
       .eq("status", "active");
-    data = (fallback.data || []).map((prediction) => ({ ...prediction, length_pick: null }));
+    data = (fallback.data || []).map((prediction) => ({
+      ...prediction,
+      length_pick: prediction.length_pick || null,
+      first_score_pick_team_id: null,
+      matches: {
+        ...prediction.matches,
+        first_score_team_id: null,
+      },
+    }));
     error = fallback.error;
   }
 
@@ -1570,12 +1682,16 @@ async function getPredictionScoringSummary(overview) {
           pickedLength: prediction.length_pick,
           actualLength: match.length,
         });
+        const firstScoreRiskPoints = scoreFirstScoreRisk({
+          pickedTeamId: prediction.first_score_pick_team_id,
+          actualTeamId: match.first_score_team_id,
+        });
         return {
           managerCode,
           match,
           bucket: "knockout",
           points: winnerPoints,
-          riskPoints: lengthRiskPoints,
+          riskPoints: lengthRiskPoints + firstScoreRiskPoints,
         };
       }
 
@@ -1774,6 +1890,16 @@ function normalizeTeamCode(value) {
   return String(value || "").trim().toUpperCase();
 }
 
+function stripUnsupportedPredictionColumns(row, {
+  lengthPickColumnMissing = false,
+  firstScorePickColumnMissing = false,
+} = {}) {
+  const next = { ...row };
+  if (lengthPickColumnMissing) delete next.length_pick;
+  if (firstScorePickColumnMissing) delete next.first_score_pick_team_id;
+  return next;
+}
+
 function isGroupStage(stage) {
   return String(stage || "").toLowerCase().includes("group");
 }
@@ -1792,9 +1918,11 @@ async function appendPredictionAudit({
   oldPickType,
   oldPickTeamId,
   oldLengthPick = null,
+  oldFirstScorePickTeamId = null,
   newPickType,
   newPickTeamId,
   newLengthPick = null,
+  newFirstScorePickTeamId = null,
   changedBy = null,
   reason = "manager_update",
 }) {
@@ -1802,6 +1930,7 @@ async function appendPredictionAudit({
     oldPickType === newPickType
     && oldPickTeamId === newPickTeamId
     && oldLengthPick === newLengthPick
+    && oldFirstScorePickTeamId === newFirstScorePickTeamId
   ) return;
 
   let { error } = await supabase
@@ -1814,13 +1943,15 @@ async function appendPredictionAudit({
       old_pick_type: oldPickType,
       old_pick_team_id: oldPickTeamId,
       old_length_pick: oldLengthPick,
+      old_first_score_pick_team_id: oldFirstScorePickTeamId,
       new_pick_type: newPickType,
       new_pick_team_id: newPickTeamId,
       new_length_pick: newLengthPick,
+      new_first_score_pick_team_id: newFirstScorePickTeamId,
       changed_by: changedBy,
       reason,
     });
-  if (isMissingColumnError(error, "length_pick")) {
+  if (isMissingColumnError(error, "length_pick") || isMissingColumnError(error, "first_score_pick_team_id")) {
     const fallback = await supabase
       .from("prediction_audit")
       .insert({
@@ -1973,6 +2104,20 @@ function formatPickLabel(pick) {
 function formatRiskPickLabel(lengthPick) {
   if (lengthPick === "ET") return "ET risk: +4 / -2";
   if (lengthPick === "Pens") return "Pens risk: +8 / -4";
+  return null;
+}
+
+function getFirstScorePickType({ firstScorePickTeamId, match }) {
+  if (!firstScorePickTeamId || !match) return null;
+  if (firstScorePickTeamId === match.team_a?.id || firstScorePickTeamId === match.team_a_id) return "team_a";
+  if (firstScorePickTeamId === match.team_b?.id || firstScorePickTeamId === match.team_b_id) return "team_b";
+  return null;
+}
+
+function formatFirstScoreRiskPickLabel({ firstScorePickTeamId, match }) {
+  const firstScorePickType = getFirstScorePickType({ firstScorePickTeamId, match });
+  if (firstScorePickType === "team_a") return `${match.team_a?.name || "Team A"} first score: +3 / -1`;
+  if (firstScorePickType === "team_b") return `${match.team_b?.name || "Team B"} first score: +3 / -1`;
   return null;
 }
 

@@ -42,3 +42,24 @@ export function validateLengthPickForMatch({ lengthPick, match }) {
 
   return { ok: true };
 }
+
+export function validateFirstScorePickForMatch({ firstScorePick, match }) {
+  if (!firstScorePick) return { ok: true };
+
+  if (!["team_a", "team_b"].includes(firstScorePick)) {
+    return { ok: false, message: "First score risk must be Team A or Team B" };
+  }
+
+  if (match.stage === "Group Stage") {
+    return { ok: false, message: "First score risk is only available for knockout matches" };
+  }
+
+  if (firstScorePick === "team_a" && !match.team_a) {
+    return { ok: false, message: "Team A is not set for this match" };
+  }
+  if (firstScorePick === "team_b" && !match.team_b) {
+    return { ok: false, message: "Team B is not set for this match" };
+  }
+
+  return { ok: true };
+}

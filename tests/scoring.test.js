@@ -5,6 +5,7 @@ import {
   scoreDraftedPlayer,
   scoreDraftedTeam,
   scoreFuturesChampionPick,
+  scoreFirstScoreRisk,
   scoreGroupStagePick,
   scoreKnockoutLengthRisk,
   scoreKnockoutWinnerPick,
@@ -74,6 +75,23 @@ test("knockout length risk wins and loses points", () => {
   assert.equal(scoreKnockoutLengthRisk({
     pickedLength: null,
     actualLength: "Pens",
+  }), 0);
+});
+
+test("first score risk wins and loses points only after actual first score is set", () => {
+  assert.equal(scoreFirstScoreRisk({
+    pickedTeamId: "FRA",
+    actualTeamId: "FRA",
+  }), 3);
+
+  assert.equal(scoreFirstScoreRisk({
+    pickedTeamId: "FRA",
+    actualTeamId: "MAR",
+  }), -1);
+
+  assert.equal(scoreFirstScoreRisk({
+    pickedTeamId: "FRA",
+    actualTeamId: null,
   }), 0);
 });
 

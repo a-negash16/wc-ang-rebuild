@@ -9,6 +9,8 @@ export const SCORING = Object.freeze({
   knockoutExtraTimeRiskLoss: -2,
   knockoutPenaltiesRiskWin: 8,
   knockoutPenaltiesRiskLoss: -4,
+  knockoutFirstScoreRiskWin: 3,
+  knockoutFirstScoreRiskLoss: -1,
   futuresChampionMax: 100,
 });
 
@@ -45,6 +47,13 @@ export function scoreKnockoutLengthRisk({ pickedLength, actualLength }) {
       : SCORING.knockoutPenaltiesRiskLoss;
   }
   return 0;
+}
+
+export function scoreFirstScoreRisk({ pickedTeamId, actualTeamId }) {
+  if (!pickedTeamId || !actualTeamId) return 0;
+  return pickedTeamId === actualTeamId
+    ? SCORING.knockoutFirstScoreRiskWin
+    : SCORING.knockoutFirstScoreRiskLoss;
 }
 
 export function scoreDraftedTeam({ stagesAdvanced }) {
