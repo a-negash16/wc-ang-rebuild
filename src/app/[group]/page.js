@@ -326,17 +326,26 @@ function PulseScore({ match }) {
 }
 
 function PulseChoice({ label, code, managers, outcome, winnerType, isFinished }) {
-  const resultClass = isFinished && winnerType
-    ? outcome === winnerType ? "is-correct" : "is-wrong"
-    : "";
+  const resultState = getPulseChoiceResultState({ isFinished, winnerType, outcome });
+  const resultClass = resultState === "correct"
+    ? "is-correct"
+    : resultState === "wrong"
+      ? "is-wrong"
+      : "";
   return (
-    <div className="pulse-choice">
+    <div className="pulse-choice" data-result={resultState}>
       <div>
         <strong>{label === "Tie" ? "Tie" : <TeamLabel name={label} code={code} compact />}</strong>
         <ManagerChips managers={managers} resultClass={resultClass} />
       </div>
     </div>
   );
+}
+
+function getPulseChoiceResultState({ isFinished, winnerType, outcome }) {
+  if (!isFinished) return "pending";
+  if (!winnerType) return "pending";
+  return outcome === winnerType ? "correct" : "wrong";
 }
 
 function ManagerChips({ managers, resultClass = "", compact = false }) {

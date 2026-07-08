@@ -1083,6 +1083,8 @@ export async function getPredictionPulseState({ groupSlug }) {
         kickoffAt: match.kickoff_at,
         lockMinutesBeforeKickoff: overview.lock_minutes_before_kickoff,
       });
+      const winnerType = getPulseWinnerType(match);
+      const status = getPulseStatus(match, winnerType);
 
       return {
         external_match_id: match.external_match_id,
@@ -1093,10 +1095,10 @@ export async function getPredictionPulseState({ groupSlug }) {
         team_b_name: match.team_b?.name || null,
         team_b_code: match.team_b?.fifa_code || null,
         kickoff_at: match.kickoff_at,
-        status: match.status,
+        status,
         team_a_score: match.team_a_score ?? null,
         team_b_score: match.team_b_score ?? null,
-        winner_type: getPulseWinnerType(match),
+        winner_type: winnerType,
         length: match.length ?? null,
         reveal,
         locked_until: reveal ? null : deadlineFor(match.kickoff_at, overview.lock_minutes_before_kickoff),
@@ -1131,8 +1133,14 @@ export async function getPredictionPulseState({ groupSlug }) {
   };
 }
 
+function getPulseStatus(match, winnerType = null) {
+  if (!match) return "scheduled";
+  if (match.status === "finished" || winnerType) return "finished";
+  return match.status;
+}
+
 function getPulseWinnerType(match) {
-  if (!match || match.status !== "finished") return null;
+  if (!match || !hasFinishedResult(match)) return null;
 
   if (!isGroupStage(match.stage)) {
     const winnerTeamId = getKnockoutWinnerTeamId(match);
@@ -1147,6 +1155,15 @@ function getPulseWinnerType(match) {
   if (result.winnerTeamId && result.winnerTeamId === (match.team_a?.id || match.team_a_id)) return "team_a";
   if (result.winnerTeamId && result.winnerTeamId === (match.team_b?.id || match.team_b_id)) return "team_b";
   return null;
+}
+
+function hasFinishedResult(match) {
+  if (!match) return false;
+  if (match.status === "finished") return true;
+  if (match.winner_team_id) return true;
+  const teamAScore = numberOrNull(match.team_a_score);
+  const teamBScore = numberOrNull(match.team_b_score);
+  return teamAScore !== null && teamBScore !== null;
 }
 
 export async function getLeaderboardShell({ groupSlug }) {
@@ -1653,7 +1670,7 @@ function getLatestFinishedMatchId(matches) {
 }
 
 function getGroupStageResult(match) {
-  if (!match || match.status !== "finished") return null;
+  if (!match || !hasFinishedResult(match)) return null;
   const teamAScore = numberOrNull(match.team_a_score);
   const teamBScore = numberOrNull(match.team_b_score);
 
@@ -1669,7 +1686,9 @@ function getGroupStageResult(match) {
     return {
       status: "finished",
       winnerType: "team",
-      winnerTeamId: teamAScore > teamBScore ? match.team_a_id : match.team_b_id,
+      winnerTeamId: teamAScore > teamBScore
+        ? match.team_a?.id || match.team_a_id
+        : match.team_b?.id || match.team_b_id,
     };
   }
 
@@ -1685,12 +1704,14 @@ function getGroupStageResult(match) {
 }
 
 function getKnockoutWinnerTeamId(match) {
-  if (!match || match.status !== "finished" || isGroupStage(match.stage)) return null;
+  if (!match || !hasFinishedResult(match) || isGroupStage(match.stage)) return null;
   const teamAScore = numberOrNull(match.team_a_score);
   const teamBScore = numberOrNull(match.team_b_score);
 
   if (teamAScore !== null && teamBScore !== null && teamAScore !== teamBScore) {
-    return teamAScore > teamBScore ? match.team_a_id : match.team_b_id;
+    return teamAScore > teamBScore
+      ? match.team_a?.id || match.team_a_id
+      : match.team_b?.id || match.team_b_id;
   }
 
   return match.winner_team_id || null;

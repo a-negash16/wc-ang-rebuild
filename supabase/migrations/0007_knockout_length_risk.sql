@@ -8,6 +8,9 @@ alter table prediction_audit
   add column if not exists new_length_pick text
     check (new_length_pick is null or new_length_pick in ('ET', 'Pens'));
 
+drop view if exists prediction_pulse_details;
+drop view if exists active_prediction_details;
+
 create or replace view active_prediction_details as
 select
   p.id as prediction_id,
