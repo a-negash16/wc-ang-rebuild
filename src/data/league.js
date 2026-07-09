@@ -1990,6 +1990,7 @@ function isMissingColumnError(error, columnName) {
   if (!error) return false;
   const message = error.message || "";
   return error.code === "42703"
+    || message.includes(columnName)
     || message.includes(`.${columnName}`)
     || message.includes(`column ${columnName}`)
     || message.includes(`'${columnName}' column`)
