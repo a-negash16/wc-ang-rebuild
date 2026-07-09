@@ -150,9 +150,10 @@ export default function PredictionPanel({
   }
 
   async function submitRiskPick(match, currentPick, lengthPick) {
-    const currentLengthPick = getSelectedRiskPick(match.external_match_id, currentPick);
+    const latestPick = getLatestPickForMatch(match.external_match_id, currentPick);
+    const currentLengthPick = getSelectedRiskPick(match.external_match_id, latestPick);
     const nextLengthPick = currentLengthPick === lengthPick ? null : lengthPick;
-    if (!currentPick?.pick_type) {
+    if (!latestPick?.pick_type) {
       setPendingRisk(match.external_match_id, nextLengthPick);
       setStatus(nextLengthPick
         ? `${nextLengthPick} risk selected. Pick a winner to save it.`
@@ -161,16 +162,17 @@ export default function PredictionPanel({
     }
     await submitPick(
       match,
-      currentPick.pick_type,
+      latestPick.pick_type,
       nextLengthPick,
-      getSelectedFirstScoreRiskPick(match.external_match_id, currentPick)
+      getSelectedFirstScoreRiskPick(match.external_match_id, latestPick)
     );
   }
 
   async function submitFirstScoreRiskPick(match, currentPick, firstScorePick) {
-    const currentFirstScorePick = getSelectedFirstScoreRiskPick(match.external_match_id, currentPick);
+    const latestPick = getLatestPickForMatch(match.external_match_id, currentPick);
+    const currentFirstScorePick = getSelectedFirstScoreRiskPick(match.external_match_id, latestPick);
     const nextFirstScorePick = currentFirstScorePick === firstScorePick ? null : firstScorePick;
-    if (!currentPick?.pick_type) {
+    if (!latestPick?.pick_type) {
       setPendingFirstScoreRisk(match.external_match_id, nextFirstScorePick);
       setStatus(nextFirstScorePick
         ? `${getPickLabel(match, nextFirstScorePick)} first-score risk selected. Pick a winner to save it.`
@@ -179,10 +181,17 @@ export default function PredictionPanel({
     }
     await submitPick(
       match,
-      currentPick.pick_type,
-      getSelectedRiskPick(match.external_match_id, currentPick),
+      latestPick.pick_type,
+      getSelectedRiskPick(match.external_match_id, latestPick),
       nextFirstScorePick
     );
+  }
+
+  function getLatestPickForMatch(externalMatchId, fallbackPick) {
+    return pickState.find((pick) => pick.external_match_id === externalMatchId)
+      || pickState.find((pick) => String(pick.external_match_id) === String(externalMatchId))
+      || fallbackPick
+      || null;
   }
 
   function getSelectedRiskPick(externalMatchId, currentPick) {
