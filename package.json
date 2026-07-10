@@ -16,13 +16,14 @@
     "apply:missed-prediction": "node scripts/apply-missed-prediction.mjs",
     "capture:draftkings-points": "node scripts/capture-draftkings-points.mjs",
     "query:prediction-points": "node scripts/query-prediction-points.mjs",
+    "set:first-score": "node scripts/set-first-score-team.mjs",
     "set-manager-pin": "node scripts/set-manager-pin.mjs",
     "smoke:prediction": "node scripts/smoke-prediction-flow.mjs",
     "sync:fifa-results": "node scripts/sync-fifa-results.mjs",
     "supabase:bundle": "node scripts/build-supabase-sql.mjs",
     "supabase:check": "node scripts/check-supabase.mjs",
     "deployment:check": "node scripts/check-deployment-env.mjs",
-    "check": "node --check src/rules/scoring.js && node --check src/rules/predictions.js && node --check src/rules/odds-points.js && node --check src/integrations/odds-api.js && node --check src/integrations/fifa-api.js && node --check src/lib/auth/pin.js && node --check src/lib/auth/session.js && node --check src/jobs/capture-draftkings-points.js && node --check src/data/league.js && node --check scripts/capture-draftkings-points.mjs && node --check scripts/query-prediction-points.mjs && node --check scripts/sync-fifa-results.mjs && node --test"
+    "check": "node --check src/rules/scoring.js && node --check src/rules/predictions.js && node --check src/rules/odds-points.js && node --check src/integrations/odds-api.js && node --check src/integrations/fifa-api.js && node --check src/lib/auth/pin.js && node --check src/lib/auth/session.js && node --check src/jobs/capture-draftkings-points.js && node --check src/data/league.js && node --check scripts/capture-draftkings-points.mjs && node --check scripts/query-prediction-points.mjs && node --check scripts/set-first-score-team.mjs && node --check scripts/sync-fifa-results.mjs && node --test"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
