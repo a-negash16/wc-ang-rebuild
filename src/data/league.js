@@ -2065,6 +2065,7 @@ function sortByKickoffDesc(a, b) {
 
 function overlayMatchResult(match, fifaMatchesById = new Map()) {
   if (!match?.external_match_id) return match;
+  if (hasStoredFinalResult(match)) return match;
   const fifaMatch = fifaMatchesById.get(String(match.external_match_id));
   if (!fifaMatch) return match;
 
@@ -2086,6 +2087,13 @@ function overlayMatchResult(match, fifaMatchesById = new Map()) {
         ? match.team_b?.id || match.team_b_id || match.winner_team_id || null
         : match.winner_team_id ?? null,
   };
+}
+
+function hasStoredFinalResult(match) {
+  if (match?.status !== "finished") return false;
+  return Boolean(match.winner_team_id)
+    || numberOrNull(match.team_a_score) !== null
+    && numberOrNull(match.team_b_score) !== null;
 }
 
 async function getFifaMatchesByIdSafe() {
