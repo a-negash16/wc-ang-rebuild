@@ -1586,7 +1586,7 @@ async function getPredictionScoringSummary(overview) {
     };
   }
 
-  let { data, error } = await supabase
+  const buildPredictionQuery = () => supabase
     .from("predictions")
     .select(`
       pick_type,
@@ -1611,7 +1611,11 @@ async function getPredictionScoringSummary(overview) {
       )
     `)
     .eq("group_id", overview.id)
-    .eq("status", "active");
+    .eq("status", "active")
+    .order("submitted_at", { ascending: true })
+    .order("id", { ascending: true });
+
+  let { data, error } = await fetchAllSupabaseRows(buildPredictionQuery);
 
   if (
     isMissingColumnError(error, "length_pick")
@@ -1619,7 +1623,7 @@ async function getPredictionScoringSummary(overview) {
     || isMissingColumnError(error, "first_score_team_id")
   ) {
     const lengthPickMissing = isMissingColumnError(error, "length_pick");
-    const fallback = await supabase
+    const buildFallbackPredictionQuery = () => supabase
       .from("predictions")
       .select(`
         pick_type,
@@ -1642,7 +1646,10 @@ async function getPredictionScoringSummary(overview) {
         )
       `)
       .eq("group_id", overview.id)
-      .eq("status", "active");
+      .eq("status", "active")
+      .order("submitted_at", { ascending: true })
+      .order("id", { ascending: true });
+    const fallback = await fetchAllSupabaseRows(buildFallbackPredictionQuery);
     data = (fallback.data || []).map((prediction) => ({
       ...prediction,
       length_pick: prediction.length_pick || null,
@@ -1768,6 +1775,18 @@ async function getMatchPickValuesByMatch({ supabase, matchIds }) {
     byMatch.set(row.match_id, values);
     return byMatch;
   }, new Map());
+}
+
+async function fetchAllSupabaseRows(buildQuery, { pageSize = 1000 } = {}) {
+  const rows = [];
+  for (let from = 0; ; from += pageSize) {
+    const to = from + pageSize - 1;
+    const { data, error } = await buildQuery().range(from, to);
+    if (error) return { data: rows, error };
+    rows.push(...(data || []));
+    if (!data || data.length < pageSize) break;
+  }
+  return { data: rows, error: null };
 }
 
 function getLatestFinishedMatchId(matches) {
