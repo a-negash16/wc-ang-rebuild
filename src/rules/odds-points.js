@@ -21,7 +21,7 @@ export function americanOddsToImpliedProbability(odds) {
     : Math.abs(value) / (Math.abs(value) + 100);
 }
 
-export function calculateTwoTeamPointSplit({ teamAOdds, teamBOdds }) {
+export function calculateTwoTeamPointSplit({ teamAOdds, teamBOdds, totalPoints = 10, minPoints = 3, maxPoints = 7 }) {
   const teamAProbability = americanOddsToImpliedProbability(teamAOdds);
   const teamBProbability = americanOddsToImpliedProbability(teamBOdds);
   if (!teamAProbability || !teamBProbability) {
@@ -30,9 +30,9 @@ export function calculateTwoTeamPointSplit({ teamAOdds, teamBOdds }) {
 
   const totalProbability = teamAProbability + teamBProbability;
   const normalizedTeamA = teamAProbability / totalProbability;
-  const rawTeamAPoints = roundToHalfPoint((1 - normalizedTeamA) * 10);
-  const teamAPoints = clampNumber(rawTeamAPoints, 3, 7);
-  const teamBPoints = roundToHalfPoint(10 - teamAPoints);
+  const rawTeamAPoints = roundToHalfPoint((1 - normalizedTeamA) * totalPoints);
+  const teamAPoints = clampNumber(rawTeamAPoints, minPoints, maxPoints);
+  const teamBPoints = roundToHalfPoint(totalPoints - teamAPoints);
 
   return {
     team_a_points: teamAPoints,
@@ -40,6 +40,15 @@ export function calculateTwoTeamPointSplit({ teamAOdds, teamBOdds }) {
     team_a_probability: normalizedTeamA,
     team_b_probability: 1 - normalizedTeamA,
   };
+}
+
+export function getKnockoutStagePointScale(stage) {
+  const normalized = String(stage || "").trim().toLowerCase();
+  if (normalized.includes("semi")) return { totalPoints: 20, minPoints: 7, maxPoints: 13, label: "SF 13-7 scale" };
+  if (normalized.includes("third")) return { totalPoints: 25, minPoints: 10, maxPoints: 15, label: "3rd place 15-10 scale" };
+  if (normalized === "final" || normalized.includes("final")) return { totalPoints: 30, minPoints: 10, maxPoints: 20, label: "Final 20-10 scale" };
+  if (normalized.includes("quarter")) return { totalPoints: 15, minPoints: 4, maxPoints: 11, label: "QF 11-4 scale" };
+  return { totalPoints: 10, minPoints: 3, maxPoints: 7, label: "R32/R16 3-7 scale" };
 }
 
 export function normalizeTeamName(value) {

@@ -1,5 +1,5 @@
 import { createOddsApiClientFromEnv } from "../src/integrations/odds-api.js";
-import { calculateTwoTeamPointSplit, namesMatch } from "../src/rules/odds-points.js";
+import { calculateTwoTeamPointSplit, getKnockoutStagePointScale, namesMatch } from "../src/rules/odds-points.js";
 import { loadEnvLocal, requireEnv, supabaseRest } from "./supabase-rest.mjs";
 
 const BOOKMAKER_KEY = "draftkings";
@@ -80,9 +80,13 @@ for (const match of eligibleMatches) {
     continue;
   }
 
+  const stageScale = getKnockoutStagePointScale(match.stage);
   const split = calculateTwoTeamPointSplit({
     teamAOdds: teamAOutcome.price,
     teamBOdds: teamBOutcome.price,
+    totalPoints: stageScale.totalPoints,
+    minPoints: stageScale.minPoints,
+    maxPoints: stageScale.maxPoints,
   });
   const row = {
     external_match_id: match.external_match_id,
@@ -96,6 +100,7 @@ for (const match of eligibleMatches) {
     team_b_odds: teamBOutcome.price,
     team_b_points: split.team_b_points,
     draw_odds: drawOutcome?.price ?? null,
+    point_scale: stageScale.label,
   };
 
   if (writeMode) {
@@ -112,7 +117,7 @@ for (const match of eligibleMatches) {
           commence_time: event.commence_time,
           bookmaker,
           ignored_draw_odds: drawOutcome?.price ?? null,
-          formula: "two-team normalized implied probability; team points = round((1 - team_probability) * 10) to nearest 0.5; clamped 3-7; pair sums to 10",
+          formula: `two-team normalized implied probability; team points = round((1 - team_probability) * ${stageScale.totalPoints}) to nearest 0.5; clamped ${stageScale.minPoints}-${stageScale.maxPoints}; pair sums to ${stageScale.totalPoints}`,
         },
       }),
     });

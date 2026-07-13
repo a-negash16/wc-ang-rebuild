@@ -81,6 +81,13 @@ export function scoreFuturesChampionPick({ pickedTeamId, championTeamId, teamPoi
   return clampInteger(value, 1, SCORING.futuresChampionMax);
 }
 
+export function scoreLockedFuturePick({ selectedOption }) {
+  if (!selectedOption?.is_winner) return 0;
+  const value = Number(selectedOption.points ?? 0);
+  if (!Number.isFinite(value) || value <= 0) return 0;
+  return Math.round(value * 2) / 2;
+}
+
 export function totalLeaderboardPoints({
   groupStage = 0,
   knockoutPredictions = 0,

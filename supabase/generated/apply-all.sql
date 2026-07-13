@@ -349,6 +349,9 @@ alter table prediction_audit
   add column if not exists new_length_pick text
     check (new_length_pick is null or new_length_pick in ('ET', 'Pens'));
 
+drop view if exists prediction_pulse_details;
+drop view if exists active_prediction_details;
+
 create or replace view active_prediction_details as
 select
   p.id as prediction_id,
@@ -413,6 +416,162 @@ group by
   team_a_name,
   team_b_code,
   team_b_name;
+
+-- ============================================================
+-- supabase/migrations/0008_expand_match_pick_values.sql
+-- ============================================================
+alter table match_pick_values
+  drop constraint if exists match_pick_values_points_check;
+
+alter table match_pick_values
+  add constraint match_pick_values_points_check check (points between 0 and 15);
+
+-- ============================================================
+-- supabase/migrations/0009_first_score_risk.sql
+-- ============================================================
+alter table matches
+  add column if not exists first_score_team_id uuid references teams(id) on delete set null;
+
+alter table predictions
+  add column if not exists first_score_pick_team_id uuid references teams(id) on delete set null;
+
+alter table prediction_audit
+  add column if not exists old_first_score_pick_team_id uuid references teams(id) on delete set null,
+  add column if not exists new_first_score_pick_team_id uuid references teams(id) on delete set null;
+
+drop view if exists prediction_pulse_details;
+drop view if exists active_prediction_details;
+
+create or replace view active_prediction_details as
+select
+  p.id as prediction_id,
+  g.slug as group_slug,
+  m.manager_code,
+  m.display_name as manager_name,
+  mt.external_match_id,
+  mt.stage,
+  mt.group_label,
+  mt.kickoff_at,
+  mt.status as match_status,
+  mt.length as match_length,
+  mt.first_score_team_id,
+  fst.fifa_code as first_score_team_code,
+  fst.name as first_score_team_name,
+  mt.team_a_id,
+  ta.fifa_code as team_a_code,
+  ta.name as team_a_name,
+  mt.team_b_id,
+  tb.fifa_code as team_b_code,
+  tb.name as team_b_name,
+  p.pick_type,
+  p.length_pick,
+  p.first_score_pick_team_id,
+  fspt.fifa_code as first_score_pick_team_code,
+  fspt.name as first_score_pick_team_name,
+  pt.fifa_code as pick_team_code,
+  pt.name as pick_team_name,
+  p.submitted_at,
+  p.updated_at
+from predictions p
+join groups g on g.id = p.group_id
+join managers m on m.id = p.manager_id
+join matches mt on mt.id = p.match_id
+left join teams ta on ta.id = mt.team_a_id
+left join teams tb on tb.id = mt.team_b_id
+left join teams pt on pt.id = p.pick_team_id
+left join teams fst on fst.id = mt.first_score_team_id
+left join teams fspt on fspt.id = p.first_score_pick_team_id
+where p.status = 'active';
+
+create or replace view prediction_pulse_details as
+select
+  group_slug,
+  external_match_id,
+  stage,
+  group_label,
+  kickoff_at,
+  team_a_id,
+  team_a_code,
+  team_a_name,
+  team_b_id,
+  team_b_code,
+  team_b_name,
+  first_score_team_id,
+  first_score_team_code,
+  first_score_team_name,
+  count(*) filter (where pick_type = 'team_a') as team_a_picks,
+  count(*) filter (where pick_type = 'tie') as tie_picks,
+  count(*) filter (where pick_type = 'team_b') as team_b_picks,
+  count(*) as total_picks,
+  string_agg(manager_name, ', ' order by manager_name) filter (where pick_type = 'team_a') as team_a_managers,
+  string_agg(manager_name, ', ' order by manager_name) filter (where pick_type = 'tie') as tie_managers,
+  string_agg(manager_name, ', ' order by manager_name) filter (where pick_type = 'team_b') as team_b_managers,
+  count(*) filter (where length_pick = 'ET') as et_risk_picks,
+  count(*) filter (where length_pick = 'Pens') as pens_risk_picks,
+  string_agg(manager_name, ', ' order by manager_name) filter (where length_pick = 'ET') as et_risk_managers,
+  string_agg(manager_name, ', ' order by manager_name) filter (where length_pick = 'Pens') as pens_risk_managers,
+  count(*) filter (where first_score_pick_team_id = team_a_id) as team_a_first_score_picks,
+  count(*) filter (where first_score_pick_team_id = team_b_id) as team_b_first_score_picks,
+  string_agg(manager_name, ', ' order by manager_name) filter (where first_score_pick_team_id = team_a_id) as team_a_first_score_managers,
+  string_agg(manager_name, ', ' order by manager_name) filter (where first_score_pick_team_id = team_b_id) as team_b_first_score_managers
+from active_prediction_details
+group by
+  group_slug,
+  external_match_id,
+  stage,
+  group_label,
+  kickoff_at,
+  team_a_id,
+  team_a_code,
+  team_a_name,
+  team_b_id,
+  team_b_code,
+  team_b_name,
+  first_score_team_id,
+  first_score_team_code,
+  first_score_team_name;
+
+-- ============================================================
+-- supabase/migrations/0010_semifinal_future_picks.sql
+-- ============================================================
+create table if not exists future_pick_options (
+  id uuid primary key default gen_random_uuid(),
+  stage text not null,
+  category text not null,
+  option_kind text not null check (option_kind in ('team', 'player')),
+  option_key text not null,
+  label text not null,
+  team_id uuid references teams(id) on delete set null,
+  points numeric(6, 1) not null check (points >= 0 and points <= 100),
+  sort_order integer not null default 0,
+  is_winner boolean not null default false,
+  is_active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (stage, category, option_key)
+);
+
+create table if not exists future_predictions (
+  id uuid primary key default gen_random_uuid(),
+  group_id uuid not null references groups(id) on delete cascade,
+  manager_id uuid not null references managers(id) on delete cascade,
+  stage text not null,
+  category text not null,
+  option_id uuid not null references future_pick_options(id) on delete restrict,
+  submitted_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  status text not null default 'active' check (status in ('active', 'inactive', 'void')),
+  unique (group_id, manager_id, stage, category)
+);
+
+create index if not exists future_predictions_group_stage_idx
+  on future_predictions (group_id, stage, status);
+
+alter table future_pick_options enable row level security;
+alter table future_predictions enable row level security;
+
+-- The Next.js API uses the service role key server-side, which bypasses RLS.
+-- Keep these tables private from anon/authenticated clients for now.
 
 -- ============================================================
 -- supabase/seed-data/seed.sql

@@ -1,6 +1,6 @@
 import { createOddsApiClientFromEnv } from "@/integrations/odds-api";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { calculateTwoTeamPointSplit, namesMatch } from "@/rules/odds-points";
+import { calculateTwoTeamPointSplit, getKnockoutStagePointScale, namesMatch } from "@/rules/odds-points";
 
 export const DRAFTKINGS_BOOKMAKER_KEY = "draftkings";
 export const DEFAULT_CAPTURE_START_HOURS = 24;
@@ -92,9 +92,13 @@ export async function captureDraftKingsPoints({
       continue;
     }
 
+    const stageScale = getKnockoutStagePointScale(match.stage);
     const split = calculateTwoTeamPointSplit({
       teamAOdds: teamAOutcome.price,
       teamBOdds: teamBOutcome.price,
+      totalPoints: stageScale.totalPoints,
+      minPoints: stageScale.minPoints,
+      maxPoints: stageScale.maxPoints,
     });
     const row = {
       external_match_id: match.external_match_id,
@@ -108,10 +112,11 @@ export async function captureDraftKingsPoints({
       team_b_odds: teamBOutcome.price,
       team_b_points: split.team_b_points,
       draw_odds: drawOutcome?.price ?? null,
+      point_scale: stageScale.label,
     };
 
     if (writeMode) {
-      const snapshotId = await insertOddsSnapshot({ supabase, match, event, bookmaker, drawOutcome });
+      const snapshotId = await insertOddsSnapshot({ supabase, match, event, bookmaker, drawOutcome, stageScale });
       await upsertMatchPickValue({
         supabase,
         matchId: match.id,
@@ -169,7 +174,7 @@ async function getExistingPickValues({ supabase, matches }) {
   return new Set((data || []).map((row) => valueKey(row.match_id, row.team_id)));
 }
 
-async function insertOddsSnapshot({ supabase, match, event, bookmaker, drawOutcome }) {
+async function insertOddsSnapshot({ supabase, match, event, bookmaker, drawOutcome, stageScale }) {
   const { data, error } = await supabase
     .from("odds_snapshots")
     .insert({

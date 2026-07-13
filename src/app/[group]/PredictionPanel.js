@@ -22,6 +22,8 @@ export default function PredictionPanel({
   const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
   const [pickState, setPickState] = useState([]);
+  const [lockedPickState, setLockedPickState] = useState(null);
+  const [pendingLockedSelections, setPendingLockedSelections] = useState({});
   const [pendingRiskByMatch, setPendingRiskByMatch] = useState({});
   const [pendingFirstScoreRiskByMatch, setPendingFirstScoreRiskByMatch] = useState({});
   const [now, setNow] = useState(() => Date.now());
@@ -51,6 +53,10 @@ export default function PredictionPanel({
   const missingCount = openPickState.filter((match) => match.is_missing).length;
   const savedCount = openPickState.filter((match) => !match.is_missing).length;
   const nextMissingPick = openPickState.find((match) => match.is_missing);
+  const activeRoundRequiresLockedPicks = openPickMatches.some((match) => requiresLockedPicksForStage(match.stage));
+  const lockedPicksComplete = !activeRoundRequiresLockedPicks || Boolean(lockedPickState?.is_complete);
+  const lockedGateActive = Boolean(session && activeRoundRequiresLockedPicks && !lockedPicksComplete);
+  const visibleGroupedMatches = lockedGateActive ? {} : groupedMatches;
 
   useEffect(() => {
     setSession(loadSession(groupSlug));
@@ -261,6 +267,8 @@ export default function PredictionPanel({
     clearSession();
     setSession(null);
     setPickState([]);
+    setLockedPickState(null);
+    setPendingLockedSelections({});
     setStatus("Session cleared.");
   }
 
@@ -274,15 +282,60 @@ export default function PredictionPanel({
       const payload = await response.json();
       if (response.ok && payload.ok) {
         setPickState(payload.matches || []);
+        setLockedPickState(payload.locked_picks || null);
+        setPendingLockedSelections(buildLockedSelections(payload.locked_picks));
         return true;
       }
     } catch {
-      if (clearOnError) setPickState([]);
+      if (clearOnError) {
+        setPickState([]);
+        setLockedPickState(null);
+        setPendingLockedSelections({});
+      }
     }
     if (clearOnError) {
       setPickState([]);
+      setLockedPickState(null);
+      setPendingLockedSelections({});
     }
     return false;
+  }
+
+
+  function updateLockedSelection(categoryKey, optionKey) {
+    setPendingLockedSelections((current) => ({
+      ...current,
+      [categoryKey]: optionKey,
+    }));
+  }
+
+  async function submitLockedPicks() {
+    if (!session?.token) {
+      setStatus("Unlock before saving locked picks.");
+      return;
+    }
+    setBusy(true);
+    setStatus("Saving locked picks...");
+    try {
+      const response = await fetch("/api/predictions/locked", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token: session.token,
+          selections: pendingLockedSelections,
+        }),
+      });
+      const payload = await response.json();
+      if (!response.ok || !payload.ok) throw new Error(payload.message || "Could not save locked picks");
+      setLockedPickState(payload.locked_picks || null);
+      setPendingLockedSelections(buildLockedSelections(payload.locked_picks));
+      setStatus(formatLockedPickConfirmation(payload.locked_picks));
+      await loadPickState(session.token, { clearOnError: false });
+    } catch (error) {
+      setStatus(error.message);
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -349,6 +402,16 @@ export default function PredictionPanel({
         </article>
       ) : null}
 
+      {session && activeRoundRequiresLockedPicks ? (
+        <LockedPicksCard
+          lockedPicks={lockedPickState}
+          selections={pendingLockedSelections}
+          busy={busy}
+          onSelect={updateLockedSelection}
+          onSubmit={submitLockedPicks}
+        />
+      ) : null}
+
       {session ? (
         <SavedPicksPreview picks={savedPicks} timezone={timezone} />
       ) : null}
@@ -361,8 +424,13 @@ export default function PredictionPanel({
         <span className="status-chip">Round open</span>
       </div>
 
-      {openPickMatches.length ? (
-        Object.entries(groupedMatches).map(([label, items]) => items.length ? (
+      {lockedGateActive ? (
+        <article className="panel empty-state locked-futures-empty">
+          <strong>Complete Semi-Final Locked Picks first.</strong>
+          <span>The semi-final match cards unlock after all country and player futures are saved.</span>
+        </article>
+      ) : openPickMatches.length ? (
+        Object.entries(visibleGroupedMatches).map(([label, items]) => items.length ? (
           <div className="match-day" key={label}>
             <div className="rail-heading">
               <h3>{label}</h3>
@@ -467,6 +535,87 @@ export default function PredictionPanel({
         </article>
       )}
     </section>
+  );
+}
+
+function LockedPicksCard({ lockedPicks, selections, busy, onSelect, onSubmit }) {
+  const categories = lockedPicks?.categories || [];
+  if (!categories.length) return null;
+  const countryCategories = categories.filter((category) => category.group === "country");
+  const playerCategories = categories.filter((category) => category.group === "player");
+  const complete = Boolean(lockedPicks?.is_complete);
+
+  return (
+    <article className={complete ? "panel locked-picks-card complete" : "panel locked-picks-card"}>
+      <div className="rail-heading locked-picks-heading">
+        <div>
+          <p className="eyebrow">Semi-final gate</p>
+          <h3>{lockedPicks?.label || "Semi-Final Locked Picks"}</h3>
+          <span>{complete ? "Saved. Semi-final match picks are open." : "Complete these first to unlock semi-final match picks."}</span>
+        </div>
+        <strong>{lockedPicks?.selected_count || 0}/{lockedPicks?.required_count || categories.length}</strong>
+      </div>
+      <div className="locked-picks-groups">
+        <LockedPickGroup title="Country Picks" categories={countryCategories} selections={selections} onSelect={onSelect} />
+        <LockedPickGroup title="Player Picks" categories={playerCategories} selections={selections} onSelect={onSelect} />
+      </div>
+      {complete ? <LockedPickConfirmation categories={categories} /> : null}
+      <button className="locked-picks-submit" type="button" disabled={busy || !isLockedSelectionComplete(categories, selections)} onClick={onSubmit}>
+        {complete ? "Update Locked Picks" : "Save Locked Picks"}
+      </button>
+    </article>
+  );
+}
+
+function LockedPickGroup({ title, categories, selections, onSelect }) {
+  if (!categories.length) return null;
+  return (
+    <div className="locked-picks-group">
+      <h4>{title}</h4>
+      {categories.map((category) => (
+        <div className="locked-pick-category" key={category.key}>
+          <div className="locked-pick-category-copy">
+            <strong>{category.label}</strong>
+            <span>{category.description}</span>
+          </div>
+          <div className={category.group === "country" ? "locked-option-grid country-options" : "locked-option-grid player-options"}>
+            {(category.options || []).map((option) => {
+              const selected = selections?.[category.key] === option.option_key || selections?.[category.key] === option.id;
+              return (
+                <button
+                  className={selected ? "selected" : ""}
+                  type="button"
+                  key={`${category.key}-${option.option_key || option.id}`}
+                  onClick={() => onSelect(category.key, option.option_key || option.id)}
+                >
+                  {option.option_kind === "team" ? <span className="flag" aria-hidden="true">{flagForCode(option.team_code)}</span> : null}
+                  <b>{option.label}</b>
+                  <small>{formatPickPoints(option.points)}</small>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function LockedPickConfirmation({ categories }) {
+  const selected = (categories || []).filter((category) => category.selected);
+  if (!selected.length) return null;
+  return (
+    <div className="locked-pick-confirmation" aria-label="Locked picks confirmation">
+      <strong>Locked Picks Confirmation</strong>
+      <div>
+        {selected.map((category) => (
+          <span key={category.key}>
+            <b>{category.label}</b>
+            <em>{category.selected.label} {formatPickPoints(category.selected.points)}</em>
+          </span>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -654,6 +803,35 @@ function formatPickPoints(points) {
   const value = Number(points);
   if (!Number.isFinite(value)) return null;
   return `+${value % 1 === 0 ? value.toFixed(0) : value.toFixed(1)} pts`;
+}
+
+function formatLockedPickConfirmation(lockedPicks) {
+  const selected = (lockedPicks?.categories || [])
+    .filter((category) => category.selected)
+    .map((category) => `${category.label}: ${category.selected.label} ${formatPickPoints(category.selected.points)}`);
+  return selected.length
+    ? `Semi-Final Locked Picks saved. ${selected.join(" | ")}`
+    : "Semi-Final Locked Picks saved. Match predictions are unlocked.";
+}
+
+function buildLockedSelections(lockedPicks) {
+  return (lockedPicks?.categories || []).reduce((selections, category) => {
+    if (category.selected?.option_key) selections[category.key] = category.selected.option_key;
+    return selections;
+  }, {});
+}
+
+function isLockedSelectionComplete(categories, selections) {
+  if (!categories?.length) return false;
+  return categories.every((category) => Boolean(selections?.[category.key]));
+}
+
+function requiresLockedPicksForStage(stage) {
+  return String(stage || "").trim().toLowerCase() === "semifinal";
+}
+
+function flagForCode(code) {
+  return flagForTeam({ fifa_code: code });
 }
 
 function loadSession(groupSlug) {

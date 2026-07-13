@@ -2,6 +2,12 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 import { getFifaMatchesById } from "@/integrations/fifa-api";
+import {
+  LOCKED_FUTURE_STAGE,
+  buildDefaultLockedFutureCategories,
+  requiresLockedFuturePicksForStage,
+  validateLockedFutureSelections,
+} from "@/rules/future-picks";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { validatePickForMatch } from "@/rules/predictions";
 import {
@@ -11,6 +17,7 @@ import {
   scoreGroupStagePick,
   scoreKnockoutLengthRisk,
   scoreKnockoutWinnerPick,
+  scoreLockedFuturePick,
   totalLeaderboardPoints,
 } from "@/rules/scoring";
 
@@ -1018,9 +1025,12 @@ export async function getManagerPredictionState({ groupSlug, managerCode }) {
   const picks = await getManagerPickPreview({ groupSlug, managerCode });
   const pickByMatch = new Map(picks.map((pick) => [pick.external_match_id, pick]));
 
+  const lockedPicks = await getLockedFuturePickState({ groupSlug, managerCode });
+
   return {
     group_slug: groupSlug,
     manager_code: managerCode,
+    locked_picks: lockedPicks,
     matches: openMatches.map((match) => {
       const pick = pickByMatch.get(match.external_match_id) || null;
       return {
@@ -1047,6 +1057,173 @@ export async function getManagerPredictionState({ groupSlug, managerCode }) {
         is_missing: !pick,
       };
     }),
+  };
+}
+
+export async function getLockedFuturePickState({ groupSlug, managerCode, stage = LOCKED_FUTURE_STAGE }) {
+  const supabase = getOptionalSupabaseClient();
+  const defaultCategories = buildDefaultLockedFutureCategories();
+  if (!supabase) {
+    return buildLockedFuturePickState({ stage, categories: defaultCategories, savedRows: [] });
+  }
+
+  const categories = await getLockedFutureCategories({ supabase, stage });
+  const { data: rows, error } = await supabase
+    .from("future_predictions")
+    .select(`
+      category,
+      updated_at,
+      future_pick_options!inner (
+        id,
+        option_key,
+        label,
+        points,
+        option_kind,
+        team_id,
+        teams ( fifa_code, name )
+      ),
+      groups!inner ( slug ),
+      managers!inner ( manager_code )
+    `)
+    .eq("groups.slug", groupSlug)
+    .eq("managers.manager_code", managerCode)
+    .eq("stage", stage)
+    .eq("status", "active");
+
+  if (error) {
+    if (isMissingRelationError(error)) {
+      return buildLockedFuturePickState({ stage, categories, savedRows: [] });
+    }
+    throw new Error(error.message);
+  }
+
+  return buildLockedFuturePickState({ stage, categories, savedRows: rows || [] });
+}
+
+export async function hasCompletedLockedFuturePicks({ groupSlug, managerCode, stage = LOCKED_FUTURE_STAGE }) {
+  const state = await getLockedFuturePickState({ groupSlug, managerCode, stage });
+  return Boolean(state?.is_complete);
+}
+
+export async function saveLockedFuturePicks({ groupSlug, managerCode, selections, stage = LOCKED_FUTURE_STAGE }) {
+  const supabase = getOptionalSupabaseClient();
+  if (!supabase) {
+    throw new Error("Seed mode is read-only. Configure Supabase before saving locked picks.");
+  }
+
+  const { data: group, error: groupError } = await supabase
+    .from("groups")
+    .select("id,slug")
+    .eq("slug", groupSlug)
+    .eq("is_active", true)
+    .maybeSingle();
+  if (groupError) throw new Error(groupError.message);
+  if (!group) throw new Error("Group not found");
+
+  const { data: manager, error: managerError } = await supabase
+    .from("managers")
+    .select("id,manager_code,display_name")
+    .eq("group_id", group.id)
+    .eq("manager_code", managerCode)
+    .eq("is_active", true)
+    .maybeSingle();
+  if (managerError) throw new Error(managerError.message);
+  if (!manager) throw new Error("Manager not found");
+
+  const categories = await getLockedFutureCategories({ supabase, stage });
+  const validation = validateLockedFutureSelections(selections, categories);
+  if (!validation.ok) throw new Error(validation.message);
+
+  const savedAt = new Date().toISOString();
+  const rows = Object.entries(validation.cleaned).map(([category, option]) => ({
+    group_id: group.id,
+    manager_id: manager.id,
+    stage,
+    category,
+    option_id: option.id,
+    status: "active",
+    updated_at: savedAt,
+  }));
+
+  const { error } = await supabase
+    .from("future_predictions")
+    .upsert(rows, { onConflict: "group_id,manager_id,stage,category" });
+
+  if (error) {
+    if (isMissingRelationError(error)) {
+      throw new Error("Locked picks table is not ready. Apply migration 0010_semifinal_future_picks.sql in Supabase first.");
+    }
+    throw new Error(error.message);
+  }
+
+  return getLockedFuturePickState({ groupSlug, managerCode, stage });
+}
+
+async function getLockedFutureCategories({ supabase, stage = LOCKED_FUTURE_STAGE }) {
+  const defaults = buildDefaultLockedFutureCategories();
+  if (!supabase) return defaults;
+
+  const { data, error } = await supabase
+    .from("future_pick_options")
+    .select("id,stage,category,option_kind,option_key,label,points,sort_order,team_id,teams(fifa_code,name)")
+    .eq("stage", stage)
+    .eq("is_active", true)
+    .order("category", { ascending: true })
+    .order("sort_order", { ascending: true });
+
+  if (error) {
+    if (isMissingRelationError(error)) return defaults;
+    throw new Error(error.message);
+  }
+  if (!data?.length) return defaults;
+
+  return defaults.map((category) => ({
+    ...category,
+    options: data
+      .filter((option) => option.category === category.key)
+      .sort((left, right) => {
+        const pointDiff = Number(left.points || 0) - Number(right.points || 0);
+        if (pointDiff) return pointDiff;
+        return String(left.label || left.option_key || "").localeCompare(String(right.label || right.option_key || ""));
+      })
+      .map((option) => ({
+        id: option.id,
+        option_key: option.option_key,
+        option_kind: option.option_kind,
+        team_code: option.teams?.fifa_code || null,
+        label: option.label || option.teams?.name || option.option_key,
+        points: Number(option.points || 0),
+        sort_order: option.sort_order,
+      })),
+  }));
+}
+
+function buildLockedFuturePickState({ stage, categories, savedRows }) {
+  const savedByCategory = new Map((savedRows || []).map((row) => {
+    const option = row.future_pick_options || row.option || null;
+    return [row.category, {
+      category: row.category,
+      option_id: option?.id || null,
+      option_key: option?.option_key || null,
+      label: option?.label || option?.teams?.name || null,
+      points: Number(option?.points || 0),
+      updated_at: row.updated_at || null,
+    }];
+  }));
+  const categoryRows = categories.map((category) => ({
+    ...category,
+    selected: savedByCategory.get(category.key) || null,
+  }));
+  const requiredKeys = new Set(categoryRows.map((category) => category.key));
+  const selectedRequiredCount = [...requiredKeys].filter((key) => savedByCategory.has(key)).length;
+
+  return {
+    stage,
+    label: "Semi-Final Locked Picks",
+    categories: categoryRows,
+    selected_count: selectedRequiredCount,
+    required_count: requiredKeys.size,
+    is_complete: requiredKeys.size > 0 && selectedRequiredCount === requiredKeys.size,
   };
 }
 
@@ -1270,11 +1447,13 @@ export async function getLeaderboardShell({ groupSlug }) {
     manualPointsByManager,
     draftedTeamPointsByManager,
     draftedPlayerPointsByManager,
+    lockedFuturePointsByManager,
   ] = await Promise.all([
     getPredictionScoringSummary(overview),
     getManualPointsByManager(overview),
     getDraftedTeamPointsByManager(overview),
     getDraftedPlayerPointsByManager(overview),
+    getLockedFuturePointsByManager(overview),
   ]);
   const rows = overview.managers.map((manager) => {
     const groupStage = predictionSummary.groupStagePointsByManager.get(manager.manager_code) || 0;
@@ -1286,11 +1465,12 @@ export async function getLeaderboardShell({ groupSlug }) {
     const manualAdjustments = manualPointsByManager.get(manager.manager_code) || 0;
     const draftedTeams = draftedTeamPointsByManager.get(manager.manager_code) || 0;
     const draftedPlayers = draftedPlayerPointsByManager.get(manager.manager_code) || 0;
+    const futures = lockedFuturePointsByManager.get(manager.manager_code) || 0;
     const total = totalLeaderboardPoints({
       groupStage,
       knockoutPredictions,
       knockoutRisks,
-      futures: 0,
+      futures,
       draftedTeams,
       draftedPlayers,
       manualAdjustments,
@@ -1299,7 +1479,7 @@ export async function getLeaderboardShell({ groupSlug }) {
       groupStage: previousGroupStage,
       knockoutPredictions: previousKnockoutPredictions,
       knockoutRisks: previousKnockoutRisks,
-      futures: 0,
+      futures,
       draftedTeams,
       draftedPlayers,
       manualAdjustments,
@@ -1313,7 +1493,7 @@ export async function getLeaderboardShell({ groupSlug }) {
       group_stage_points: groupStage,
       knockout_prediction_points: knockoutPredictions,
       knockout_risk_points: knockoutRisks,
-      futures_points: 0,
+      futures_points: futures,
       drafted_teams_points: draftedTeams,
       drafted_players_points: draftedPlayers,
       manual_adjustment_points: manualAdjustments,
@@ -1378,6 +1558,36 @@ export async function getDraftRoomState({ groupSlug }) {
     group_slug: groupSlug,
     rows: rankDraftRoomRows(rows),
   };
+}
+
+async function getLockedFuturePointsByManager(overview) {
+  const supabase = getOptionalSupabaseClient();
+  if (!supabase || !overview?.id) return new Map();
+
+  const { data, error } = await supabase
+    .from("future_predictions")
+    .select(`
+      category,
+      managers!inner ( manager_code ),
+      future_pick_options!inner ( points, is_winner )
+    `)
+    .eq("group_id", overview.id)
+    .eq("stage", LOCKED_FUTURE_STAGE)
+    .eq("status", "active");
+
+  if (error) {
+    if (isMissingRelationError(error)) return new Map();
+    throw new Error(error.message);
+  }
+
+  return (data || []).reduce((totals, pick) => {
+    const managerCode = pick.managers?.manager_code;
+    if (!managerCode) return totals;
+    const points = scoreLockedFuturePick({ selectedOption: pick.future_pick_options });
+    if (!points) return totals;
+    totals.set(managerCode, (totals.get(managerCode) || 0) + points);
+    return totals;
+  }, new Map());
 }
 
 async function getManualPointsByManager(overview) {

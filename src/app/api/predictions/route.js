@@ -1,5 +1,6 @@
-import { getMatchForPrediction, savePrediction } from "@/data/league";
+import { getMatchForPrediction, hasCompletedLockedFuturePicks, savePrediction } from "@/data/league";
 import { verifyManagerSessionToken } from "@/lib/auth/session";
+import { requiresLockedFuturePicksForStage } from "@/rules/future-picks";
 import {
   isPredictionLocked,
   validateFirstScorePickForMatch,
@@ -35,6 +36,16 @@ export async function POST(request) {
       lockMinutesBeforeKickoff: match.lock_minutes_before_kickoff,
     })) {
       return jsonError("Deadline passed", 400);
+    }
+
+    if (requiresLockedFuturePicksForStage(match.stage)) {
+      const lockedPicksComplete = await hasCompletedLockedFuturePicks({
+        groupSlug: session.group_slug,
+        managerCode: session.manager_code,
+      });
+      if (!lockedPicksComplete) {
+        return jsonError("Complete Semi-Final Locked Picks before saving match predictions", 400);
+      }
     }
 
     const validation = validatePickForMatch({ pickType, match });
