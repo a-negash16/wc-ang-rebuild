@@ -3,8 +3,10 @@ import path from "node:path";
 
 import { getFifaMatchesById } from "@/integrations/fifa-api";
 import {
+  LOCKED_FUTURE_DEADLINE_AT,
   LOCKED_FUTURE_STAGE,
   buildDefaultLockedFutureCategories,
+  isLockedFuturePickDeadlinePassed,
   requiresLockedFuturePicksForStage,
   validateLockedFutureSelections,
 } from "@/rules/future-picks";
@@ -1130,6 +1132,10 @@ export async function saveLockedFuturePicks({ groupSlug, managerCode, selections
   if (managerError) throw new Error(managerError.message);
   if (!manager) throw new Error("Manager not found");
 
+  if (isLockedFuturePickDeadlinePassed()) {
+    throw new Error("Semi-Final Locked Picks deadline passed");
+  }
+
   const categories = await getLockedFutureCategories({ supabase, stage });
   const validation = validateLockedFutureSelections(selections, categories);
   if (!validation.ok) throw new Error(validation.message);
@@ -1220,6 +1226,8 @@ function buildLockedFuturePickState({ stage, categories, savedRows }) {
   return {
     stage,
     label: "Semi-Final Locked Picks",
+    deadline_at: LOCKED_FUTURE_DEADLINE_AT,
+    is_locked: isLockedFuturePickDeadlinePassed(),
     categories: categoryRows,
     selected_count: selectedRequiredCount,
     required_count: requiredKeys.size,

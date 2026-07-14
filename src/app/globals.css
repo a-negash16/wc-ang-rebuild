@@ -3172,3 +3172,20 @@ button:disabled {
     grid-template-columns: 1fr;
   }
 }
+
+
+.locked-picks-deadline {
+  color: #ffb0a7;
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  font-weight: 950;
+  margin-top: 6px;
+}
+
+.locked-picks-deadline.locked {
+  background: rgba(255, 90, 72, 0.14);
+  border: 1px solid rgba(255, 90, 72, 0.26);
+  border-radius: 999px;
+  padding: 5px 10px;
+}

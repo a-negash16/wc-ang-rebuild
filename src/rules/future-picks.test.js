@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   buildDefaultLockedFutureCategories,
   getRequiredLockedFutureCategoryKeys,
+  isLockedFuturePickDeadlinePassed,
   requiresLockedFuturePicksForStage,
   validateLockedFutureSelections,
 } from "./future-picks.js";
@@ -28,4 +29,10 @@ test("locked futures gate only the semi-final stage", () => {
   assert.equal(requiresLockedFuturePicksForStage("Semifinal"), true);
   assert.equal(requiresLockedFuturePicksForStage("Quarterfinal"), false);
   assert.equal(requiresLockedFuturePicksForStage("Final"), false);
+});
+
+
+test("semi-final locked futures deadline is 3:15 PM New York time on July 14", () => {
+  assert.equal(isLockedFuturePickDeadlinePassed({ now: new Date("2026-07-14T19:14:59.000Z") }), false);
+  assert.equal(isLockedFuturePickDeadlinePassed({ now: new Date("2026-07-14T19:15:00.000Z") }), true);
 });

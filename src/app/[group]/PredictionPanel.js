@@ -314,6 +314,10 @@ export default function PredictionPanel({
       setStatus("Unlock before saving locked picks.");
       return;
     }
+    if (lockedPickState?.is_locked) {
+      setStatus("Semi-Final Locked Picks deadline passed.");
+      return;
+    }
     setBusy(true);
     setStatus("Saving locked picks...");
     try {
@@ -408,6 +412,8 @@ export default function PredictionPanel({
           selections={pendingLockedSelections}
           busy={busy}
           onSelect={updateLockedSelection}
+          now={now}
+          timezone={timezone}
           onSubmit={submitLockedPicks}
         />
       ) : null}
@@ -538,12 +544,14 @@ export default function PredictionPanel({
   );
 }
 
-function LockedPicksCard({ lockedPicks, selections, busy, onSelect, onSubmit }) {
+function LockedPicksCard({ lockedPicks, selections, busy, now, timezone, onSelect, onSubmit }) {
   const categories = lockedPicks?.categories || [];
   if (!categories.length) return null;
   const countryCategories = categories.filter((category) => category.group === "country");
   const playerCategories = categories.filter((category) => category.group === "player");
   const complete = Boolean(lockedPicks?.is_complete);
+  const locked = Boolean(lockedPicks?.is_locked);
+  const deadline = lockedPicks?.deadline_at ? new Date(lockedPicks.deadline_at) : null;
 
   return (
     <article className={complete ? "panel locked-picks-card complete" : "panel locked-picks-card"}>
@@ -552,22 +560,27 @@ function LockedPicksCard({ lockedPicks, selections, busy, onSelect, onSubmit }) 
           <p className="eyebrow">Semi-final gate</p>
           <h3>{lockedPicks?.label || "Semi-Final Locked Picks"}</h3>
           <span>{complete ? "Saved. Semi-final match picks are open." : "Complete these first to unlock semi-final match picks."}</span>
+          {deadline ? (
+            <small className={locked ? "locked-picks-deadline locked" : "locked-picks-deadline"}>
+              {locked ? "Locked" : `Locks ${formatShortDeadline(deadline, timezone)} · ${formatTimeLeft(deadline, now)}`}
+            </small>
+          ) : null}
         </div>
         <strong>{lockedPicks?.selected_count || 0}/{lockedPicks?.required_count || categories.length}</strong>
       </div>
       <div className="locked-picks-groups">
-        <LockedPickGroup title="Country Picks" categories={countryCategories} selections={selections} onSelect={onSelect} />
-        <LockedPickGroup title="Player Picks" categories={playerCategories} selections={selections} onSelect={onSelect} />
+        <LockedPickGroup title="Country Picks" categories={countryCategories} selections={selections} locked={locked} onSelect={onSelect} />
+        <LockedPickGroup title="Player Picks" categories={playerCategories} selections={selections} locked={locked} onSelect={onSelect} />
       </div>
       {complete ? <LockedPickConfirmation categories={categories} /> : null}
-      <button className="locked-picks-submit" type="button" disabled={busy || !isLockedSelectionComplete(categories, selections)} onClick={onSubmit}>
-        {complete ? "Update Locked Picks" : "Save Locked Picks"}
+      <button className="locked-picks-submit" type="button" disabled={busy || locked || !isLockedSelectionComplete(categories, selections)} onClick={onSubmit}>
+        {locked ? "Locked" : complete ? "Update Locked Picks" : "Save Locked Picks"}
       </button>
     </article>
   );
 }
 
-function LockedPickGroup({ title, categories, selections, onSelect }) {
+function LockedPickGroup({ title, categories, selections, locked, onSelect }) {
   if (!categories.length) return null;
   return (
     <div className="locked-picks-group">
@@ -586,6 +599,7 @@ function LockedPickGroup({ title, categories, selections, onSelect }) {
                   className={selected ? "selected" : ""}
                   type="button"
                   key={`${category.key}-${option.option_key || option.id}`}
+                  disabled={locked}
                   onClick={() => onSelect(category.key, option.option_key || option.id)}
                 >
                   {option.option_kind === "team" ? <span className="flag" aria-hidden="true">{flagForCode(option.team_code)}</span> : null}
@@ -852,6 +866,17 @@ function saveSession(payload) {
 
 function clearSession() {
   window.localStorage.removeItem(STORAGE_KEY);
+}
+
+function formatShortDeadline(value, timezone) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: timezone,
+    timeZoneName: "short",
+  }).format(new Date(value));
 }
 
 function formatTicketKickoff(value, timezone) {

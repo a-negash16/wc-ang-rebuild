@@ -1,4 +1,5 @@
 export const LOCKED_FUTURE_STAGE = "Semifinal";
+export const LOCKED_FUTURE_DEADLINE_AT = "2026-07-14T19:15:00.000Z";
 
 export const LOCKED_FUTURE_CATEGORIES = Object.freeze([
   {
@@ -99,6 +100,13 @@ export function getRequiredLockedFutureCategoryKeys() {
 
 export function requiresLockedFuturePicksForStage(stage) {
   return normalizeStage(stage) === normalizeStage(LOCKED_FUTURE_STAGE);
+}
+
+export function isLockedFuturePickDeadlinePassed({ now = new Date(), deadlineAt = LOCKED_FUTURE_DEADLINE_AT } = {}) {
+  const deadline = new Date(deadlineAt).getTime();
+  const current = now instanceof Date ? now.getTime() : new Date(now).getTime();
+  if (!Number.isFinite(deadline) || !Number.isFinite(current)) return true;
+  return current >= deadline;
 }
 
 export function buildDefaultLockedFutureCategories() {
