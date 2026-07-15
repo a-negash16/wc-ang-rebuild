@@ -1764,7 +1764,8 @@ button:disabled {
   margin-top: 34px;
 }
 
-.pulse-section + .draft-room-section {
+.pulse-section + .locked-view-section,
+.locked-view-section + .draft-room-section {
   margin-top: 42px;
 }
 
@@ -1997,16 +1998,43 @@ button:disabled {
   gap: 6px;
 }
 
+.manager-chips.compact {
+  gap: 5px;
+}
+
 .manager-chips em {
   background: linear-gradient(180deg, #ffe28a, var(--gold-500));
   border: 1px solid rgba(255, 226, 138, 0.5);
   border-radius: 999px;
   color: #171107;
+  display: inline-flex;
+  flex: 0 0 auto;
   font-size: 0.82rem;
   font-style: normal;
   font-weight: 900;
+  justify-content: center;
   line-height: 1;
   padding: 0.42rem 0.62rem;
+  white-space: nowrap;
+  width: max-content;
+}
+
+.manager-chips.compact em {
+  font-size: 0.68rem;
+  letter-spacing: 0;
+  padding: 0.3rem 0.42rem;
+}
+
+.locked-view-option .manager-chips,
+.pulse-risk-panel .manager-chips {
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.locked-view-option .manager-chips em,
+.pulse-risk-panel .manager-chips em {
+  font-size: 0.66rem;
+  padding: 0.28rem 0.38rem;
 }
 
 .manager-chips em.is-correct {
@@ -2025,6 +2053,135 @@ button:disabled {
   color: rgba(247, 250, 255, 0.56) !important;
   font-size: 0.9rem !important;
   font-weight: 700;
+}
+
+.locked-view-section {
+  background:
+    radial-gradient(780px 380px at 12% 8%, rgba(244, 193, 69, 0.18), transparent 70%),
+    radial-gradient(960px 500px at 96% 0%, color-mix(in srgb, var(--accent-300) 16%, transparent), transparent 72%),
+    linear-gradient(135deg, var(--accent-900), color-mix(in srgb, var(--accent-700) 58%, var(--navy-900)) 60%, var(--accent-900));
+  border-bottom: 1px solid color-mix(in srgb, var(--accent-300) 18%, var(--line-dark));
+  border-top: 1px solid color-mix(in srgb, var(--accent-300) 18%, var(--line-dark));
+  color: var(--paper);
+}
+
+.locked-view-section .section-heading h2 {
+  color: var(--paper);
+}
+
+.locked-view-section .eyebrow {
+  color: var(--gold-300);
+}
+
+.locked-view-section .status-chip {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: var(--gold-300);
+}
+
+.locked-view-rail > * {
+  flex-basis: clamp(360px, 58vw, 500px);
+}
+
+.locked-view-card {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.06));
+  border: 1px solid color-mix(in srgb, var(--accent-300) 24%, rgba(255, 255, 255, 0.14));
+  border-radius: 8px;
+  color: white;
+  display: grid;
+  gap: 16px;
+  min-height: 330px;
+  padding: 20px;
+  scroll-snap-align: start;
+}
+
+.locked-view-card-header {
+  display: grid;
+  gap: 7px;
+}
+
+.locked-view-card-header span {
+  color: var(--gold-300);
+  font-size: 0.76rem;
+  font-weight: 950;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.locked-view-card-header h3 {
+  color: #f8fbff;
+  font-family: var(--font-display);
+  font-size: 2.15rem;
+  font-weight: 400;
+  line-height: 0.98;
+  margin: 0;
+}
+
+.locked-view-card-header p {
+  color: rgba(247, 250, 255, 0.64);
+  font-size: 0.92rem;
+  font-weight: 750;
+  line-height: 1.35;
+  margin: 0;
+}
+
+.locked-view-options {
+  display: grid;
+  gap: 10px;
+}
+
+.locked-view-option {
+  background: rgba(255, 255, 255, 0.09);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  display: grid;
+  gap: 9px;
+  padding: 12px;
+}
+
+.locked-view-option.eliminated {
+  background: rgba(229, 64, 64, 0.1);
+  border-color: rgba(255, 143, 143, 0.26);
+}
+
+.locked-view-option.eliminated .locked-view-option-label strong,
+.locked-view-option.eliminated .team-label span:last-child {
+  color: rgba(248, 251, 255, 0.62);
+  text-decoration: line-through;
+  text-decoration-color: #ff3b30;
+  text-decoration-thickness: 3px;
+  text-decoration-skip-ink: none;
+}
+
+.locked-view-option.eliminated .flag {
+  filter: grayscale(0.75);
+  opacity: 0.64;
+}
+
+.locked-view-option.eliminated .locked-view-option-label b {
+  color: rgba(255, 176, 167, 0.8);
+}
+
+.locked-view-option-label {
+  align-items: center;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.locked-view-option-label strong {
+  color: #f8fbff;
+  font-size: 1rem;
+  font-weight: 950;
+  min-width: 0;
+}
+
+.locked-view-option-label b {
+  color: var(--gold-300);
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  font-weight: 950;
 }
 
 .group-chip {

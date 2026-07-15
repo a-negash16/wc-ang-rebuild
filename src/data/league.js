@@ -1102,6 +1102,46 @@ export async function getLockedFuturePickState({ groupSlug, managerCode, stage =
   return buildLockedFuturePickState({ stage, categories, savedRows: rows || [] });
 }
 
+export async function getLockedFuturePickView({ groupSlug, stage = LOCKED_FUTURE_STAGE }) {
+  const supabase = getOptionalSupabaseClient();
+  const defaultCategories = buildDefaultLockedFutureCategories();
+  if (!supabase) {
+    return buildLockedFuturePickViewState({ groupSlug, stage, categories: defaultCategories, savedRows: [] });
+  }
+
+  const overview = await getGroupOverview(groupSlug);
+  if (!overview?.id) return null;
+
+  const categories = await getLockedFutureCategories({ supabase, stage });
+  const { data: rows, error } = await supabase
+    .from("future_predictions")
+    .select(`
+      category,
+      managers!inner ( manager_code, display_name ),
+      future_pick_options!inner (
+        id,
+        option_key,
+        label,
+        points,
+        option_kind,
+        team_id,
+        teams ( fifa_code, name )
+      )
+    `)
+    .eq("group_id", overview.id)
+    .eq("stage", stage)
+    .eq("status", "active");
+
+  if (error) {
+    if (isMissingRelationError(error)) {
+      return buildLockedFuturePickViewState({ groupSlug, stage, categories, savedRows: [] });
+    }
+    throw new Error(error.message);
+  }
+
+  return buildLockedFuturePickViewState({ groupSlug, stage, categories, savedRows: rows || [] });
+}
+
 export async function hasCompletedLockedFuturePicks({ groupSlug, managerCode, stage = LOCKED_FUTURE_STAGE }) {
   const state = await getLockedFuturePickState({ groupSlug, managerCode, stage });
   return Boolean(state?.is_complete);
@@ -1169,13 +1209,25 @@ async function getLockedFutureCategories({ supabase, stage = LOCKED_FUTURE_STAGE
   const defaults = buildDefaultLockedFutureCategories();
   if (!supabase) return defaults;
 
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from("future_pick_options")
-    .select("id,stage,category,option_kind,option_key,label,points,sort_order,team_id,teams(fifa_code,name)")
+    .select("id,stage,category,option_kind,option_key,label,points,sort_order,team_id,is_eliminated,teams(fifa_code,name)")
     .eq("stage", stage)
     .eq("is_active", true)
     .order("category", { ascending: true })
     .order("sort_order", { ascending: true });
+
+  if (error && isMissingColumnError(error, "is_eliminated")) {
+    const fallback = await supabase
+      .from("future_pick_options")
+      .select("id,stage,category,option_kind,option_key,label,points,sort_order,team_id,teams(fifa_code,name)")
+      .eq("stage", stage)
+      .eq("is_active", true)
+      .order("category", { ascending: true })
+      .order("sort_order", { ascending: true });
+    data = fallback.data;
+    error = fallback.error;
+  }
 
   if (error) {
     if (isMissingRelationError(error)) return defaults;
@@ -1200,6 +1252,7 @@ async function getLockedFutureCategories({ supabase, stage = LOCKED_FUTURE_STAGE
         label: option.label || option.teams?.name || option.option_key,
         points: Number(option.points || 0),
         sort_order: option.sort_order,
+        is_eliminated: Boolean(option.is_eliminated),
       })),
   }));
 }
@@ -1213,6 +1266,7 @@ function buildLockedFuturePickState({ stage, categories, savedRows }) {
       option_key: option?.option_key || null,
       label: option?.label || option?.teams?.name || null,
       points: Number(option?.points || 0),
+      is_eliminated: Boolean(option?.is_eliminated),
       updated_at: row.updated_at || null,
     }];
   }));
@@ -1232,6 +1286,43 @@ function buildLockedFuturePickState({ stage, categories, savedRows }) {
     selected_count: selectedRequiredCount,
     required_count: requiredKeys.size,
     is_complete: requiredKeys.size > 0 && selectedRequiredCount === requiredKeys.size,
+  };
+}
+
+function buildLockedFuturePickViewState({ groupSlug, stage, categories, savedRows }) {
+  const managersByCategoryOption = new Map();
+  for (const row of savedRows || []) {
+    const option = row.future_pick_options || row.option || null;
+    const optionKey = option?.option_key;
+    const managerName = row.managers?.display_name;
+    if (!row.category || !optionKey || !managerName) continue;
+    const key = `${row.category}::${optionKey}`;
+    if (!managersByCategoryOption.has(key)) managersByCategoryOption.set(key, []);
+    managersByCategoryOption.get(key).push(managerName);
+  }
+
+  return {
+    group_slug: groupSlug,
+    stage,
+    label: "Semi-Final Locked Picks",
+    deadline_at: LOCKED_FUTURE_DEADLINE_AT,
+    categories: categories.map((category) => ({
+      key: category.key,
+      label: category.label,
+      description: category.description,
+      group: category.group,
+      options: (category.options || []).map((option) => ({
+        option_key: option.option_key,
+        option_kind: option.option_kind,
+        team_code: option.team_code || null,
+        label: option.label,
+        points: Number(option.points || 0),
+        is_eliminated: Boolean(option.is_eliminated),
+        managers: (managersByCategoryOption.get(`${category.key}::${option.option_key}`) || [])
+          .sort((left, right) => left.localeCompare(right))
+          .join(", "),
+      })),
+    })),
   };
 }
 

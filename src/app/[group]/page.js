@@ -3,13 +3,11 @@ import { notFound } from "next/navigation";
 import {
   getGroupOverview,
   getDraftRoomState,
-  getGroupComments,
   getLeaderboardShell,
+  getLockedFuturePickView,
   getMissingPicksSummary,
   getPredictionPulseState,
-  getRecentResults,
 } from "@/data/league";
-import CommentSection from "./CommentSection";
 import PredictionPanel from "./PredictionPanel";
 
 export const dynamic = "force-dynamic";
@@ -18,14 +16,13 @@ export const fetchCache = "force-no-store";
 
 export default async function GroupPage({ params }) {
   const { group: groupSlug } = await params;
-  const [group, pulse, leaderboard, recentResults, missingPicks, draftRoom, comments] = await Promise.all([
+  const [group, pulse, lockedPickView, leaderboard, missingPicks, draftRoom] = await Promise.all([
     getGroupOverview(groupSlug),
     getPredictionPulseState({ groupSlug }),
+    getLockedFuturePickView({ groupSlug }),
     getLeaderboardShell({ groupSlug }),
-    getRecentResults({ groupSlug }),
     getMissingPicksSummary({ groupSlug }),
     getDraftRoomState({ groupSlug }),
-    getGroupComments({ groupSlug }),
   ]);
   if (!group) notFound();
   return (
@@ -39,10 +36,8 @@ export default async function GroupPage({ params }) {
               <a href="#standings">View standings</a>
               <a href="#next-picks">Next Picks</a>
               <a href="#prediction-pulse">Prediction Pulse</a>
+              <a href="#locked-picks-view">Locked Picks</a>
               <a href="#draft-room">Draft Room</a>
-              <a href="#recent-results">Recent Results</a>
-              <a href="#rules">Rules</a>
-              <a href="#comments">Comments</a>
             </nav>
           </div>
         </div>
@@ -61,13 +56,58 @@ export default async function GroupPage({ params }) {
       />
 
       <PredictionPulse pulse={pulse} />
+      <LockedPickView lockedPickView={lockedPickView} />
       <DraftRoom draftRoom={draftRoom} />
-      <CommentSection groupSlug={group.slug} initialComments={comments} />
       <Leaderboard leaderboard={leaderboard} />
-      <RulesSection />
-      <RecentResults results={recentResults} />
     </main>
   );
+}
+
+function LockedPickView({ lockedPickView }) {
+  const categories = lockedPickView?.categories || [];
+  if (!categories.length) return null;
+
+  return (
+    <section className="section section-dark locked-view-section" id="locked-picks-view" aria-labelledby="locked-picks-view-title">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">Semi-final futures</p>
+          <h2 id="locked-picks-view-title">Locked Picks</h2>
+        </div>
+        <span className="status-chip">{categories.length} questions</span>
+      </div>
+      <div className="swipe-rail locked-view-rail" aria-label="Locked prediction selections by category">
+        {categories.map((category) => (
+          <article className="locked-view-card" key={category.key}>
+            <header className="locked-view-card-header">
+              <span>{category.group === "country" ? "Country pick" : "Player pick"}</span>
+              <h3>{category.label}</h3>
+              <p>{category.description}</p>
+            </header>
+            <div className="locked-view-options">
+              {category.options.filter((option) => hasManagers(option.managers)).map((option) => (
+                <div className={option.is_eliminated ? "locked-view-option eliminated" : "locked-view-option"} key={option.option_key}>
+                  <div className="locked-view-option-label">
+                    <strong>
+                      {option.team_code ? <TeamLabel name={option.label} code={option.team_code} compact /> : option.label}
+                    </strong>
+                    <b>+{formatPoints(option.points)}</b>
+                  </div>
+                  <ManagerChips managers={option.managers} compact />
+                </div>
+              ))}
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function hasManagers(managers) {
+  return String(managers || "")
+    .split(",")
+    .some((name) => name.trim());
 }
 
 function MissingPicksBar({ summary }) {
@@ -368,7 +408,7 @@ function PulseChoice({ label, code, managers, outcome, winnerType, isFinished })
     <div className="pulse-choice" data-result={resultState}>
       <div>
         <strong>{label === "Tie" ? "Tie" : <TeamLabel name={label} code={code} compact />}</strong>
-        <ManagerChips managers={managers} resultClass={resultClass} />
+        <ManagerChips managers={managers} resultClass={resultClass} compact />
       </div>
     </div>
   );
