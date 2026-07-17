@@ -12,6 +12,7 @@ import {
 } from "@/rules/future-picks";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { validatePickForMatch } from "@/rules/predictions";
+import { PARLAY_FIXTURES } from "@/rules/parlay";
 import {
   scoreDraftedPlayer,
   scoreDraftedTeam,
@@ -20,6 +21,7 @@ import {
   scoreKnockoutLengthRisk,
   scoreKnockoutWinnerPick,
   scoreLockedFuturePick,
+  scoreParlaySlip,
   totalLeaderboardPoints,
 } from "@/rules/scoring";
 
@@ -1027,12 +1029,16 @@ export async function getManagerPredictionState({ groupSlug, managerCode }) {
   const picks = await getManagerPickPreview({ groupSlug, managerCode });
   const pickByMatch = new Map(picks.map((pick) => [pick.external_match_id, pick]));
 
-  const lockedPicks = await getLockedFuturePickState({ groupSlug, managerCode });
+  const [lockedPicks, parlaySlips] = await Promise.all([
+    getLockedFuturePickState({ groupSlug, managerCode }),
+    getParlaySlipState({ groupSlug, managerCode }),
+  ]);
 
   return {
     group_slug: groupSlug,
     manager_code: managerCode,
     locked_picks: lockedPicks,
+    parlay_slips: parlaySlips,
     matches: openMatches.map((match) => {
       const pick = pickByMatch.get(match.external_match_id) || null;
       return {
@@ -1203,6 +1209,255 @@ export async function saveLockedFuturePicks({ groupSlug, managerCode, selections
   }
 
   return getLockedFuturePickState({ groupSlug, managerCode, stage });
+}
+
+export async function getParlaySlipState({ groupSlug, managerCode = null } = {}) {
+  const supabase = getOptionalSupabaseClient();
+  if (!supabase) return { group_slug: groupSlug, matches: [] };
+
+  const overview = await getGroupOverview(groupSlug);
+  if (!overview?.id) return null;
+
+  const [matchRows, manager] = await Promise.all([
+    getParlayGroupMatchRows({ supabase, groupId: overview.id }),
+    managerCode ? getManagerForGroup({ supabase, groupId: overview.id, managerCode }) : null,
+  ]);
+  if (managerCode && !manager) throw new Error("Manager not found");
+
+  const matchIds = matchRows.map((row) => row.matches?.id).filter(Boolean);
+  if (!matchIds.length) return { group_slug: groupSlug, matches: [] };
+
+  const { data: markets, error: marketError } = await supabase
+    .from("parlay_markets")
+    .select(`
+      id,
+      match_id,
+      stage,
+      market_key,
+      label,
+      market_type,
+      line,
+      points,
+      display_order,
+      parlay_options (
+        id,
+        option_key,
+        label,
+        odds,
+        points,
+        is_correct,
+        sort_order
+      )
+    `)
+    .in("match_id", matchIds)
+    .eq("is_active", true)
+    .order("display_order", { ascending: true });
+
+  if (marketError) {
+    if (isMissingRelationError(marketError)) return { group_slug: groupSlug, matches: [] };
+    throw new Error(marketError.message);
+  }
+
+  let savedRows = [];
+  if (manager?.id) {
+    const { data: predictions, error: predictionError } = await supabase
+      .from("parlay_predictions")
+      .select("match_id,market_id,option_id,predicted_team_a_score,predicted_team_b_score,updated_at")
+      .eq("group_id", overview.id)
+      .eq("manager_id", manager.id)
+      .eq("status", "active");
+    if (predictionError) {
+      if (!isMissingRelationError(predictionError)) throw new Error(predictionError.message);
+    } else {
+      savedRows = predictions || [];
+    }
+  }
+
+  return buildParlaySlipState({
+    groupSlug,
+    lockMinutesBeforeKickoff: overview.lock_minutes_before_kickoff,
+    matchRows,
+    markets: markets || [],
+    savedRows,
+  });
+}
+
+export async function saveParlaySlip({ groupSlug, managerCode, externalMatchId, selections }) {
+  const supabase = getOptionalSupabaseClient();
+  if (!supabase) throw new Error("Seed mode is read-only. Configure Supabase before saving parlay slips.");
+
+  const overview = await getGroupOverview(groupSlug);
+  if (!overview?.id) throw new Error("Group not found");
+
+  const [manager, matchRows] = await Promise.all([
+    getManagerForGroup({ supabase, groupId: overview.id, managerCode }),
+    getParlayGroupMatchRows({ supabase, groupId: overview.id }),
+  ]);
+  if (!manager) throw new Error("Manager not found");
+
+  const matchRow = matchRows.find((row) => String(row.matches?.external_match_id) === String(externalMatchId));
+  const match = matchRow?.matches;
+  if (!match) throw new Error("Parlay match not found");
+  if (match.status === "finished" || match.status === "cancelled") throw new Error("Parlay slip is closed");
+  if (Date.now() >= new Date(deadlineFor(match.kickoff_at, overview.lock_minutes_before_kickoff)).getTime()) {
+    throw new Error("Deadline passed");
+  }
+
+  const { data: markets, error: marketError } = await supabase
+    .from("parlay_markets")
+    .select("id,match_id,market_key,label,market_type,parlay_options(id,option_key,label)")
+    .eq("match_id", match.id)
+    .eq("is_active", true);
+  if (marketError) {
+    if (isMissingRelationError(marketError)) {
+      throw new Error("Parlay tables are not ready. Apply migration 0012_final_parlay_slips.sql in Supabase first.");
+    }
+    throw new Error(marketError.message);
+  }
+
+  const cleanSelections = selections && typeof selections === "object" ? selections : {};
+  const rows = [];
+  for (const market of markets || []) {
+    const selectedValue = cleanSelections[market.market_key];
+    const exactScore = market.market_type === "exact_score"
+      ? cleanExactScoreSelection(selectedValue)
+      : null;
+    const selectedOptionKey = market.market_type === "exact_score" ? "" : String(selectedValue || "").trim();
+    const option = market.market_type === "exact_score"
+      ? null
+      : (market.parlay_options || []).find((item) => item.option_key === selectedOptionKey || item.id === selectedOptionKey);
+    if (market.market_type === "exact_score" && !exactScore) throw new Error(`Enter ${market.label}`);
+    if (market.market_type !== "exact_score" && !selectedOptionKey) throw new Error(`Select ${market.label}`);
+    if (market.market_type !== "exact_score" && !option) throw new Error(`Invalid selection for ${market.label}`);
+    rows.push({
+      group_id: overview.id,
+      manager_id: manager.id,
+      match_id: match.id,
+      market_id: market.id,
+      option_id: option?.id || null,
+      predicted_team_a_score: exactScore?.teamAScore ?? null,
+      predicted_team_b_score: exactScore?.teamBScore ?? null,
+      status: "active",
+      updated_at: new Date().toISOString(),
+    });
+  }
+
+  if (!rows.length) throw new Error("No parlay markets available for this match");
+
+  const { error } = await supabase
+    .from("parlay_predictions")
+    .upsert(rows, { onConflict: "group_id,manager_id,match_id,market_id" });
+  if (error) throw new Error(error.message);
+
+  return getParlaySlipState({ groupSlug, managerCode });
+}
+
+async function getParlayGroupMatchRows({ supabase, groupId }) {
+  const externalIds = PARLAY_FIXTURES.map((fixture) => fixture.external_match_id);
+  const { data, error } = await supabase
+    .from("group_matches")
+    .select(`
+      match_id,
+      matches!inner (
+        id,
+        external_match_id,
+        stage,
+        group_label,
+        kickoff_at,
+        status,
+        team_a_id,
+        team_b_id,
+        team_a:team_a_id ( id, fifa_code, name ),
+        team_b:team_b_id ( id, fifa_code, name )
+      )
+    `)
+    .eq("group_id", groupId)
+    .in("matches.external_match_id", externalIds)
+    .limit(10);
+
+  if (error) throw new Error(error.message);
+  const fifaMatchesById = await getFifaMatchesByIdSafe();
+  return (data || [])
+    .map((row) => ({
+      ...row,
+      matches: row.matches ? overlayMatchResult(row.matches, fifaMatchesById) : null,
+    }))
+    .filter((row) => row.matches)
+    .sort((left, right) => sortByKickoffAsc(left.matches, right.matches));
+}
+
+async function getManagerForGroup({ supabase, groupId, managerCode }) {
+  const { data, error } = await supabase
+    .from("managers")
+    .select("id,manager_code,display_name")
+    .eq("group_id", groupId)
+    .eq("manager_code", managerCode)
+    .eq("is_active", true)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return data || null;
+}
+
+function buildParlaySlipState({ groupSlug, lockMinutesBeforeKickoff, matchRows, markets, savedRows }) {
+  const marketsByMatch = groupRowsByKey(markets || [], "match_id");
+  const savedByMarket = new Map((savedRows || []).map((row) => [row.market_id, row]));
+
+  return {
+    group_slug: groupSlug,
+    label: "Final / 3rd Place Slip",
+    matches: (matchRows || []).map((row) => {
+      const match = row.matches;
+      const deadlineAt = deadlineFor(match.kickoff_at, lockMinutesBeforeKickoff);
+      const marketRows = (marketsByMatch.get(match.id) || [])
+        .sort((left, right) => Number(left.display_order || 0) - Number(right.display_order || 0));
+      const marketState = marketRows.map((market) => {
+        const saved = savedByMarket.get(market.id);
+        const options = (market.parlay_options || [])
+          .sort((left, right) => Number(left.sort_order || 0) - Number(right.sort_order || 0))
+          .map((option) => ({
+            id: option.id,
+            option_key: option.option_key,
+            label: option.label,
+            odds: option.odds ?? null,
+            points: Number(option.points || 0),
+            is_correct: option.is_correct,
+          }));
+        const selected = options.find((option) => option.id === saved?.option_id) || null;
+        return {
+          id: market.id,
+          market_key: market.market_key,
+          label: market.label,
+          market_type: market.market_type,
+          line: market.line,
+          points: Number(market.points || 0),
+          options,
+          selected,
+          exact_score: saved?.predicted_team_a_score !== null && saved?.predicted_team_a_score !== undefined
+            && saved?.predicted_team_b_score !== null && saved?.predicted_team_b_score !== undefined
+            ? {
+                team_a_score: Number(saved.predicted_team_a_score),
+                team_b_score: Number(saved.predicted_team_b_score),
+              }
+            : null,
+        };
+      });
+      const selectedCount = marketState.filter((market) => market.selected || market.exact_score).length;
+      return {
+        external_match_id: match.external_match_id,
+        stage: match.stage,
+        kickoff_at: match.kickoff_at,
+        status: match.status,
+        deadline_at: deadlineAt,
+        is_locked: Date.now() >= new Date(deadlineAt).getTime(),
+        team_a: match.team_a,
+        team_b: match.team_b,
+        markets: marketState,
+        selected_count: selectedCount,
+        required_count: marketState.length,
+        is_complete: marketState.length > 0 && selectedCount === marketState.length,
+      };
+    }).filter((match) => match.markets.length),
+  };
 }
 
 async function getLockedFutureCategories({ supabase, stage = LOCKED_FUTURE_STAGE }) {
@@ -1498,10 +1753,110 @@ export async function getPredictionPulseState({ groupSlug }) {
     .sort(sortByKickoffDesc)
     .slice(0, Math.max(0, PULSE_RECENT_LIMIT - recentWithPicks.length));
   const pulseMatches = [...recentWithPicks, ...fillerMatches].sort(sortByKickoffDesc);
+  const parlayPulse = await getParlayPulseState({ groupSlug, overview });
 
   return {
     group_slug: groupSlug,
     matches: pulseMatches,
+    parlay_matches: parlayPulse?.matches || [],
+  };
+}
+
+export async function getParlayPulseState({ groupSlug, overview: providedOverview = null } = {}) {
+  const supabase = getOptionalSupabaseClient();
+  if (!supabase) return { group_slug: groupSlug, matches: [] };
+
+  const overview = providedOverview || await getGroupOverview(groupSlug);
+  if (!overview?.id) return null;
+
+  const slipState = await getParlaySlipState({ groupSlug });
+  const matchIds = new Set((slipState?.matches || []).map((match) => match.external_match_id));
+  if (!matchIds.size) return { group_slug: groupSlug, matches: [] };
+
+  const { data: rows, error } = await supabase
+    .from("parlay_predictions")
+    .select(`
+      match_id,
+      market_id,
+      option_id,
+      predicted_team_a_score,
+      predicted_team_b_score,
+      managers!inner ( display_name )
+    `)
+    .eq("group_id", overview.id)
+    .eq("status", "active");
+  if (error) {
+    if (isMissingRelationError(error)) return { group_slug: groupSlug, matches: [] };
+    throw new Error(error.message);
+  }
+
+  const managersByOption = new Map();
+  const exactScoresByMarket = new Map();
+  for (const row of rows || []) {
+    if (!row.managers?.display_name) continue;
+    if (row.option_id) {
+      const names = managersByOption.get(row.option_id) || [];
+      names.push(row.managers.display_name);
+      managersByOption.set(row.option_id, names);
+      continue;
+    }
+    if (row.predicted_team_a_score === null || row.predicted_team_a_score === undefined) continue;
+    if (row.predicted_team_b_score === null || row.predicted_team_b_score === undefined) continue;
+    const scoreKey = `${row.predicted_team_a_score}-${row.predicted_team_b_score}`;
+    const groupedKey = `${row.market_id}::${scoreKey}`;
+    const names = exactScoresByMarket.get(groupedKey) || [];
+    names.push(row.managers.display_name);
+    exactScoresByMarket.set(groupedKey, names);
+  }
+
+  const matches = (slipState?.matches || [])
+    .filter((match) => Date.now() >= new Date(match.deadline_at).getTime())
+    .map((match) => ({
+      external_match_id: match.external_match_id,
+      stage: match.stage,
+      kickoff_at: match.kickoff_at,
+      status: match.status,
+      team_a_name: match.team_a?.name || null,
+      team_a_code: match.team_a?.fifa_code || null,
+      team_b_name: match.team_b?.name || null,
+      team_b_code: match.team_b?.fifa_code || null,
+      markets: (match.markets || []).map((market) => ({
+        market_key: market.market_key,
+        label: market.label,
+        line: market.line,
+        options: (market.options || []).map((option) => ({
+          option_key: option.option_key,
+          label: option.label,
+          points: option.points,
+          is_correct: option.is_correct,
+          managers: (managersByOption.get(option.id) || [])
+            .sort((left, right) => left.localeCompare(right))
+            .join(", "),
+        })),
+        exact_scores: market.market_type === "exact_score"
+          ? [...exactScoresByMarket.entries()]
+              .filter(([key]) => key.startsWith(`${market.id}::`))
+              .map(([key, managers]) => {
+                const score = key.split("::").at(-1);
+                return {
+                  label: score,
+                  points: market.points,
+                  is_correct: isExactScoreCorrect({ match, score }),
+                  managers: managers.sort((left, right) => left.localeCompare(right)).join(", "),
+                };
+              })
+          : [],
+      })),
+    }))
+    .filter((match) => match.markets.some((market) => {
+      return market.options.some((option) => hasText(option.managers))
+        || market.exact_scores?.some((score) => hasText(score.managers));
+    }))
+    .sort(sortByKickoffDesc);
+
+  return {
+    group_slug: groupSlug,
+    matches,
   };
 }
 
@@ -1547,12 +1902,14 @@ export async function getLeaderboardShell({ groupSlug }) {
     draftedTeamPointsByManager,
     draftedPlayerPointsByManager,
     lockedFuturePointsByManager,
+    parlayPointsByManager,
   ] = await Promise.all([
     getPredictionScoringSummary(overview),
     getManualPointsByManager(overview),
     getDraftedTeamPointsByManager(overview),
     getDraftedPlayerPointsByManager(overview),
     getLockedFuturePointsByManager(overview),
+    getParlayPointsByManager(overview),
   ]);
   const rows = overview.managers.map((manager) => {
     const groupStage = predictionSummary.groupStagePointsByManager.get(manager.manager_code) || 0;
@@ -1565,10 +1922,12 @@ export async function getLeaderboardShell({ groupSlug }) {
     const draftedTeams = draftedTeamPointsByManager.get(manager.manager_code) || 0;
     const draftedPlayers = draftedPlayerPointsByManager.get(manager.manager_code) || 0;
     const futures = lockedFuturePointsByManager.get(manager.manager_code) || 0;
+    const parlays = parlayPointsByManager.get(manager.manager_code) || 0;
     const total = totalLeaderboardPoints({
       groupStage,
       knockoutPredictions,
       knockoutRisks,
+      parlays,
       futures,
       draftedTeams,
       draftedPlayers,
@@ -1578,6 +1937,7 @@ export async function getLeaderboardShell({ groupSlug }) {
       groupStage: previousGroupStage,
       knockoutPredictions: previousKnockoutPredictions,
       knockoutRisks: previousKnockoutRisks,
+      parlays,
       futures,
       draftedTeams,
       draftedPlayers,
@@ -1592,6 +1952,7 @@ export async function getLeaderboardShell({ groupSlug }) {
       group_stage_points: groupStage,
       knockout_prediction_points: knockoutPredictions,
       knockout_risk_points: knockoutRisks,
+      parlay_points: parlays,
       futures_points: futures,
       drafted_teams_points: draftedTeams,
       drafted_players_points: draftedPlayers,
@@ -1687,6 +2048,80 @@ async function getLockedFuturePointsByManager(overview) {
     totals.set(managerCode, (totals.get(managerCode) || 0) + points);
     return totals;
   }, new Map());
+}
+
+async function getParlayPointsByManager(overview) {
+  const supabase = getOptionalSupabaseClient();
+  if (!supabase || !overview?.id) return new Map();
+
+  const [
+    { data: marketRows, error: marketError },
+    { data: predictionRows, error: predictionError },
+  ] = await Promise.all([
+    supabase
+      .from("parlay_markets")
+      .select("id,match_id")
+      .eq("is_active", true),
+    supabase
+      .from("parlay_predictions")
+      .select(`
+        match_id,
+        predicted_team_a_score,
+        predicted_team_b_score,
+        managers!inner ( manager_code ),
+        parlay_markets!inner ( market_type, points ),
+        parlay_options ( points, is_correct ),
+        matches!inner ( status, team_a_score, team_b_score )
+      `)
+      .eq("group_id", overview.id)
+      .eq("status", "active"),
+  ]);
+
+  if (marketError) {
+    if (isMissingRelationError(marketError)) return new Map();
+    throw new Error(marketError.message);
+  }
+  if (predictionError) {
+    if (isMissingRelationError(predictionError)) return new Map();
+    throw new Error(predictionError.message);
+  }
+
+  const requiredCountByMatch = (marketRows || []).reduce((counts, row) => {
+    counts.set(row.match_id, (counts.get(row.match_id) || 0) + 1);
+    return counts;
+  }, new Map());
+  const selectionsByManagerMatch = new Map();
+  for (const row of predictionRows || []) {
+    const managerCode = row.managers?.manager_code;
+    if (!managerCode || !row.match_id) continue;
+    const key = `${managerCode}::${row.match_id}`;
+    const selections = selectionsByManagerMatch.get(key) || {
+      managerCode,
+      matchId: row.match_id,
+      selections: [],
+    };
+    selections.selections.push({
+      points: row.parlay_markets?.market_type === "exact_score"
+        ? row.parlay_markets?.points
+        : row.parlay_options?.points,
+      is_correct: row.parlay_markets?.market_type === "exact_score"
+        ? getExactScoreSelectionResult(row)
+        : row.parlay_options?.is_correct,
+    });
+    selectionsByManagerMatch.set(key, selections);
+  }
+
+  const pointsByManager = new Map();
+  for (const item of selectionsByManagerMatch.values()) {
+    const points = scoreParlaySlip({
+      selections: item.selections,
+      requiredCount: requiredCountByMatch.get(item.matchId) || 0,
+    });
+    if (!points) continue;
+    pointsByManager.set(item.managerCode, (pointsByManager.get(item.managerCode) || 0) + points);
+  }
+
+  return pointsByManager;
 }
 
 async function getManualPointsByManager(overview) {
@@ -2205,6 +2640,50 @@ function groupRowsByManager(rows) {
     grouped.set(row.manager_code, managerRows);
     return grouped;
   }, new Map());
+}
+
+function groupRowsByKey(rows, keyName) {
+  return (rows || []).reduce((grouped, row) => {
+    const key = row?.[keyName];
+    if (!key) return grouped;
+    const keyRows = grouped.get(key) || [];
+    keyRows.push(row);
+    grouped.set(key, keyRows);
+    return grouped;
+  }, new Map());
+}
+
+function hasText(value) {
+  return String(value || "").trim().length > 0;
+}
+
+function cleanExactScoreSelection(value) {
+  if (!value || typeof value !== "object") return null;
+  const teamAScore = Number(value.team_a_score);
+  const teamBScore = Number(value.team_b_score);
+  if (!Number.isInteger(teamAScore) || !Number.isInteger(teamBScore)) return null;
+  if (teamAScore < 0 || teamBScore < 0) return null;
+  return { teamAScore, teamBScore };
+}
+
+function getExactScoreSelectionResult(row) {
+  const match = row.matches;
+  if (!match || match.status !== "finished") return null;
+  const predictedA = numberOrNull(row.predicted_team_a_score);
+  const predictedB = numberOrNull(row.predicted_team_b_score);
+  const actualA = numberOrNull(match.team_a_score);
+  const actualB = numberOrNull(match.team_b_score);
+  if (predictedA === null || predictedB === null || actualA === null || actualB === null) return null;
+  return predictedA === actualA && predictedB === actualB;
+}
+
+function isExactScoreCorrect({ match, score }) {
+  if (!match || match.status !== "finished") return null;
+  const [teamA, teamB] = String(score || "").split("-").map((value) => numberOrNull(value));
+  const actualA = numberOrNull(match.team_a_score);
+  const actualB = numberOrNull(match.team_b_score);
+  if (teamA === null || teamB === null || actualA === null || actualB === null) return null;
+  return teamA === actualA && teamB === actualB;
 }
 
 function sortDraftItems(a, b) {

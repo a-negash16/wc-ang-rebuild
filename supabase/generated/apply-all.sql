@@ -583,6 +583,125 @@ comment on column future_pick_options.is_eliminated is
   'Commissioner-controlled flag for future/locked-pick outcomes that are no longer possible but should remain visible historically.';
 
 -- ============================================================
+-- supabase/migrations/0012_final_parlay_slips.sql
+-- ============================================================
+create table if not exists public.parlay_markets (
+  id uuid primary key default gen_random_uuid(),
+  match_id uuid not null references public.matches(id) on delete cascade,
+  stage text not null,
+  market_key text not null,
+  label text not null,
+  market_type text not null check (market_type in ('over_under', 'boolean')),
+  line numeric(6, 1),
+  display_order integer not null default 0,
+  is_active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (match_id, market_key)
+);
+
+create table if not exists public.parlay_options (
+  id uuid primary key default gen_random_uuid(),
+  market_id uuid not null references public.parlay_markets(id) on delete cascade,
+  option_key text not null,
+  label text not null,
+  odds integer,
+  points numeric(6, 1) not null default 0,
+  is_correct boolean,
+  sort_order integer not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (market_id, option_key)
+);
+
+create table if not exists public.parlay_predictions (
+  id uuid primary key default gen_random_uuid(),
+  group_id uuid not null references public.groups(id) on delete cascade,
+  manager_id uuid not null references public.managers(id) on delete cascade,
+  match_id uuid not null references public.matches(id) on delete cascade,
+  market_id uuid not null references public.parlay_markets(id) on delete cascade,
+  option_id uuid not null references public.parlay_options(id) on delete cascade,
+  status text not null default 'active' check (status in ('active', 'void')),
+  submitted_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (group_id, manager_id, match_id, market_id)
+);
+
+alter table public.parlay_markets enable row level security;
+alter table public.parlay_options enable row level security;
+alter table public.parlay_predictions enable row level security;
+
+drop policy if exists "Service role manages parlay markets" on public.parlay_markets;
+create policy "Service role manages parlay markets"
+  on public.parlay_markets
+  for all
+  using (auth.role() = 'service_role')
+  with check (auth.role() = 'service_role');
+
+drop policy if exists "Service role manages parlay options" on public.parlay_options;
+create policy "Service role manages parlay options"
+  on public.parlay_options
+  for all
+  using (auth.role() = 'service_role')
+  with check (auth.role() = 'service_role');
+
+drop policy if exists "Service role manages parlay predictions" on public.parlay_predictions;
+create policy "Service role manages parlay predictions"
+  on public.parlay_predictions
+  for all
+  using (auth.role() = 'service_role')
+  with check (auth.role() = 'service_role');
+
+comment on table public.parlay_markets is
+  'Final and third-place slip questions such as total goals, scorer yes/no, ET/Pens, and cards.';
+comment on table public.parlay_options is
+  'Selectable outcomes for a parlay market. Commissioner marks is_correct after the match.';
+comment on table public.parlay_predictions is
+  'Manager selections for final and third-place parlay slips.';
+
+-- ============================================================
+-- supabase/migrations/0013_parlay_exact_score.sql
+-- ============================================================
+alter table public.parlay_markets
+  add column if not exists points numeric(6, 1) not null default 0;
+
+alter table public.parlay_predictions
+  alter column option_id drop not null;
+
+alter table public.parlay_predictions
+  add column if not exists predicted_team_a_score integer,
+  add column if not exists predicted_team_b_score integer;
+
+alter table public.parlay_predictions
+  drop constraint if exists parlay_predictions_option_or_score_check;
+
+alter table public.parlay_predictions
+  add constraint parlay_predictions_option_or_score_check
+  check (
+    option_id is not null
+    or (
+      predicted_team_a_score is not null
+      and predicted_team_b_score is not null
+      and predicted_team_a_score >= 0
+      and predicted_team_b_score >= 0
+    )
+  );
+
+alter table public.parlay_markets
+  drop constraint if exists parlay_markets_market_type_check;
+
+alter table public.parlay_markets
+  add constraint parlay_markets_market_type_check
+  check (market_type in ('over_under', 'boolean', 'exact_score'));
+
+comment on column public.parlay_markets.points is
+  'Market-level point value used when the market does not have fixed options, such as exact score.';
+comment on column public.parlay_predictions.predicted_team_a_score is
+  'Manager-entered exact score prediction for team A.';
+comment on column public.parlay_predictions.predicted_team_b_score is
+  'Manager-entered exact score prediction for team B.';
+
+-- ============================================================
 -- supabase/seed-data/seed.sql
 -- ============================================================
 -- Generated by scripts/extract-workbook-seeds.py

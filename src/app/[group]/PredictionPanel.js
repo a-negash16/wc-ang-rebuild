@@ -23,7 +23,9 @@ export default function PredictionPanel({
   const [busy, setBusy] = useState(false);
   const [pickState, setPickState] = useState([]);
   const [lockedPickState, setLockedPickState] = useState(null);
+  const [parlaySlipState, setParlaySlipState] = useState(null);
   const [pendingLockedSelections, setPendingLockedSelections] = useState({});
+  const [pendingParlaySelections, setPendingParlaySelections] = useState({});
   const [pendingRiskByMatch, setPendingRiskByMatch] = useState({});
   const [pendingFirstScoreRiskByMatch, setPendingFirstScoreRiskByMatch] = useState({});
   const [now, setNow] = useState(() => Date.now());
@@ -268,7 +270,9 @@ export default function PredictionPanel({
     setSession(null);
     setPickState([]);
     setLockedPickState(null);
+    setParlaySlipState(null);
     setPendingLockedSelections({});
+    setPendingParlaySelections({});
     setStatus("Session cleared.");
   }
 
@@ -283,20 +287,26 @@ export default function PredictionPanel({
       if (response.ok && payload.ok) {
         setPickState(payload.matches || []);
         setLockedPickState(payload.locked_picks || null);
+        setParlaySlipState(payload.parlay_slips || null);
         setPendingLockedSelections(buildLockedSelections(payload.locked_picks));
+        setPendingParlaySelections(buildParlaySelections(payload.parlay_slips));
         return true;
       }
     } catch {
       if (clearOnError) {
         setPickState([]);
         setLockedPickState(null);
+        setParlaySlipState(null);
         setPendingLockedSelections({});
+        setPendingParlaySelections({});
       }
     }
     if (clearOnError) {
       setPickState([]);
       setLockedPickState(null);
+      setParlaySlipState(null);
       setPendingLockedSelections({});
+      setPendingParlaySelections({});
     }
     return false;
   }
@@ -334,6 +344,50 @@ export default function PredictionPanel({
       setLockedPickState(payload.locked_picks || null);
       setPendingLockedSelections(buildLockedSelections(payload.locked_picks));
       setStatus(formatLockedPickConfirmation(payload.locked_picks));
+      await loadPickState(session.token, { clearOnError: false });
+    } catch (error) {
+      setStatus(error.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function updateParlaySelection(externalMatchId, marketKey, optionKey) {
+    setPendingParlaySelections((current) => ({
+      ...current,
+      [externalMatchId]: {
+        ...(current[externalMatchId] || {}),
+        [marketKey]: optionKey,
+      },
+    }));
+  }
+
+  async function submitParlaySlip(match) {
+    if (!session?.token) {
+      setStatus("Unlock before saving parlay slips.");
+      return;
+    }
+    if (match?.is_locked) {
+      setStatus("Parlay slip deadline passed.");
+      return;
+    }
+    setBusy(true);
+    setStatus("Saving parlay slip...");
+    try {
+      const response = await fetch("/api/predictions/parlay", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token: session.token,
+          external_match_id: match.external_match_id,
+          selections: pendingParlaySelections[match.external_match_id] || {},
+        }),
+      });
+      const payload = await response.json();
+      if (!response.ok || !payload.ok) throw new Error(payload.message || "Could not save parlay slip");
+      setParlaySlipState(payload.parlay_slips || null);
+      setPendingParlaySelections(buildParlaySelections(payload.parlay_slips));
+      setStatus(formatParlayConfirmation(match, payload.parlay_slips));
       await loadPickState(session.token, { clearOnError: false });
     } catch (error) {
       setStatus(error.message);
@@ -540,7 +594,166 @@ export default function PredictionPanel({
           <span>Upcoming round matches will appear here once teams are set and deadlines are open.</span>
         </article>
       )}
+
+      {session ? (
+        <ParlaySlipCards
+          parlaySlips={parlaySlipState}
+          selections={pendingParlaySelections}
+          busy={busy}
+          now={now}
+          timezone={timezone}
+          onSelect={updateParlaySelection}
+          onSubmit={submitParlaySlip}
+        />
+      ) : null}
     </section>
+  );
+}
+
+function ParlaySlipCards({ parlaySlips, selections, busy, now, timezone, onSelect, onSubmit }) {
+  const matches = (parlaySlips?.matches || []).filter((match) => !match.is_locked && match.markets?.length);
+  if (!matches.length) return null;
+
+  return (
+    <div className="parlay-slip-wrap">
+      <div className="section-heading compact">
+        <div>
+          <p className="eyebrow">Final bonus</p>
+          <h2>{parlaySlips?.label || "Final / 3rd Place Slip"}</h2>
+        </div>
+        <span className="status-chip">Parlay</span>
+      </div>
+      <div className="swipe-rail parlay-slip-rail" aria-label="Final and third-place parlay slips">
+        {matches.map((match) => {
+          const matchSelections = selections?.[match.external_match_id] || {};
+          const complete = isParlaySelectionComplete(match, matchSelections);
+          return (
+            <article className={match.is_complete ? "panel parlay-slip-card complete" : "panel parlay-slip-card"} key={match.external_match_id}>
+              <div className="rail-heading parlay-slip-heading">
+                <div>
+                  <p className="eyebrow">{match.stage}</p>
+                  <h3>{formatTeams(match)}</h3>
+                  <span>All correct doubles your base points. One miss pays 1.5x.</span>
+                  <small className="locked-picks-deadline">
+                    Locks {formatShortDeadline(match.deadline_at, timezone)} · {formatTimeLeft(new Date(match.deadline_at), now)}
+                  </small>
+                </div>
+                <strong>{countParlaySelections(match, matchSelections)}/{match.required_count}</strong>
+              </div>
+              <div className="parlay-market-list">
+                {match.markets.map((market) => (
+                  <div className="parlay-market" key={market.market_key}>
+                    <strong>{market.label}</strong>
+                    {market.market_type === "exact_score" ? (
+                      <ExactScorePicker
+                        match={match}
+                        market={market}
+                        value={matchSelections[market.market_key] || market.exact_score || {}}
+                        disabled={busy || match.is_locked}
+                        onChange={(value) => onSelect(match.external_match_id, market.market_key, value)}
+                      />
+                    ) : (
+                      <div className="parlay-option-grid">
+                        {(market.options || []).map((option) => {
+                          const selected = matchSelections[market.market_key] === option.option_key || market.selected?.option_key === option.option_key;
+                          return (
+                            <button
+                              className={selected ? "selected" : ""}
+                              type="button"
+                              disabled={busy || match.is_locked}
+                              key={`${market.market_key}-${option.option_key}`}
+                              onClick={() => onSelect(match.external_match_id, market.market_key, option.option_key)}
+                            >
+                              <b>{option.label}</b>
+                              <small>{formatPickPoints(option.points)}</small>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+              {match.is_complete ? <ParlaySlipConfirmation match={match} /> : null}
+              <button
+                className="locked-picks-submit"
+                type="button"
+                disabled={busy || match.is_locked || !complete}
+                onClick={() => onSubmit(match)}
+              >
+                {match.is_complete ? "Update Slip" : "Save Slip"}
+              </button>
+            </article>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function ParlaySlipConfirmation({ match }) {
+  const selected = (match.markets || [])
+    .filter((market) => market.selected || hasCompleteExactScore(market.exact_score))
+    .map((market) => {
+      if (market.market_type === "exact_score") {
+        return {
+          key: market.market_key,
+          label: market.label,
+          value: `${market.exact_score.team_a_score}-${market.exact_score.team_b_score} ${formatPickPoints(market.points)}`,
+        };
+      }
+      return {
+        key: market.market_key,
+        label: market.label,
+        value: `${market.selected.label} ${formatPickPoints(market.selected.points)}`,
+      };
+    });
+  if (!selected.length) return null;
+  return (
+    <div className="parlay-slip-confirmation" aria-label={`${match.stage} parlay slip confirmation`}>
+      <strong>{match.stage} Slip Confirmation</strong>
+      <div>
+        {selected.map((item) => (
+          <span key={item.key}>
+            <b>{item.label}</b>
+            <em>{item.value}</em>
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ExactScorePicker({ match, market, value, disabled, onChange }) {
+  const teamAValue = value?.team_a_score ?? "";
+  const teamBValue = value?.team_b_score ?? "";
+  return (
+    <div className="exact-score-picker">
+      <label>
+        <span>{match.team_a?.name || "Team A"}</span>
+        <input
+          inputMode="numeric"
+          min="0"
+          type="number"
+          value={teamAValue}
+          disabled={disabled}
+          onChange={(event) => onChange({ ...value, team_a_score: event.target.value })}
+        />
+      </label>
+      <b>-</b>
+      <label>
+        <span>{match.team_b?.name || "Team B"}</span>
+        <input
+          inputMode="numeric"
+          min="0"
+          type="number"
+          value={teamBValue}
+          disabled={disabled}
+          onChange={(event) => onChange({ ...value, team_b_score: event.target.value })}
+        />
+      </label>
+      <small>{formatPickPoints(market.points)}</small>
+    </div>
   );
 }
 
@@ -828,6 +1041,21 @@ function formatLockedPickConfirmation(lockedPicks) {
     : "Semi-Final Locked Picks saved. Match predictions are unlocked.";
 }
 
+function formatParlayConfirmation(match, parlaySlips) {
+  const savedMatch = (parlaySlips?.matches || []).find((item) => item.external_match_id === match.external_match_id);
+  const selected = (savedMatch?.markets || [])
+    .filter((market) => market.selected || hasCompleteExactScore(market.exact_score))
+    .map((market) => {
+      if (market.market_type === "exact_score") {
+        return `${market.label}: ${market.exact_score.team_a_score}-${market.exact_score.team_b_score} ${formatPickPoints(market.points)}`;
+      }
+      return `${market.label}: ${market.selected.label} ${formatPickPoints(market.selected.points)}`;
+    });
+  return selected.length
+    ? `${savedMatch?.stage || match.stage} slip saved. ${selected.join(" | ")}`
+    : `${match.stage} slip saved.`;
+}
+
 function buildLockedSelections(lockedPicks) {
   return (lockedPicks?.categories || []).reduce((selections, category) => {
     if (category.selected?.option_key) selections[category.key] = category.selected.option_key;
@@ -835,9 +1063,49 @@ function buildLockedSelections(lockedPicks) {
   }, {});
 }
 
+function buildParlaySelections(parlaySlips) {
+  return (parlaySlips?.matches || []).reduce((matchSelections, match) => {
+    const selections = {};
+    for (const market of match.markets || []) {
+      if (market.selected?.option_key) selections[market.market_key] = market.selected.option_key;
+      if (market.market_type === "exact_score" && hasCompleteExactScore(market.exact_score)) {
+        selections[market.market_key] = market.exact_score;
+      }
+    }
+    if (Object.keys(selections).length) matchSelections[match.external_match_id] = selections;
+    return matchSelections;
+  }, {});
+}
+
 function isLockedSelectionComplete(categories, selections) {
   if (!categories?.length) return false;
   return categories.every((category) => Boolean(selections?.[category.key]));
+}
+
+function isParlaySelectionComplete(match, selections) {
+  const markets = match?.markets || [];
+  if (!markets.length) return false;
+  return markets.every((market) => {
+    if (market.market_type === "exact_score") return hasCompleteExactScore(selections?.[market.market_key]);
+    return Boolean(selections?.[market.market_key]);
+  });
+}
+
+function countParlaySelections(match, selections) {
+  return (match?.markets || []).filter((market) => {
+    if (market.market_type === "exact_score") return hasCompleteExactScore(selections?.[market.market_key]);
+    return Boolean(selections?.[market.market_key]);
+  }).length;
+}
+
+function hasCompleteExactScore(value) {
+  if (!value || typeof value !== "object") return false;
+  return value.team_a_score !== null
+    && value.team_a_score !== undefined
+    && value.team_a_score !== ""
+    && value.team_b_score !== null
+    && value.team_b_score !== undefined
+    && value.team_b_score !== "";
 }
 
 function requiresLockedPicksForStage(stage) {
@@ -919,15 +1187,22 @@ function getCurrentPredictionRoundMatches(matches) {
   });
   const firstMatch = sorted[0];
   if (!firstMatch) return [];
-  const stage = firstMatch.stage || "";
-  return sorted.filter((match) => (match.stage || "") === stage);
+  const stageGroup = getPredictionStageGroup(firstMatch.stage);
+  return sorted.filter((match) => getPredictionStageGroup(match.stage) === stageGroup);
 }
 
 function getPredictionRoundLabel(matches) {
-  const stage = matches[0]?.stage;
+  const stage = getPredictionStageGroup(matches[0]?.stage);
   if (!stage) return null;
   if (stage === "Group Stage") return "Open Picks";
+  if (stage === "Final Weekend") return "Final Weekend Picks";
   return `${stage} Picks`;
+}
+
+function getPredictionStageGroup(stage) {
+  const label = String(stage || "").trim();
+  if (label === "Final" || label === "Third Place") return "Final Weekend";
+  return label;
 }
 
 function getDeadline(kickoffAt, lockMinutesBeforeKickoff) {

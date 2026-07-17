@@ -3346,3 +3346,241 @@ button:disabled {
   border-radius: 999px;
   padding: 5px 10px;
 }
+
+.parlay-slip-wrap {
+  display: grid;
+  gap: 14px;
+}
+
+.parlay-slip-rail > * {
+  flex: 0 0 min(520px, 88vw);
+}
+
+.parlay-slip-card {
+  display: grid;
+  gap: 18px;
+  border-color: rgba(21, 61, 88, 0.18);
+}
+
+.parlay-slip-card.complete {
+  border-color: rgba(23, 122, 76, 0.32);
+  box-shadow: 0 18px 48px rgba(23, 122, 76, 0.12);
+}
+
+.parlay-slip-heading h3 {
+  margin: 0;
+  color: #152238;
+  font-size: clamp(1.1rem, 2.4vw, 1.45rem);
+}
+
+.parlay-slip-heading span {
+  display: block;
+  color: #5d6675;
+  font-size: 0.92rem;
+}
+
+.parlay-market-list {
+  display: grid;
+  gap: 14px;
+}
+
+.parlay-market {
+  display: grid;
+  gap: 8px;
+}
+
+.parlay-market > strong {
+  color: #243142;
+  font-size: 0.94rem;
+}
+
+.parlay-option-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.parlay-option-grid button {
+  min-height: 58px;
+  border: 1px solid rgba(21, 61, 88, 0.18);
+  background: #fffdf6;
+  color: #253247;
+  border-radius: 10px;
+  display: grid;
+  gap: 3px;
+  justify-items: center;
+  align-content: center;
+  padding: 9px;
+  cursor: pointer;
+}
+
+.parlay-option-grid button.selected {
+  border-color: rgba(17, 94, 89, 0.55);
+  background: #effaf6;
+  color: #0f4f45;
+  box-shadow: inset 0 0 0 1px rgba(17, 94, 89, 0.25);
+}
+
+.parlay-option-grid button:disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
+.parlay-option-grid b {
+  font-size: 0.92rem;
+  text-align: center;
+}
+
+.parlay-option-grid small {
+  color: #6d7584;
+  font-weight: 800;
+}
+
+.exact-score-picker {
+  align-items: end;
+  background: #fffdf6;
+  border: 1px solid rgba(21, 61, 88, 0.18);
+  border-radius: 10px;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto;
+  padding: 10px;
+}
+
+.exact-score-picker label {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.exact-score-picker label span {
+  color: #5c6574;
+  font-size: 0.76rem;
+  font-weight: 900;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.exact-score-picker input {
+  border: 1px solid rgba(21, 61, 88, 0.2);
+  border-radius: 8px;
+  color: #182235;
+  font: inherit;
+  font-weight: 950;
+  min-height: 42px;
+  padding: 6px 8px;
+  text-align: center;
+  width: 100%;
+}
+
+.exact-score-picker > b {
+  color: #566174;
+  padding-bottom: 10px;
+}
+
+.exact-score-picker > small {
+  color: #0f4f45;
+  font-weight: 950;
+  padding-bottom: 10px;
+  white-space: nowrap;
+}
+
+.parlay-slip-confirmation {
+  background: rgba(17, 94, 89, 0.08);
+  border: 1px solid rgba(17, 94, 89, 0.2);
+  border-radius: var(--r-md);
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+
+.parlay-slip-confirmation > strong {
+  color: #0f4f45;
+  font-size: 0.86rem;
+  font-weight: 950;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.parlay-slip-confirmation > div {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.parlay-slip-confirmation span {
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(17, 94, 89, 0.1);
+  border-radius: 8px;
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+}
+
+.parlay-slip-confirmation b {
+  color: #5c6574;
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.parlay-slip-confirmation em {
+  color: #152238;
+  font-size: 0.9rem;
+  font-style: normal;
+  font-weight: 950;
+}
+
+.pulse-parlay-block {
+  display: grid;
+  gap: 14px;
+  margin-top: 20px;
+}
+
+.parlay-pulse-card {
+  min-width: min(520px, 88vw);
+}
+
+.parlay-pulse-markets {
+  display: grid;
+  gap: 14px;
+}
+
+.parlay-pulse-market {
+  display: grid;
+  gap: 8px;
+}
+
+.parlay-pulse-market > strong {
+  color: rgba(255, 255, 255, 0.92);
+}
+
+@media (max-width: 640px) {
+  .parlay-slip-rail > *,
+  .parlay-pulse-card {
+    flex-basis: 92vw;
+    min-width: 92vw;
+  }
+
+  .parlay-option-grid {
+    gap: 7px;
+  }
+
+  .parlay-option-grid b {
+    font-size: 0.84rem;
+  }
+
+  .exact-score-picker {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  }
+
+  .exact-score-picker > small {
+    grid-column: 1 / -1;
+    justify-self: center;
+    padding-bottom: 0;
+  }
+
+  .parlay-slip-confirmation > div {
+    grid-template-columns: 1fr;
+  }
+}

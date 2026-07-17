@@ -88,16 +88,29 @@ export function scoreLockedFuturePick({ selectedOption }) {
   return Math.round(value * 2) / 2;
 }
 
+export function scoreParlaySlip({ selections = [], requiredCount = 0 }) {
+  const scoredSelections = selections.filter((selection) => selection?.is_correct !== null && selection?.is_correct !== undefined);
+  if (!requiredCount || scoredSelections.length < requiredCount) return 0;
+
+  const correctSelections = scoredSelections.filter((selection) => Boolean(selection.is_correct));
+  const wrongCount = scoredSelections.length - correctSelections.length;
+  const basePoints = correctSelections.reduce((sum, selection) => sum + Number(selection.points || 0), 0);
+  const multiplier = wrongCount === 0 ? 2 : wrongCount === 1 ? 1.5 : 1;
+
+  return Math.round(basePoints * multiplier * 2) / 2;
+}
+
 export function totalLeaderboardPoints({
   groupStage = 0,
   knockoutPredictions = 0,
   knockoutRisks = 0,
+  parlays = 0,
   futures = 0,
   draftedTeams = 0,
   draftedPlayers = 0,
   manualAdjustments = 0,
 }) {
-  return [groupStage, knockoutPredictions, knockoutRisks, futures, draftedTeams, draftedPlayers, manualAdjustments]
+  return [groupStage, knockoutPredictions, knockoutRisks, parlays, futures, draftedTeams, draftedPlayers, manualAdjustments]
     .reduce((sum, value) => sum + Number(value || 0), 0);
 }
 

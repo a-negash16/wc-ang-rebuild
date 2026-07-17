@@ -46,7 +46,7 @@ export function getKnockoutStagePointScale(stage) {
   const normalized = String(stage || "").trim().toLowerCase();
   if (normalized.includes("semi")) return { totalPoints: 20, minPoints: 7, maxPoints: 13, label: "SF 13-7 scale" };
   if (normalized.includes("third")) return { totalPoints: 25, minPoints: 10, maxPoints: 15, label: "3rd place 15-10 scale" };
-  if (normalized === "final" || normalized.includes("final")) return { totalPoints: 30, minPoints: 10, maxPoints: 20, label: "Final 20-10 scale" };
+  if (normalized === "final" || normalized.includes("final")) return { totalPoints: 25, minPoints: 10, maxPoints: 15, label: "Final 15-10 scale" };
   if (normalized.includes("quarter")) return { totalPoints: 15, minPoints: 4, maxPoints: 11, label: "QF 11-4 scale" };
   return { totalPoints: 10, minPoints: 3, maxPoints: 7, label: "R32/R16 3-7 scale" };
 }

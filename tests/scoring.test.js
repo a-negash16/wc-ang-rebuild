@@ -9,6 +9,7 @@ import {
   scoreGroupStagePick,
   scoreKnockoutLengthRisk,
   scoreKnockoutWinnerPick,
+  scoreParlaySlip,
   totalLeaderboardPoints,
 } from "../src/rules/scoring.js";
 
@@ -127,14 +128,44 @@ test("futures champion uses odds-weighted point values", () => {
   }), 0);
 });
 
+test("final parlay slip applies completion multipliers only after grading", () => {
+  assert.equal(scoreParlaySlip({
+    requiredCount: 3,
+    selections: [
+      { points: 5, is_correct: true },
+      { points: 6.5, is_correct: true },
+      { points: 4, is_correct: true },
+    ],
+  }), 31);
+
+  assert.equal(scoreParlaySlip({
+    requiredCount: 3,
+    selections: [
+      { points: 5, is_correct: true },
+      { points: 6.5, is_correct: false },
+      { points: 4, is_correct: true },
+    ],
+  }), 13.5);
+
+  assert.equal(scoreParlaySlip({
+    requiredCount: 3,
+    selections: [
+      { points: 5, is_correct: true },
+      { points: 6.5, is_correct: null },
+      { points: 4, is_correct: true },
+    ],
+  }), 0);
+});
+
 test("leaderboard total sums all scoring buckets", () => {
   assert.equal(totalLeaderboardPoints({
     groupStage: 15,
     knockoutPredictions: 12,
     knockoutRisks: -2,
+    parlays: 13.5,
     futures: 100,
     draftedTeams: 30,
     draftedPlayers: 25,
     manualAdjustments: 20,
-  }), 200);
+  }), 213.5);
 });

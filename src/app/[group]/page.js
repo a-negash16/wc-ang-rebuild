@@ -241,7 +241,8 @@ function getDraftPlayersByCode(draftRoom) {
 
 function PredictionPulse({ pulse }) {
   const matches = pulse?.matches || [];
-  if (!matches.length) return null;
+  const parlayMatches = pulse?.parlay_matches || [];
+  if (!matches.length && !parlayMatches.length) return null;
 
   return (
     <section className="section section-dark pulse-section" id="prediction-pulse" aria-labelledby="prediction-pulse-title">
@@ -250,11 +251,12 @@ function PredictionPulse({ pulse }) {
           <p className="eyebrow">Room energy</p>
           <h2 id="prediction-pulse-title">Prediction Pulse</h2>
         </div>
-        <span className="status-chip">{matches.length} latest</span>
+        <span className="status-chip">{matches.length + parlayMatches.length} latest</span>
       </div>
 
-      <div className="swipe-rail pulse-rail" aria-label="Revealed prediction pulse cards">
-        {matches.map((match) => (
+      {matches.length ? (
+        <div className="swipe-rail pulse-rail" aria-label="Revealed prediction pulse cards">
+          {matches.map((match) => (
           <article className={`pulse-card pulse-card-${getPulseStatus(match)}`} key={match.external_match_id}>
             <div className="pulse-card-heading">
               <div className="pulse-meta-row">
@@ -296,9 +298,66 @@ function PredictionPulse({ pulse }) {
             </div>
             {match.stage === "Group Stage" ? null : <PulseRiskBonus match={match} />}
           </article>
+          ))}
+        </div>
+      ) : null}
+
+      {parlayMatches.length ? (
+        <div className="pulse-parlay-block">
+          <div className="pulse-risk-heading">
+            <strong>Final / 3rd Place Slips</strong>
+            <span>Parlay reveal</span>
+          </div>
+          <div className="swipe-rail pulse-rail parlay-pulse-rail" aria-label="Revealed parlay slip cards">
+            {parlayMatches.map((match) => <ParlayPulseCard match={match} key={`parlay-${match.external_match_id}`} />)}
+          </div>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function ParlayPulseCard({ match }) {
+  return (
+    <article className={`pulse-card parlay-pulse-card pulse-card-${getPulseStatus(match)}`}>
+      <div className="pulse-card-heading">
+        <div className="pulse-meta-row">
+          <span>{formatKickoff(match.kickoff_at)}</span>
+          <span className={`match-state match-state-${getPulseStatus(match)}`}>
+            {match.stage}
+          </span>
+        </div>
+        <PulseMatchup match={match} />
+      </div>
+      <div className="parlay-pulse-markets">
+        {(match.markets || []).map((market) => (
+          <div className="parlay-pulse-market" key={market.market_key}>
+            <strong>{market.label}</strong>
+            <div className="pulse-risk-grid">
+              {[...(market.options || []), ...(market.exact_scores || [])].filter((option) => hasManagers(option.managers)).map((option) => {
+                const resultClass = option.is_correct === true
+                  ? "is-correct"
+                  : option.is_correct === false
+                    ? "is-wrong"
+                    : "";
+                return (
+                  <PulseRiskChoice
+                    key={`${market.market_key}-${option.option_key || option.label}`}
+                    label={option.label}
+                    managers={option.managers}
+                    isFinished={option.is_correct !== null && option.is_correct !== undefined}
+                    isCorrect={option.is_correct === true}
+                    winLabel={`+${formatPoints(option.points)}`}
+                    lossLabel="miss"
+                    resultClassOverride={resultClass}
+                  />
+                );
+              })}
+            </div>
+          </div>
         ))}
       </div>
-    </section>
+    </article>
   );
 }
 
@@ -364,8 +423,8 @@ function PulseRiskBonus({ match }) {
   );
 }
 
-function PulseRiskChoice({ label, managers, isFinished, isCorrect, winLabel, lossLabel }) {
-  const resultClass = isFinished ? isCorrect ? "is-correct" : "is-wrong" : "";
+function PulseRiskChoice({ label, managers, isFinished, isCorrect, winLabel, lossLabel, resultClassOverride = "" }) {
+  const resultClass = resultClassOverride || (isFinished ? isCorrect ? "is-correct" : "is-wrong" : "");
   const pointsLabel = isFinished ? isCorrect ? winLabel : lossLabel : `${winLabel}/${lossLabel}`;
   return (
     <div className="pulse-risk-choice">
@@ -476,6 +535,7 @@ function Leaderboard({ leaderboard }) {
                   <th>Group</th>
                   <th>KO</th>
                   <th>Risks</th>
+                  <th>Parlay</th>
                   <th>Players</th>
                   <th>Teams</th>
                 </tr>
@@ -494,6 +554,7 @@ function Leaderboard({ leaderboard }) {
                     <td>{formatPoints(row.group_stage_points)}</td>
                     <td>{formatPoints(row.knockout_prediction_points)}</td>
                     <td>{formatPoints(row.knockout_risk_points)}</td>
+                    <td>{formatPoints(row.parlay_points)}</td>
                     <td>{formatPoints(row.drafted_players_points)}</td>
                     <td>{formatPoints(row.drafted_teams_points)}</td>
                   </tr>
@@ -619,7 +680,7 @@ function RulesSection() {
         ["QF", "11-4"],
         ["SF", "13-7"],
         ["3rd", "15-10"],
-        ["Final", "20-10"],
+        ["Final", "15-10"],
         ["Score first risk", "+3 / -1"],
       ],
     },
