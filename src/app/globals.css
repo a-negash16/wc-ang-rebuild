@@ -203,6 +203,7 @@ button:disabled {
 }
 
 .hero h1 {
+  bottom: clamp(78px, 8.5vw, 118px);
   color: #fff5cf;
   font-family: var(--font-display);
   font-size: clamp(3.2rem, 7vw, 6.4rem);
@@ -219,8 +220,7 @@ button:disabled {
   text-shadow:
     0 5px 22px rgba(0, 0, 0, 0.82),
     0 0 3px rgba(0, 0, 0, 0.74);
-  top: 50%;
-  transform: translate(-50%, -50%);
+  transform: translateX(-50%);
   z-index: 1;
 }
 
@@ -2815,11 +2815,11 @@ button:disabled {
   }
 
   .hero h1 {
+    bottom: 58px;
     font-size: clamp(2.45rem, 10vw, 4rem);
     left: 50%;
     max-width: min(86vw, 420px);
-    top: 48%;
-    transform: translate(-50%, -50%);
+    transform: translateX(-50%);
   }
 
   .hero-status-line + .hero-status-line {
