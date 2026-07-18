@@ -34,6 +34,7 @@ export async function POST(request) {
     if (isPredictionLocked({
       kickoffAt: match.kickoff_at,
       lockMinutesBeforeKickoff: match.lock_minutes_before_kickoff,
+      stage: match.stage,
     })) {
       return jsonError("Deadline passed", 400);
     }

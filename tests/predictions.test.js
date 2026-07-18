@@ -23,6 +23,31 @@ test("prediction deadline locks before kickoff", () => {
   }), true);
 });
 
+test("final weekend predictions lock 10 minutes before kickoff", () => {
+  const kickoffAt = "2026-07-19T19:00:00Z";
+
+  assert.equal(isPredictionLocked({
+    kickoffAt,
+    lockMinutesBeforeKickoff: 60,
+    stage: "Final",
+    now: new Date("2026-07-19T18:49:59Z"),
+  }), false);
+
+  assert.equal(isPredictionLocked({
+    kickoffAt,
+    lockMinutesBeforeKickoff: 60,
+    stage: "Final",
+    now: new Date("2026-07-19T18:50:00Z"),
+  }), true);
+
+  assert.equal(isPredictionLocked({
+    kickoffAt,
+    lockMinutesBeforeKickoff: 60,
+    stage: "Third Place",
+    now: new Date("2026-07-19T18:50:00Z"),
+  }), true);
+});
+
 test("group stage allows tie but knockouts require a winner", () => {
   assert.deepEqual(validatePickForMatch({
     pickType: "tie",

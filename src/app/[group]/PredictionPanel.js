@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+import { getLockMinutesBeforeKickoff } from "@/rules/predictions";
+
 const STORAGE_KEY = "wc_ang_rebuild_session";
 const TODAY = "Today";
 const TOMORROW = "Tomorrow";
@@ -36,7 +38,7 @@ export default function PredictionPanel({
   }, [pickState]);
   const openPickMatches = useMemo(() => {
     const unlockedMatches = openMatches.filter((match) => {
-      const deadline = getDeadline(match.kickoff_at, lockMinutesBeforeKickoff);
+      const deadline = getDeadline(match.kickoff_at, lockMinutesBeforeKickoff, match.stage);
       return deadline.getTime() > now;
     });
     return getCurrentPredictionRoundMatches(unlockedMatches);
@@ -500,7 +502,7 @@ export default function PredictionPanel({
               <div className="swipe-rail" aria-label={`${label} prediction cards`}>
               {items.map((match) => {
                 const currentPick = pickByMatch.get(match.external_match_id);
-                const deadline = getDeadline(match.kickoff_at, lockMinutesBeforeKickoff);
+                const deadline = getDeadline(match.kickoff_at, lockMinutesBeforeKickoff, match.stage);
                 const teamACode = getTeamCode(match.team_a);
                 const teamBCode = getTeamCode(match.team_b);
                 const selectedRiskPick = getSelectedRiskPick(match.external_match_id, currentPick);
@@ -1225,8 +1227,8 @@ function getPredictionStageGroup(stage) {
   return label;
 }
 
-function getDeadline(kickoffAt, lockMinutesBeforeKickoff) {
-  const lockMs = Number(lockMinutesBeforeKickoff || 60) * 60 * 1000;
+function getDeadline(kickoffAt, lockMinutesBeforeKickoff, stage) {
+  const lockMs = getLockMinutesBeforeKickoff({ stage, lockMinutesBeforeKickoff }) * 60 * 1000;
   return new Date(new Date(kickoffAt).getTime() - lockMs);
 }
 

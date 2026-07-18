@@ -1,8 +1,21 @@
-export function isPredictionLocked({ kickoffAt, lockMinutesBeforeKickoff, now = new Date() }) {
+const FINAL_WEEKEND_LOCK_MINUTES = 10;
+const DEFAULT_LOCK_MINUTES = 60;
+
+export function isPredictionLocked({ kickoffAt, lockMinutesBeforeKickoff, stage, now = new Date() }) {
   const kickoff = new Date(kickoffAt).getTime();
   if (!Number.isFinite(kickoff)) return true;
-  const lockMs = Number(lockMinutesBeforeKickoff || 60) * 60 * 1000;
+  const lockMs = getLockMinutesBeforeKickoff({ stage, lockMinutesBeforeKickoff }) * 60 * 1000;
   return now.getTime() >= kickoff - lockMs;
+}
+
+export function getLockMinutesBeforeKickoff({ stage, lockMinutesBeforeKickoff } = {}) {
+  if (isFinalWeekendStage(stage)) return FINAL_WEEKEND_LOCK_MINUTES;
+  return Number(lockMinutesBeforeKickoff || DEFAULT_LOCK_MINUTES);
+}
+
+export function isFinalWeekendStage(stage) {
+  const normalized = String(stage || "").trim().toLowerCase().replace(/[\s_-]+/g, " ");
+  return normalized === "final" || normalized === "third place";
 }
 
 export function validatePickForMatch({ pickType, match }) {

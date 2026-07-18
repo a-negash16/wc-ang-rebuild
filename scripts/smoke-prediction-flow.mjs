@@ -1,4 +1,5 @@
 import { verifyPin } from "../src/lib/auth/pin.js";
+import { getLockMinutesBeforeKickoff } from "../src/rules/predictions.js";
 import { loadEnvLocal, requireEnv, supabaseRest } from "./supabase-rest.mjs";
 
 loadEnvLocal();
@@ -99,10 +100,13 @@ async function findNextOpenMatch(group) {
     `/group_matches?select=matches!inner(id,external_match_id,stage,kickoff_at,status,team_a_id,team_b_id,team_a:team_a_id(name),team_b:team_b_id(name))&group_id=eq.${group.id}&matches.status=eq.scheduled&order=matches(kickoff_at).asc`
   );
   const now = Date.now();
-  const lockMs = Number(group.lock_minutes_before_kickoff || 60) * 60 * 1000;
   const match = rows
     .map((row) => row.matches)
     .find((item) => {
+      const lockMs = getLockMinutesBeforeKickoff({
+        stage: item.stage,
+        lockMinutesBeforeKickoff: group.lock_minutes_before_kickoff,
+      }) * 60 * 1000;
       return item.team_a_id
         && item.team_b_id
         && new Date(item.kickoff_at).getTime() - lockMs > now;

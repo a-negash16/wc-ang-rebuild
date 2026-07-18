@@ -11,7 +11,7 @@ import {
   validateLockedFutureSelections,
 } from "@/rules/future-picks";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { validatePickForMatch } from "@/rules/predictions";
+import { getLockMinutesBeforeKickoff, validatePickForMatch } from "@/rules/predictions";
 import { PARLAY_FIXTURES } from "@/rules/parlay";
 import {
   scoreDraftedPlayer,
@@ -1299,7 +1299,7 @@ export async function saveParlaySlip({ groupSlug, managerCode, externalMatchId, 
   const match = matchRow?.matches;
   if (!match) throw new Error("Parlay match not found");
   if (match.status === "finished" || match.status === "cancelled") throw new Error("Parlay slip is closed");
-  if (Date.now() >= new Date(deadlineFor(match.kickoff_at, overview.lock_minutes_before_kickoff)).getTime()) {
+  if (Date.now() >= new Date(deadlineFor(match.kickoff_at, overview.lock_minutes_before_kickoff, match.stage)).getTime()) {
     throw new Error("Deadline passed");
   }
 
@@ -1407,7 +1407,7 @@ function buildParlaySlipState({ groupSlug, lockMinutesBeforeKickoff, matchRows, 
     label: "Final / 3rd Place Slip",
     matches: (matchRows || []).map((row) => {
       const match = row.matches;
-      const deadlineAt = deadlineFor(match.kickoff_at, lockMinutesBeforeKickoff);
+      const deadlineAt = deadlineFor(match.kickoff_at, lockMinutesBeforeKickoff, match.stage);
       const marketRows = (marketsByMatch.get(match.id) || [])
         .sort((left, right) => Number(left.display_order || 0) - Number(right.display_order || 0));
       const marketState = marketRows.map((market) => {
@@ -1653,7 +1653,7 @@ export async function getMissingPicksSummary({ groupSlug, warningHours = MISSING
     .filter(Boolean)
     .filter((match) => {
       if (match.status === "finished") return false;
-      const deadline = new Date(deadlineFor(match.kickoff_at, group.lock_minutes_before_kickoff)).getTime();
+      const deadline = new Date(deadlineFor(match.kickoff_at, group.lock_minutes_before_kickoff, match.stage)).getTime();
       return deadline >= now && deadline <= warningUntil;
     })
     .sort(sortByKickoffAsc);
@@ -1682,7 +1682,7 @@ export async function getMissingPicksSummary({ groupSlug, warningHours = MISSING
     warning_hours: warningHours,
     match_count: monitoredMatches.length,
     next_deadline_at: monitoredMatches[0]
-      ? deadlineFor(monitoredMatches[0].kickoff_at, group.lock_minutes_before_kickoff)
+      ? deadlineFor(monitoredMatches[0].kickoff_at, group.lock_minutes_before_kickoff, monitoredMatches[0].stage)
       : null,
     rows,
   };
@@ -1704,6 +1704,7 @@ export async function getPredictionPulseState({ groupSlug }) {
       const reveal = shouldRevealPulse({
         kickoffAt: match.kickoff_at,
         lockMinutesBeforeKickoff: overview.lock_minutes_before_kickoff,
+        stage: match.stage,
       });
       const winnerType = getPulseWinnerType(match);
       const status = getPulseStatus(match, winnerType);
@@ -1726,7 +1727,7 @@ export async function getPredictionPulseState({ groupSlug }) {
         length: match.length ?? null,
         first_score_team_id: match.first_score_team_id ?? null,
         reveal,
-        locked_until: reveal ? null : deadlineFor(match.kickoff_at, overview.lock_minutes_before_kickoff),
+        locked_until: reveal ? null : deadlineFor(match.kickoff_at, overview.lock_minutes_before_kickoff, match.stage),
         team_a_picks: reveal ? Number(item?.team_a_picks || 0) : null,
         tie_picks: reveal ? Number(item?.tie_picks || 0) : null,
         team_b_picks: reveal ? Number(item?.team_b_picks || 0) : null,
@@ -2950,12 +2951,12 @@ function formatAuditPickLabel({ pickType, pickTeam }) {
   return pickTeam?.name || "Unknown team";
 }
 
-function shouldRevealPulse({ kickoffAt, lockMinutesBeforeKickoff }) {
-  return Date.now() >= new Date(deadlineFor(kickoffAt, lockMinutesBeforeKickoff)).getTime();
+function shouldRevealPulse({ kickoffAt, lockMinutesBeforeKickoff, stage }) {
+  return Date.now() >= new Date(deadlineFor(kickoffAt, lockMinutesBeforeKickoff, stage)).getTime();
 }
 
-function deadlineFor(kickoffAt, lockMinutesBeforeKickoff) {
+function deadlineFor(kickoffAt, lockMinutesBeforeKickoff, stage) {
   const kickoff = new Date(kickoffAt).getTime();
-  const lockMs = Number(lockMinutesBeforeKickoff || 60) * 60 * 1000;
+  const lockMs = getLockMinutesBeforeKickoff({ stage, lockMinutesBeforeKickoff }) * 60 * 1000;
   return new Date(kickoff - lockMs).toISOString();
 }

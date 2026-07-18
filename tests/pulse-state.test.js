@@ -20,3 +20,21 @@ test("pulse reveal shares the same deadline rule as prediction lock", () => {
     now: atDeadline,
   }), true);
 });
+
+test("final weekend pulse reveals at the 10-minute prediction lock", () => {
+  const kickoffAt = "2026-07-19T19:00:00Z";
+
+  assert.equal(isPredictionLocked({
+    kickoffAt,
+    lockMinutesBeforeKickoff: 60,
+    stage: "Final",
+    now: new Date("2026-07-19T18:49:59Z"),
+  }), false);
+
+  assert.equal(isPredictionLocked({
+    kickoffAt,
+    lockMinutesBeforeKickoff: 60,
+    stage: "Final",
+    now: new Date("2026-07-19T18:50:00Z"),
+  }), true);
+});
