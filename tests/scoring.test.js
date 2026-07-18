@@ -155,6 +155,15 @@ test("final parlay slip applies completion multipliers only after grading", () =
       { points: 4, is_correct: true },
     ],
   }), 0);
+
+  assert.equal(scoreParlaySlip({
+    requiredCount: 3,
+    selections: [
+      { points: 5, is_correct: false },
+      { points: 6.5, is_correct: false },
+      { points: 4, is_correct: false },
+    ],
+  }), -20);
 });
 
 test("leaderboard total sums all scoring buckets", () => {

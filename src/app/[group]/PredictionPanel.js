@@ -633,7 +633,7 @@ function ParlaySlipCards({ parlaySlips, selections, busy, now, timezone, onSelec
                 <div>
                   <p className="eyebrow">{match.stage}</p>
                   <h3>{formatTeams(match)}</h3>
-                  <span>All correct doubles your base points. One miss pays 1.5x.</span>
+                  <span>All correct doubles new bonus points. Miss one leg and correct legs pay 1.5x. Miss every leg: -20 pts.</span>
                   <small className="locked-picks-deadline">
                     Locks {formatShortDeadline(match.deadline_at, timezone)} · {formatTimeLeft(new Date(match.deadline_at), now)}
                   </small>
@@ -644,6 +644,7 @@ function ParlaySlipCards({ parlaySlips, selections, busy, now, timezone, onSelec
                 {match.markets.map((market) => (
                   <div className="parlay-market" key={market.market_key}>
                     <strong>{market.label}</strong>
+                    <span>{getParlayMarketHelp(market)}</span>
                     {market.market_type === "exact_score" ? (
                       <ExactScorePicker
                         match={match}
@@ -755,6 +756,25 @@ function ExactScorePicker({ match, market, value, disabled, onChange }) {
       <small>{formatPickPoints(market.points)}</small>
     </div>
   );
+}
+
+function getParlayMarketHelp(market) {
+  if (market.market_key === "var_reviews") {
+    return "Count only when the main referee goes to the screen, across the whole game.";
+  }
+  if (market.market_key === "exact_score") {
+    return "Predict the final official score across the whole game.";
+  }
+  if (market.market_key === "total_goals") {
+    return "Total goals across the whole game.";
+  }
+  if (market.market_key === "yellow_cards") {
+    return "Total yellow cards across the whole game.";
+  }
+  if (String(market.market_key || "").includes("_score")) {
+    return "Pick whether the player scores at least once.";
+  }
+  return "Pick one option.";
 }
 
 function LockedPicksCard({ lockedPicks, selections, busy, now, timezone, onSelect, onSubmit }) {

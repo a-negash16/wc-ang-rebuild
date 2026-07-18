@@ -13,7 +13,7 @@ export const PARLAY_FIXTURES = Object.freeze([
       scorerMarket("kane_score", "Kane scores", "Harry Kane", 105, 3),
       overUnderMarket("var_reviews", "VAR Reviews", 1.5, 5, 4),
       overUnderMarket("yellow_cards", "Yellow Cards", 3.5, 5, 5),
-      exactScoreMarket("exact_score", "Exact Score", 25, 6),
+      exactScoreMarket("exact_score", "Exact Score", 15, 6),
     ],
   },
   {
@@ -28,7 +28,7 @@ export const PARLAY_FIXTURES = Object.freeze([
       scorerMarket("oyarzabal_score", "Oyarzabal scores", "Mikel Oyarzabal", 170, 3),
       overUnderMarket("var_reviews", "VAR Reviews", 1.5, 5, 4),
       overUnderMarket("yellow_cards", "Yellow Cards", 5.5, 5, 5),
-      exactScoreMarket("exact_score", "Exact Score", 25, 6),
+      exactScoreMarket("exact_score", "Exact Score", 15, 6),
     ],
   },
 ]);
@@ -46,6 +46,8 @@ export function getParlayFixtureByExternalMatchId(externalMatchId) {
 }
 
 function overUnderMarket(key, label, line, points, displayOrder) {
+  const overLabel = `${Math.floor(Number(line)) + 1} or more`;
+  const underLabel = `${Math.floor(Number(line))} or less`;
   return {
     market_key: key,
     label,
@@ -53,8 +55,8 @@ function overUnderMarket(key, label, line, points, displayOrder) {
     line,
     display_order: displayOrder,
     options: [
-      { option_key: "over", label: `Over ${line}`, points, sort_order: 1 },
-      { option_key: "under", label: `Under ${line}`, points, sort_order: 2 },
+      { option_key: "over", label: overLabel, points, sort_order: 1 },
+      { option_key: "under", label: underLabel, points, sort_order: 2 },
     ],
   };
 }

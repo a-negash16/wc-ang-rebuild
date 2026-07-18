@@ -320,43 +320,59 @@ function PredictionPulse({ pulse }) {
 function ParlayPulseCard({ match }) {
   return (
     <article className={`pulse-card parlay-pulse-card pulse-card-${getPulseStatus(match)}`}>
-      <div className="pulse-card-heading">
-        <div className="pulse-meta-row">
-          <span>{formatKickoff(match.kickoff_at)}</span>
-          <span className={`match-state match-state-${getPulseStatus(match)}`}>
-            {match.stage}
-          </span>
-        </div>
-        <PulseMatchup match={match} />
-      </div>
-      <div className="parlay-pulse-markets">
-        {(match.markets || []).map((market) => (
-          <div className="parlay-pulse-market" key={market.market_key}>
-            <strong>{market.label}</strong>
-            <div className="pulse-risk-grid">
-              {[...(market.options || []), ...(market.exact_scores || [])].filter((option) => hasManagers(option.managers)).map((option) => {
-                const resultClass = option.is_correct === true
-                  ? "is-correct"
-                  : option.is_correct === false
-                    ? "is-wrong"
-                    : "";
-                return (
-                  <PulseRiskChoice
-                    key={`${market.market_key}-${option.option_key || option.label}`}
-                    label={option.label}
-                    managers={option.managers}
-                    isFinished={option.is_correct !== null && option.is_correct !== undefined}
-                    isCorrect={option.is_correct === true}
-                    winLabel={`+${formatPoints(option.points)}`}
-                    lossLabel="miss"
-                    resultClassOverride={resultClass}
-                  />
-                );
-              })}
+      <div className="parlay-pulse-layout">
+        <div className="parlay-pulse-game">
+          <div className="pulse-card-heading">
+            <div className="pulse-meta-row">
+              <span>{formatKickoff(match.kickoff_at)}</span>
+              <span className={`match-state match-state-${getPulseStatus(match)}`}>
+                {match.stage}
+              </span>
             </div>
+            <PulseMatchup match={match} />
+            {match.status === "finished" ? <PulseScore match={match} /> : null}
           </div>
-        ))}
-      </div>
+          <div className="parlay-pulse-game-note">
+            <strong>Game</strong>
+            <span>Final Weekend prediction slip reveal</span>
+          </div>
+        </div>
+
+        <div className="parlay-pulse-slip">
+          <div className="parlay-pulse-slip-heading">
+            <strong>Slip</strong>
+            <span>Correct picks turn green after commissioner validation.</span>
+          </div>
+          <div className="parlay-pulse-markets">
+            {(match.markets || []).map((market) => (
+              <div className="parlay-pulse-market" key={market.market_key}>
+                <strong>{market.label}</strong>
+                <div className="pulse-risk-grid">
+                  {[...(market.options || []), ...(market.exact_scores || [])].filter((option) => hasManagers(option.managers)).map((option) => {
+                    const resultClass = option.is_correct === true
+                      ? "is-correct"
+                      : option.is_correct === false
+                        ? "is-wrong"
+                        : "";
+                    return (
+                      <PulseRiskChoice
+                        key={`${market.market_key}-${option.option_key || option.label}`}
+                        label={option.label}
+                        managers={option.managers}
+                        isFinished={option.is_correct !== null && option.is_correct !== undefined}
+                        isCorrect={option.is_correct === true}
+                        winLabel={`+${formatPoints(option.points)}`}
+                        lossLabel="miss"
+                        resultClassOverride={resultClass}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+            </div>
     </article>
   );
 }

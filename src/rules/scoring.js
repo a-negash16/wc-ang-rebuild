@@ -94,6 +94,8 @@ export function scoreParlaySlip({ selections = [], requiredCount = 0 }) {
 
   const correctSelections = scoredSelections.filter((selection) => Boolean(selection.is_correct));
   const wrongCount = scoredSelections.length - correctSelections.length;
+  if (wrongCount === scoredSelections.length) return -20;
+
   const basePoints = correctSelections.reduce((sum, selection) => sum + Number(selection.points || 0), 0);
   const multiplier = wrongCount === 0 ? 2 : wrongCount === 1 ? 1.5 : 1;
 

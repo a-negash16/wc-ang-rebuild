@@ -3394,6 +3394,13 @@ button:disabled {
   font-size: 0.94rem;
 }
 
+.parlay-market > span {
+  color: #667085;
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
 .parlay-option-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -3538,17 +3545,68 @@ button:disabled {
 }
 
 .parlay-pulse-card {
-  min-width: min(520px, 88vw);
+  min-width: min(860px, 92vw);
+}
+
+.parlay-pulse-layout {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(230px, 0.82fr) minmax(360px, 1.18fr);
+  align-items: stretch;
+}
+
+.parlay-pulse-game {
+  border: 1px solid rgba(255, 221, 128, 0.16);
+  border-radius: 14px;
+  display: grid;
+  gap: 14px;
+  align-content: space-between;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.parlay-pulse-game .pulse-card-heading {
+  min-width: 0;
+}
+
+.parlay-pulse-game-note,
+.parlay-pulse-slip-heading {
+  display: grid;
+  gap: 3px;
+}
+
+.parlay-pulse-game-note strong,
+.parlay-pulse-slip-heading strong {
+  color: #fff1ad;
+  font-size: 0.84rem;
+  font-weight: 950;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.parlay-pulse-game-note span,
+.parlay-pulse-slip-heading span {
+  color: rgba(247, 250, 255, 0.64);
+  font-size: 0.82rem;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.parlay-pulse-slip {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
 }
 
 .parlay-pulse-markets {
   display: grid;
-  gap: 14px;
+  gap: 12px;
 }
 
 .parlay-pulse-market {
   display: grid;
   gap: 8px;
+  min-width: 0;
 }
 
 .parlay-pulse-market > strong {
@@ -3560,6 +3618,10 @@ button:disabled {
   .parlay-pulse-card {
     flex-basis: 92vw;
     min-width: 92vw;
+  }
+
+  .parlay-pulse-layout {
+    grid-template-columns: 1fr;
   }
 
   .parlay-option-grid {
