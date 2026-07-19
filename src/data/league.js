@@ -1042,6 +1042,7 @@ export async function getManagerPredictionState({ groupSlug, managerCode }) {
     matches: openMatches.map((match) => {
       const pick = pickByMatch.get(match.external_match_id) || null;
       return {
+        id: match.id,
         external_match_id: match.external_match_id,
         stage: match.stage,
         group_label: match.group_label,
@@ -1443,6 +1444,7 @@ function buildParlaySlipState({ groupSlug, lockMinutesBeforeKickoff, matchRows, 
       });
       const selectedCount = marketState.filter((market) => market.selected || market.exact_score).length;
       return {
+        id: match.id,
         external_match_id: match.external_match_id,
         stage: match.stage,
         kickoff_at: match.kickoff_at,
@@ -1793,6 +1795,7 @@ export async function getParlayPulseState({ groupSlug, overview: providedOvervie
 
   const managersByOption = new Map();
   const exactScoresByMarket = new Map();
+  const rowsByMatch = groupRowsByKey(rows || [], "match_id");
   for (const row of rows || []) {
     if (!row.managers?.display_name) continue;
     if (row.option_id) {
@@ -1812,16 +1815,23 @@ export async function getParlayPulseState({ groupSlug, overview: providedOvervie
 
   const matches = (slipState?.matches || [])
     .filter((match) => Date.now() >= new Date(match.deadline_at).getTime())
-    .map((match) => ({
-      external_match_id: match.external_match_id,
-      stage: match.stage,
-      kickoff_at: match.kickoff_at,
-      status: match.status,
-      team_a_name: match.team_a?.name || null,
-      team_a_code: match.team_a?.fifa_code || null,
-      team_b_name: match.team_b?.name || null,
-      team_b_code: match.team_b?.fifa_code || null,
-      markets: (match.markets || []).map((market) => ({
+    .map((match) => {
+      const multiplierWinners = getParlayMultiplierWinners({
+        match,
+        markets: match.markets || [],
+        rows: rowsByMatch.get(match.id) || [],
+      });
+      return {
+        external_match_id: match.external_match_id,
+        stage: match.stage,
+        kickoff_at: match.kickoff_at,
+        status: match.status,
+        team_a_name: match.team_a?.name || null,
+        team_a_code: match.team_a?.fifa_code || null,
+        team_b_name: match.team_b?.name || null,
+        team_b_code: match.team_b?.fifa_code || null,
+        multiplier_winners: multiplierWinners,
+        markets: (match.markets || []).map((market) => ({
         market_key: market.market_key,
         label: market.label,
         line: market.line,
@@ -1848,7 +1858,8 @@ export async function getParlayPulseState({ groupSlug, overview: providedOvervie
               })
           : [],
       })),
-    }))
+      };
+    })
     .filter((match) => match.markets.some((market) => {
       return market.options.some((option) => hasText(option.managers))
         || market.exact_scores?.some((score) => hasText(score.managers));
@@ -1859,6 +1870,55 @@ export async function getParlayPulseState({ groupSlug, overview: providedOvervie
     group_slug: groupSlug,
     matches,
   };
+}
+
+
+function getParlayMultiplierWinners({ match, markets, rows }) {
+  if (!match || match.status !== "finished") return [];
+  const requiredCount = markets.length;
+  if (!requiredCount) return [];
+
+  const marketsById = new Map(markets.map((market) => [market.id, market]));
+  const rowsByManager = (rows || []).reduce((grouped, row) => {
+    const managerName = row.managers?.display_name;
+    if (!managerName) return grouped;
+    const managerRows = grouped.get(managerName) || [];
+    managerRows.push(row);
+    grouped.set(managerName, managerRows);
+    return grouped;
+  }, new Map());
+
+  return [...rowsByManager.entries()]
+    .map(([managerName, managerRows]) => {
+      if (!managerName || managerRows.length < requiredCount) return null;
+      const selections = managerRows.map((row) => {
+        const market = marketsById.get(row.market_id);
+        if (!market) return null;
+        if (market.market_type === "exact_score") {
+          const score = String(row.predicted_team_a_score) + "-" + String(row.predicted_team_b_score);
+          return {
+            points: market.points,
+            is_correct: isExactScoreCorrect({ match, score }),
+          };
+        }
+        const option = (market.options || []).find((item) => item.id === row.option_id);
+        if (!option) return null;
+        return { points: option.points, is_correct: option.is_correct };
+      }).filter(Boolean);
+      if (selections.length < requiredCount) return null;
+      if (selections.some((selection) => selection.is_correct === null || selection.is_correct === undefined)) return null;
+
+      const wrongCount = selections.filter((selection) => !selection.is_correct).length;
+      if (wrongCount === 0) return { manager_name: managerName, multiplier: "2x" };
+      if (wrongCount === 1) return { manager_name: managerName, multiplier: "1.5x" };
+      return null;
+    })
+    .filter(Boolean)
+    .sort((left, right) => {
+      const multiplierDiff = Number.parseFloat(right.multiplier) - Number.parseFloat(left.multiplier);
+      if (multiplierDiff) return multiplierDiff;
+      return left.manager_name.localeCompare(right.manager_name);
+    });
 }
 
 function getPulseStatus(match, winnerType = null) {
@@ -2310,7 +2370,9 @@ async function getKnockoutTeamOutcomeMaps(overview) {
       ? normalizeTeamCode(scoredMatch.team_b?.fifa_code)
       : normalizeTeamCode(scoredMatch.team_a?.fifa_code);
 
-    if (winnerTeamCode) winsByTeamCode.set(winnerTeamCode, (winsByTeamCode.get(winnerTeamCode) || 0) + 1);
+    if (!isThirdPlaceStage(scoredMatch.stage) && winnerTeamCode) {
+      winsByTeamCode.set(winnerTeamCode, (winsByTeamCode.get(winnerTeamCode) || 0) + 1);
+    }
     if (loserTeamCode) lossesByTeamCode.add(loserTeamCode);
   }
 
@@ -2710,6 +2772,10 @@ function stripUnsupportedPredictionColumns(row, {
 
 function isGroupStage(stage) {
   return String(stage || "").toLowerCase().includes("group");
+}
+
+function isThirdPlaceStage(stage) {
+  return String(stage || "").trim().toLowerCase().replace(/[\s_-]+/g, " ") === "third place";
 }
 
 function numberOrNull(value) {

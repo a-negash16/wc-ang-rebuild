@@ -242,6 +242,7 @@ function getDraftPlayersByCode(draftRoom) {
 function PredictionPulse({ pulse }) {
   const matches = pulse?.matches || [];
   const parlayMatches = pulse?.parlay_matches || [];
+  const multiplierWinners = collectParlayMultiplierWinners(parlayMatches);
   if (!matches.length && !parlayMatches.length) return null;
 
   return (
@@ -313,8 +314,20 @@ function PredictionPulse({ pulse }) {
           </div>
         </div>
       ) : null}
+
+      <ParlayMultiplierSummary winners={multiplierWinners} />
     </section>
   );
+}
+
+function collectParlayMultiplierWinners(matches) {
+  return (matches || []).flatMap((match) => {
+    return (match.multiplier_winners || []).map((winner) => ({
+      ...winner,
+      external_match_id: match.external_match_id,
+      stage: match.stage,
+    }));
+  });
 }
 
 function ParlayPulseCard({ match }) {
@@ -374,6 +387,23 @@ function ParlayPulseCard({ match }) {
         </div>
             </div>
     </article>
+  );
+}
+
+function ParlayMultiplierSummary({ winners }) {
+  const rows = Array.isArray(winners) ? winners : [];
+  if (!rows.length) return null;
+  return (
+    <div className="parlay-multiplier-tags" aria-label="Parlay slip multiplier winners">
+      <strong>Parlay multiplier hits</strong>
+      <span>
+        {rows.map((winner) => (
+          <em key={winner.external_match_id + '-' + winner.manager_name}>
+            {winner.manager_name} <b>{winner.multiplier}</b>
+          </em>
+        ))}
+      </span>
+    </div>
   );
 }
 
@@ -467,7 +497,7 @@ function PulseScore({ match }) {
       <b>{formatScore(match.team_a_score)}</b>
       <span>-</span>
       <b>{formatScore(match.team_b_score)}</b>
-      {winnerName ? <small>{winnerName} advances</small> : null}
+      {winnerName ? <small>{match.stage === "Third Place" ? winnerName + " wins" : winnerName + " advances"}</small> : null}
     </div>
   );
 }
@@ -551,6 +581,7 @@ function Leaderboard({ leaderboard }) {
                   <th>Group</th>
                   <th>KO</th>
                   <th>Risks</th>
+                  <th>Futures</th>
                   <th>Parlay</th>
                   <th>Players</th>
                   <th>Teams</th>
@@ -570,6 +601,7 @@ function Leaderboard({ leaderboard }) {
                     <td>{formatPoints(row.group_stage_points)}</td>
                     <td>{formatPoints(row.knockout_prediction_points)}</td>
                     <td>{formatPoints(row.knockout_risk_points)}</td>
+                    <td>{formatPoints(row.futures_points)}</td>
                     <td>{formatPoints(row.parlay_points)}</td>
                     <td>{formatPoints(row.drafted_players_points)}</td>
                     <td>{formatPoints(row.drafted_teams_points)}</td>
