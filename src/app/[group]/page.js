@@ -33,16 +33,17 @@ export default async function GroupPage({ params, searchParams }) {
         <div className="hero-pattern" aria-hidden="true"></div>
         <div className="hero-main">
           <h1 id="group-title">{group.name}</h1>
-          <div className="hero-rows" aria-label="Page sections">
-            <nav className="hero-actions" aria-label="Page sections">
-              {tournamentComplete ? <a href="#the-final">The Final</a> : null}
-              <a href="#standings">Standings</a>
-              {tournamentComplete ? null : <a href="#next-picks">Next Picks</a>}
-              <a href="#prediction-pulse">Prediction Pulse</a>
-              <a href="#locked-picks-view">Locked Picks</a>
-              <a href="#draft-room">Draft Room</a>
-            </nav>
-          </div>
+          {tournamentComplete ? null : (
+            <div className="hero-rows" aria-label="Page sections">
+              <nav className="hero-actions" aria-label="Page sections">
+                <a href="#standings">Standings</a>
+                <a href="#next-picks">Next Picks</a>
+                <a href="#prediction-pulse">Prediction Pulse</a>
+                <a href="#locked-picks-view">Locked Picks</a>
+                <a href="#draft-room">Draft Room</a>
+              </nav>
+            </div>
+          )}
         </div>
       </section>
 
