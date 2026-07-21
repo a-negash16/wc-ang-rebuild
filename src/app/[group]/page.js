@@ -14,8 +14,9 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 export const fetchCache = "force-no-store";
 
-export default async function GroupPage({ params }) {
+export default async function GroupPage({ params, searchParams }) {
   const { group: groupSlug } = await params;
+  const query = await searchParams;
   const [group, pulse, lockedPickView, leaderboard, missingPicks, draftRoom] = await Promise.all([
     getGroupOverview(groupSlug),
     getPredictionPulseState({ groupSlug }),
@@ -25,16 +26,18 @@ export default async function GroupPage({ params }) {
     getDraftRoomState({ groupSlug }),
   ]);
   if (!group) notFound();
+  const tournamentComplete = Boolean(group.tournament_complete) || query?.["final-mode"] === "1";
   return (
-    <main className={`page theme-${group.slug}`}>
+    <main className={`page theme-${group.slug}${tournamentComplete ? " tournament-complete" : ""}`}>
       <section className="hero hero-dashboard" aria-labelledby="group-title">
         <div className="hero-pattern" aria-hidden="true"></div>
         <div className="hero-main">
           <h1 id="group-title">{group.name}</h1>
           <div className="hero-rows" aria-label="Page sections">
             <nav className="hero-actions" aria-label="Page sections">
-              <a href="#standings">View standings</a>
-              <a href="#next-picks">Next Picks</a>
+              {tournamentComplete ? <a href="#the-final">The Final</a> : null}
+              <a href="#standings">Standings</a>
+              {tournamentComplete ? null : <a href="#next-picks">Next Picks</a>}
               <a href="#prediction-pulse">Prediction Pulse</a>
               <a href="#locked-picks-view">Locked Picks</a>
               <a href="#draft-room">Draft Room</a>
@@ -43,23 +46,115 @@ export default async function GroupPage({ params }) {
         </div>
       </section>
 
-      <MissingPicksBar summary={missingPicks} />
+      {tournamentComplete ? <FinalLeaderboard leaderboard={leaderboard} /> : <MissingPicksBar summary={missingPicks} />}
 
-      <PredictionPanel
-        groupSlug={group.slug}
-        managers={group.managers}
-        matches={group.upcoming_matches}
-        lockMinutesBeforeKickoff={group.lock_minutes_before_kickoff}
-        timezone={group.timezone}
-        draftTeamManagersByCode={getDraftTeamManagersByCode(draftRoom)}
-        draftPlayersByCode={getDraftPlayersByCode(draftRoom)}
-      />
+      {tournamentComplete ? null : (
+        <PredictionPanel
+          groupSlug={group.slug}
+          managers={group.managers}
+          matches={group.upcoming_matches}
+          lockMinutesBeforeKickoff={group.lock_minutes_before_kickoff}
+          timezone={group.timezone}
+          draftTeamManagersByCode={getDraftTeamManagersByCode(draftRoom)}
+          draftPlayersByCode={getDraftPlayersByCode(draftRoom)}
+        />
+      )}
 
       <PredictionPulse pulse={pulse} />
       <LockedPickView lockedPickView={lockedPickView} />
       <DraftRoom draftRoom={draftRoom} />
       <Leaderboard leaderboard={leaderboard} />
     </main>
+  );
+}
+
+function FinalLeaderboard({ leaderboard }) {
+  const rows = leaderboard?.rows || [];
+  if (!rows.length) return null;
+  const stages = getFinalShuffleStages(rows);
+  const finalStage = stages.at(-1);
+
+  return (
+    <section className="section final-leaderboard-section" id="the-final" aria-labelledby="the-final-title">
+      <div className="section-heading final-heading">
+        <div>
+          <p className="eyebrow">Tournament complete</p>
+          <h2 id="the-final-title">The Final</h2>
+          <p className="final-thanks">Thank you for playing.</p>
+        </div>
+        <span className="status-chip">Ranks settled</span>
+      </div>
+      <div className="final-shuffle-card" aria-label="Animated final rank shuffle">
+        <div className="final-shuffle-topline">
+          <strong>Rank Shuffle</strong>
+          <span>Replay runs on every refresh</span>
+        </div>
+        <div className="final-stage-strip" aria-hidden="true">
+          {stages.map((stage, index) => (
+            <span
+              className={[
+                `final-stage-pill final-stage-pill-${stage.key}`,
+                stage.isFinal ? "is-final" : "",
+              ].filter(Boolean).join(" ")}
+              key={stage.key}
+              style={{ "--stage-delay": `${index * 2200}ms` }}
+            >
+              {stage.label}
+            </span>
+          ))}
+        </div>
+        <div className="final-shuffle-viewport">
+          {stages.map((stage, stageIndex) => (
+            <div
+              className={stage.isFinal ? "final-shuffle-frame is-final" : "final-shuffle-frame"}
+              key={stage.key}
+              style={{ "--stage-delay": `${stageIndex * 2200}ms` }}
+              aria-hidden={stageIndex !== stages.length - 1}
+            >
+              <header className="final-shuffle-frame-header">
+                <span>{stage.label}</span>
+                <strong>{stageIndex === stages.length - 1 ? "Final table" : `After ${stage.label}`}</strong>
+              </header>
+              <div className="final-shuffle-list">
+                {stage.rows.map((row, index) => {
+                  const isDanger = index >= stage.rows.length - 2;
+                  return (
+                    <div
+                      className={[
+                        "final-shuffle-row",
+                        stage.isFinal && row.rank <= 3 ? `medal medal-${row.rank}` : "",
+                        stage.isFinal && isDanger ? "closing-rank" : "",
+                      ].filter(Boolean).join(" ")}
+                      key={`${stage.key}-${row.manager_code}`}
+                      style={{ "--row-delay": `${stageIndex * 2200 + index * 38}ms` }}
+                    >
+                      <span className="final-shuffle-rank">{stage.isFinal ? getFinalRankLabel(row.rank) : row.rank}</span>
+                      <strong>{row.manager_name}</strong>
+                      <em className={rankDeltaClass(row.delta)}>{formatRankDelta(row.delta)}</em>
+                      <b>{formatPoints(row.stage_points)}</b>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="final-shuffle-summary" aria-label="Final podium and danger zone">
+          {finalStage.rows.slice(0, 3).map((row) => (
+            <span className={`medal-summary medal-${row.rank}`} key={row.manager_code}>
+              <b>{getFinalRankLabel(row.rank)}</b>
+              <em>{row.manager_name}</em>
+            </span>
+          ))}
+          {finalStage.rows.slice(-2).map((row, index) => (
+            <span className="closing-summary" key={`closing-${row.manager_code}`}>
+              <b>{index === 0 ? "Second-last" : "Last place"}</b>
+              <em>{row.manager_name}</em>
+            </span>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -102,6 +197,83 @@ function LockedPickView({ lockedPickView }) {
       </div>
     </section>
   );
+}
+
+function getFinalRankLabel(rank) {
+  return rank;
+}
+
+function getMedalLabel(rank) {
+  if (rank === 1) return "Champion";
+  if (rank === 2) return "Runner-up";
+  if (rank === 3) return "Third place";
+  return "Final table";
+}
+
+function getFinalShuffleStages(rows) {
+  const layers = getFinalScoreLayerDefinitions();
+  let previousRanks = new Map();
+  return layers.map((layer, layerIndex) => {
+    const rankedRows = rankFinalRows(rows.map((row) => ({
+      ...row,
+      stage_points: layers
+        .slice(0, layerIndex + 1)
+        .reduce((sum, item) => sum + Number(row[item.field] || 0), 0),
+    })));
+    const rowsWithDelta = rankedRows.map((row) => {
+      const previousRank = previousRanks.get(row.manager_code);
+      return {
+        ...row,
+        delta: previousRank ? previousRank - row.rank : 0,
+      };
+    });
+    previousRanks = new Map(rowsWithDelta.map((row) => [row.manager_code, row.rank]));
+    return {
+      key: layer.key,
+      label: layer.label,
+      isFinal: layerIndex === layers.length - 1,
+      rows: rowsWithDelta,
+    };
+  });
+}
+
+function rankFinalRows(rows) {
+  const sorted = [...rows].sort((left, right) => {
+    const pointDiff = Number(right.stage_points || 0) - Number(left.stage_points || 0);
+    if (pointDiff) return pointDiff;
+    return String(left.manager_name || "").localeCompare(String(right.manager_name || ""));
+  });
+  let previousPoints = null;
+  let previousRank = 0;
+  return sorted.map((row, index) => {
+    const points = Number(row.stage_points || 0);
+    const rank = previousPoints === points ? previousRank : index + 1;
+    previousPoints = points;
+    previousRank = rank;
+    return {
+      ...row,
+      rank,
+    };
+  });
+}
+
+function getFinalScoreLayers(row) {
+  return getFinalScoreLayerDefinitions().map((layer) => ({
+    ...layer,
+    value: row[layer.field],
+  }));
+}
+
+function getFinalScoreLayerDefinitions() {
+  return [
+    { key: "group", label: "Group", field: "group_stage_points" },
+    { key: "ko", label: "KO", field: "knockout_prediction_points" },
+    { key: "risks", label: "Risks", field: "knockout_risk_points" },
+    { key: "teams", label: "Teams", field: "drafted_teams_points" },
+    { key: "players", label: "Players", field: "drafted_players_points" },
+    { key: "futures", label: "Futures", field: "futures_points" },
+    { key: "parlay", label: "Parlay", field: "parlay_points" },
+  ];
 }
 
 function hasManagers(managers) {

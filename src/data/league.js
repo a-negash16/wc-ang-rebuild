@@ -59,6 +59,15 @@ export async function getGroupOverview(groupSlug) {
     if (groupError) throw new Error(groupError.message);
     if (!group) return null;
 
+    const { data: completionFlag, error: completionFlagError } = await supabase
+      .from("groups")
+      .select("tournament_complete")
+      .eq("id", group.id)
+      .maybeSingle();
+    if (completionFlagError && !isMissingColumnError(completionFlagError, "tournament_complete")) {
+      throw new Error(completionFlagError.message);
+    }
+
     const [{ data: managers, error: managersError }, { data: matches, error: matchError }] =
       await Promise.all([
         supabase
@@ -100,6 +109,7 @@ export async function getGroupOverview(groupSlug) {
       managers: managers || [],
       manager_count: managers?.length || 0,
       upcoming_matches: upcomingMatches,
+      tournament_complete: Boolean(completionFlag?.tournament_complete),
       data_mode: "supabase",
     };
   }
