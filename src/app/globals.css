@@ -203,10 +203,10 @@ button:disabled {
 }
 
 .hero h1 {
-  bottom: clamp(78px, 8.5vw, 118px);
+  bottom: 50%;
   color: #fff5cf;
   font-family: var(--font-display);
-  font-size: clamp(3.2rem, 7vw, 6.4rem);
+  font-size: clamp(2.4rem, 5.4vw, 5rem);
   font-weight: 800;
   left: 50%;
   letter-spacing: 0;
@@ -220,7 +220,7 @@ button:disabled {
   text-shadow:
     0 5px 22px rgba(0, 0, 0, 0.82),
     0 0 3px rgba(0, 0, 0, 0.74);
-  transform: translateX(-50%);
+  transform: translate(-50%, 50%);
   z-index: 1;
 }
 
@@ -3507,8 +3507,8 @@ button:disabled {
 
   .final-shuffle-card {
     border-radius: 18px;
-    gap: 9px;
-    min-height: min(70svh, 620px);
+    gap: 7px;
+    min-height: 0;
     padding: 12px;
   }
 
@@ -3531,36 +3531,36 @@ button:disabled {
   }
 
   .final-shuffle-viewport {
-    min-height: min(54svh, 445px);
+    min-height: 410px;
   }
 
   .final-shuffle-row {
     border-radius: 10px;
-    gap: 6px;
+    gap: 5px;
     grid-template-columns: 40px minmax(0, 1fr) 38px 58px;
-    min-height: 35px;
-    padding: 5px 6px;
+    min-height: 32px;
+    padding: 4px 6px;
   }
 
   .final-shuffle-rank {
     font-size: 0.56rem;
-    height: 25px;
-    min-width: 25px;
+    height: 23px;
+    min-width: 23px;
     padding: 0 5px;
   }
 
   .final-shuffle-row strong {
-    font-size: 0.82rem;
+    font-size: 0.78rem;
   }
 
   .final-shuffle-row em {
-    font-size: 0.68rem;
+    font-size: 0.64rem;
     min-width: 30px;
     padding: 0.16rem 0.28rem;
   }
 
   .final-shuffle-row b {
-    font-size: 0.8rem;
+    font-size: 0.76rem;
   }
 
   .final-shuffle-summary {
